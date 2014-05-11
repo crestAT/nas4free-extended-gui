@@ -48,7 +48,6 @@ if ($_POST) {
         $config['extended-gui']['enable'] = isset($_POST['enable']) ? true : false;
         $config['extended-gui']['type'] = $_POST['type'];
 		if ($config['extended-gui']['type'] == "Extended" ) {
-/*             $config['extended-gui']['hide_os_infos'] = isset($_POST['hide_os_infos']) ? true : false; */
             $config['extended-gui']['loop_delay'] = !empty($_POST['loop_delay']) ? $_POST['loop_delay'] : 60;
             $config['extended-gui']['hide_cpu'] = isset($_POST['hide_cpu']) ? true : false;
             $config['extended-gui']['hide_cpu_usage'] = isset($_POST['hide_cpu_usage']) ? true : false;
@@ -57,10 +56,8 @@ if ($_POST) {
             $config['extended-gui']['user'] = isset($_POST['user']) ? true : false;
             $config['extended-gui']['services'] = isset($_POST['services']) ? true : false;
             $config['extended-gui']['buttons'] = isset($_POST['buttons']) ? true : false;
-/*             $config['extended-gui']['disk_width'] = !empty($_POST['disk_width']) ? $_POST['disk_width'] : 900; */
             $config['extended-gui']['temp_warning'] = !empty($_POST['temp_warning']) ? $_POST['temp_warning'] : 38;
             $config['extended-gui']['temp_severe'] = !empty($_POST['temp_severe']) ? $_POST['temp_severe'] : 45;
-/*             $config['extended-gui']['temp_email'] = isset($_POST['temp_email']) ? true : false; */
             $config['extended-gui']['space_warning'] = !empty($_POST['space_warning']) ? $_POST['space_warning'] : 10000;
             $config['extended-gui']['space_severe'] = !empty($_POST['space_severe']) ? $_POST['space_severe'] : 5000;
             $config['extended-gui']['space_email'] = isset($_POST['space_email']) ? true : false;
@@ -89,7 +86,6 @@ function enable_change(enable_change) {
     var endis = !((document.iform.enable.checked || enable_change) && (document.iform.type.value == "Extended"));
     if (document.iform.enable.checked) {document.iform.type.disabled = false;}
     else {document.iform.type.disabled = true;}  
-/* 	document.iform.hide_os_infos.disabled = endis; */
 	document.iform.loop_delay.disabled = endis;
 	document.iform.hide_cpu.disabled = endis;
 	document.iform.hide_cpu_usage.disabled = endis;
@@ -98,10 +94,8 @@ function enable_change(enable_change) {
 	document.iform.user.disabled = endis;
 	document.iform.services.disabled = endis;
 	document.iform.buttons.disabled = endis;
-/* 	document.iform.disk_width.disabled = endis; */
 	document.iform.temp_warning.disabled = endis;
 	document.iform.temp_severe.disabled = endis;
-/* 	document.iform.temp_email.disabled = endis; */
 	document.iform.space_warning.disabled = endis;
 	document.iform.space_severe.disabled = endis;
 	document.iform.space_email.disabled = endis;
@@ -126,7 +120,6 @@ function enable_change(enable_change) {
             	<?php html_combobox("type", gettext("Type"), !empty($config['extended-gui']['type']) ? $config['extended-gui']['type'] : "Standard", array('Standard' =>'Standard','Extended'=> 'Extended'), "Choose view type", true, false, "enable_change(false)" );?>
 			<?php html_separator();?>
 			<?php html_titleline(gettext("Status")." | ".gettext("System"));?>
-<!--                 <?php html_checkbox("hide_os_infos", gettext("Operating System Information"), isset($config['extended-gui']['hide_os_infos']) ? true : false, gettext("Disable display of static Operating System Information."), "", false);?> -->
             	<?php html_inputbox("loop_delay", gettext("System check delay time"), !empty($config['extended-gui']['loop_delay']) ? $config['extended-gui']['loop_delay'] : 60, sprintf(gettext("Define the delay between two system checks executed by Extended GUI in seconds. Default delay is %d seconds."), 60), true, 5);?>
                 <?php html_checkbox("hide_cpu", gettext("CPU usage"), isset($config['extended-gui']['hide_cpu']) ? true : false, gettext("Disable display of CPU usage bar."), "", false);?>
                 <?php html_checkbox("hide_cpu_usage", gettext("CPU multicore usage"), isset($config['extended-gui']['hide_cpu_usage']) ? true : false, gettext("Disable display of multicore CPU usage bars."), "", false);?>
@@ -135,10 +128,8 @@ function enable_change(enable_change) {
                 <?php html_checkbox("user", gettext("Users"), isset($config['extended-gui']['user']) ? true : false, gettext("Enable display of users logged in (CIFS/SMB, SSH, FTP)."), "", false);?>
                 <?php html_checkbox("services", gettext("Services"), isset($config['extended-gui']['services']) ? true : false, gettext("Enable display of services row."), "", false);?>
                 <?php html_checkbox("buttons", gettext("Functions"), isset($config['extended-gui']['buttons']) ? true : false, gettext("Enable display of function buttons row."), "", false);?>
-<!--             	<?php html_inputbox("disk_width", gettext("Disk table width"), !empty($config['extended-gui']['disk_width']) ? $config['extended-gui']['disk_width'] : 900, sprintf(gettext("Width of the disk table on the status page. Default width is %d."), 900), true, 5);?> -->
-            	<?php html_inputbox("temp_warning", gettext("Disk temperatur warning level"), !empty($config['extended-gui']['temp_warning']) ? $config['extended-gui']['temp_warning'] : $config['smartd']['temp']['info'], sprintf(gettext("Define the disk temperature for warning indication in &deg;C. Default warning temperature as defined in <a href='disks_manage_smart.php'>S.M.A.R.T.</a> is %d &deg;C."), $config['smartd']['temp']['info']), true, 5);?>
-            	<?php html_inputbox("temp_severe", gettext("Disk temperatur critical level"), !empty($config['extended-gui']['temp_severe']) ? $config['extended-gui']['temp_severe'] : $config['smartd']['temp']['crit'], sprintf(gettext("Define the critical disk temperature for error indication in &deg;C. Default critical temperature as defined in <a href='disks_manage_smart.php'>S.M.A.R.T.</a> is %d &deg;C."), $config['smartd']['temp']['crit']), true, 5);?>
-<!--                 <?php html_checkbox("temp_email", gettext("Disk temperatur critical level warning email"), isset($config['extended-gui']['temp_email']) ? true : false, gettext("Enable sending of email reporting that disks reached critical temperature level."), "", false);?> -->
+            	<?php html_inputbox("temp_warning", gettext("Disk temperature warning level"), !empty($config['extended-gui']['temp_warning']) ? $config['extended-gui']['temp_warning'] : $config['smartd']['temp']['info'], sprintf(gettext("Define the disk temperature for warning indication in &deg;C. Default warning temperature as defined in <a href='disks_manage_smart.php'>S.M.A.R.T.</a> is %d &deg;C."), $config['smartd']['temp']['info']), true, 5);?>
+            	<?php html_inputbox("temp_severe", gettext("Disk temperature critical level"), !empty($config['extended-gui']['temp_severe']) ? $config['extended-gui']['temp_severe'] : $config['smartd']['temp']['crit'], sprintf(gettext("Define the critical disk temperature for error indication in &deg;C. Default critical temperature as defined in <a href='disks_manage_smart.php'>S.M.A.R.T.</a> is %d &deg;C."), $config['smartd']['temp']['crit']), true, 5);?>
             	<?php html_inputbox("space_warning", gettext("Disk free space warning level"), !empty($config['extended-gui']['space_warning']) ? $config['extended-gui']['space_warning'] : 10000, sprintf(gettext("Define the free space threshold for disks for warning indication in MB. Default warning free space is %d MB."), 10000), true, 5);?>
             	<?php html_inputbox("space_severe", gettext("Disk free space critical level"), !empty($config['extended-gui']['space_severe']) ? $config['extended-gui']['space_severe'] : 5000, sprintf(gettext("Define the lowest free space threshold for disks before warning and reporting in MB. Default critical free space is %d MB."), 5000), true, 5);?>
                 <?php html_checkbox("space_email", gettext("Disk free space threshold warning email"), isset($config['extended-gui']['space_email']) ? true : false, gettext("Enable sending of email report that disks reached free space thresholds."), "", false);?>

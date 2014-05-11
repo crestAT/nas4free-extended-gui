@@ -33,10 +33,11 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
-// 2014.04.15   v0.4.3      C: ZFS disks view, CPU graph and bar switchable
-//                          first public release
+// 2014.04.17   v0.4.3.1    F: disks view temperature, temperature typo
+//                          N: UPS view on/off if UPS is enabled/disabled
+// 2014.04.15   v0.4.3      first public release
 
-$version = "v0.4.3 (+ ZFS fix)";
+$version = "v0.4.3.1 (+ ZFS fix)";
 $appname = "Extended GUI";
 
 require_once("config.inc");

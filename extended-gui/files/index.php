@@ -594,15 +594,15 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 										"<span name='diskusage_{$ctrlid}_used' id='diskusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$diskusagev['used']}</span>",
 										"<span name='diskusage_{$ctrlid}_free' id='diskusage_{$ctrlid}_free' class='free' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$diskusagev['avail']}</span>");
 									echo " ||";
-                                echo "</td><td><table>";
-                                echo "<tr><td nowrap width='40px'>";
+                                echo "</td><td><table style='width:200px'>";
+                                echo "<tr><td style='white-space:nowrap; width:34px;'>";
     								echo " <span name='diskusage_{$ctrlid}_device' id='diskusage_{$ctrlid}_device' class='device'>{$diskusagev['device']}</span>";
-    								echo "</td><td nowrap width='70px'>-> <span name='diskusage_{$ctrlid}_smart_state' id='diskusage_{$ctrlid}_smart_state' class='state'>{$diskusagev['smart_state']}</span>";
-    								echo "</td><td nowrap width='70px'> | Temp: <span name='diskusage_{$ctrlid}_temp' id='diskusage_{$ctrlid}_temp' class='temp' style='font-weight:bold'>{$diskusagev['temp']}</span>";
+    								echo "</td><td style='white-space:nowrap; width:70px;'>-> <span name='diskusage_{$ctrlid}_smart_state' id='diskusage_{$ctrlid}_smart_state' class='state'>{$diskusagev['smart_state']}</span>";
+    								echo "</td><td style='white-space:nowrap;'> | Temp: <span name='diskusage_{$ctrlid}_temp' id='diskusage_{$ctrlid}_temp' class='temp' style='font-weight:bold'>{$diskusagev['temp']}</span>";
                                 echo "</td></tr>";
                                 echo "</table>";
-                                    echo "</td><td width=32px align='center'><span name='diskusage_{$ctrlid}_space' id='diskusage_{$ctrlid}_space'>{$diskusagev['space']}</span>";
-									echo "</td><td nowrap width='70px' align='right'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td width='500px'>&nbsp;</div></td></tr>";
+                                    echo "</td><td style='width:60px;'><span name='diskusage_{$ctrlid}_space' id='diskusage_{$ctrlid}_space'>{$diskusagev['space']}</span>";
+									echo "</td><td style='white-space:nowrap; width:70px;'>&nbsp;</td><td width='500px'>&nbsp;</div></td></tr>";
 								}
 							}
 							$zfspools = zfs_get_pool_devs_list();
@@ -629,17 +629,17 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 										"<span name='poolusage_{$ctrlid}_used' id='poolusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$poolv['used']}</span>",
 										"<span name='poolusage_{$ctrlid}_free' id='poolusage_{$ctrlid}_free' class='free' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$poolv['avail']}</span>");
 									echo " ||";
-                                echo "</td><td><table>";
+                                echo "</td><td><table style='width:200px'>";
                                     foreach($poolv['devs'] as $idx => $devs) {
-                                        echo "<tr><td  nowrap width='40px'>";
+                                        echo "<tr><td style='white-space:nowrap; width:34px;'>";
         								echo " <span name='poolusage_{$ctrlid}_{$idx}_device' id='poolusage_{$ctrlid}_{$idx}_device' class='device'>{$devs['device']}</span>";
-        								echo "</td><td nowrap width='70px'>-> <span name='poolusage_{$ctrlid}_{$idx}_smart_state' id='poolusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
-        								echo "</td><td nowrap width='70px'> | Temp: <span name='poolusage_{$ctrlid}_{$idx}_temp' id='poolusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
+        								echo "</td><td style='white-space:nowrap; width:70px;'>-> <span name='poolusage_{$ctrlid}_{$idx}_smart_state' id='poolusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
+        								echo "</td><td style='white-space:nowrap;'> | Temp: <span name='poolusage_{$ctrlid}_{$idx}_temp' id='poolusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
                                         echo "</td></tr>";
                                     }
                                 echo "</table>";
-    								echo "</td><td width=32px align='center'><span name='poolusage_{$ctrlid}_space' id='poolusage_{$ctrlid}_space'>{$poolv['space']}</span>";
-									echo "</td><td nowrap width='70px' align='right'><a href='disks_zfs_zpool_info.php?pool={$poolv['name']}'><span name='poolusage_{$ctrlid}_state' id='poolusage_{$ctrlid}_state' class='state'>{$poolv['health']}</span></a>";
+    								echo "</td><td style='width:60px;'><span name='poolusage_{$ctrlid}_space' id='poolusage_{$ctrlid}_space'>{$poolv['space']}</span>";
+									echo "</td><td style='white-space:nowrap; width:70px;'><a href='disks_zfs_zpool_info.php?pool={$poolv['name']}'><span name='poolusage_{$ctrlid}_state' id='poolusage_{$ctrlid}_state' class='state'>{$poolv['health']}</span></a>";
 									echo "</td><td width='500px'>&nbsp;</div></td></tr>";
 
 									if (++$index < count($zfspools))
@@ -656,6 +656,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 						</table>
 					</td>                                                                          
 				</tr>
+<?php if (isset($config['ups']['enable'])) { ?>
 				<tr>
 					<td width="25%" class="vncellt"><?=gettext("UPS Status");?></td>
 					<td class="listr" colspan="2">
@@ -745,6 +746,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 						</table>
 					</td>
 				</tr>
+<?php } ?>
 <?php if (isset($config['extended-gui']['user'])) { ?>
 			  <tr>
 			    <td width="25%" valign="top" class="vncellt"><?=gettext("Users");?></td>
