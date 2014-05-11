@@ -42,4 +42,7 @@ require_once("{$config['extended-gui']['rootfolder']}ext/extended-gui_fcopy.inc"
 killbypid("/tmp/extended-gui_system_calls.sh.lock");
 // restore original files by shutdown
 copy_backup2origin($files, $backup_path, $extend_path);
+// save logs for embedded systems
+exec ("cp /var/log/autoshutdown.log ".$config['extended-gui']['rootfolder']."log/autoshutdown.log >/dev/null 2>/dev/null");
+exec ("cp /var/log/notifications.log ".$config['extended-gui']['rootfolder']."log/notifications.log >/dev/null 2>/dev/null");
 ?>

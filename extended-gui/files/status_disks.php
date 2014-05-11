@@ -72,7 +72,7 @@ $raidstatus = get_sraid_disks_list();
 <!-- <?php print_r($disk['name']); ?> -->
 				<?php (($iostat = system_get_device_iostat($disk['name'])) === FALSE) ? $iostat = gettext("n/a") : $iostat = sprintf("%s KiB/t, %s tps, %s MiB/s", $iostat['kpt'], $iostat['tps'], $iostat['mps']);?>
 				<?php
-                    $hd_status = extension_get_smart_states($disk['name']);
+                    $hd_status = extension_get_smart_states("/dev/".$disk['name']);
 					$activity = $hd_status['smart_state'];
 					$temp = $hd_status['temp'];
                 ?>
@@ -103,7 +103,7 @@ $raidstatus = get_sraid_disks_list();
 <!-- <?php print_r($diskk); ?> -->
 				<?php (($iostat = system_get_device_iostat($diskk)) === FALSE) ? $iostat = gettext("n/a") : $iostat = sprintf("%s KiB/t, %s tps, %s MiB/s", $iostat['kpt'], $iostat['tps'], $iostat['mps']);?>
 				<?php
-                    $hd_status = extension_get_smart_states($diskk);
+                    $hd_status = extension_get_smart_states("/dev/".$diskk);
 					$activity = $hd_status['smart_state'];
 					$temp = $hd_status['temp'];
                 ?>
@@ -115,8 +115,8 @@ $raidstatus = get_sraid_disks_list();
 					<td class="listr"><?=htmlspecialchars(gettext("n/a"));?>&nbsp;</td>
 					<td class="listr"><?=($disk['fstype']) ? htmlspecialchars(get_fstype_shortdesc($disk['fstype'])) : htmlspecialchars(gettext("Unknown or unformatted"))?>&nbsp;</td>
 					<td class="listr"><?=htmlspecialchars($iostat);?>&nbsp;</td>
-					<td class="listr"><?=htmlspecialchars($temp);?>&nbsp;</td>
-					<td class="listr"><?=htmlspecialchars($activity);?>&nbsp;</td>
+					<td class="listr"><?=$temp;?>&nbsp;</td>
+					<td class="listr"><?=$activity;?>&nbsp;</td>
 					<td class="listbg"><?=htmlspecialchars($diskv['state']);?>&nbsp;</td>
 				</tr>
 				<?php endforeach;?>

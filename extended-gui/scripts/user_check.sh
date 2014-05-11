@@ -9,9 +9,9 @@
 cd `dirname $0`
 . CONFIG
 USER_ONLINE=$LOCK_DIR/extended-gui_user_online.log
-USER_LOG_NEW=$LOCK_DIR/user_new.log
-USER_LOG_OLD=$LOCK_DIR/user_old.log
-EMAIL_FILE=$LOCK_DIR/user_email.log
+USER_LOG_NEW=$LOCK_DIR/extended-gui_user_new.log
+USER_LOG_OLD=$LOCK_DIR/extended-gui_user_old.log
+EMAIL_FILE=$LOCK_DIR/extended-gui_user_email.log
 EMAIL_ENABLED=`/usr/local/bin/xml sel -t -v "count(//extended-gui/user_email)" ${XML_CONFIG_FILE}`
 EMAIL_TO=`/usr/local/bin/xml sel -t -v "//extended-gui/space_email_add" ${XML_CONFIG_FILE}`
 #-----------------------------------------------
@@ -31,13 +31,13 @@ cp $USER_ONLINE.tmp $USER_LOG_NEW
 if [ ! -e $USER_LOG_OLD ]; then cp $USER_LOG_NEW $USER_LOG_OLD; fi
 USER_DIFF=`diff --suppress-common-lines $USER_LOG_NEW $USER_LOG_OLD `
 if [ $? != 0 ]; then
-	echo Host: $HOST >> $EMAIL_FILE;
+	echo "Host: $HOST\n" >> $EMAIL_FILE;
 	for NAME in $USER_DIFF
 	do
 		if [ "$NAME" == "<" ]; then LOG_RECORD="User logged in: "; 
 		else if [ "$NAME" == ">" ]; then LOG_RECORD="User logged out: "
 			else if [ "`echo $NAME | awk '/@/ {print $1}'`" != "" ]; then 
-					LOG_RECORD="$LOG_RECORD $NAME";
+					LOG_RECORD="$LOG_RECORD `echo $NAME | awk '{gsub("<b>",""); gsub("</b>",""); gsub("&nbsp;"," ");print}'`";
 					echo $LOG_RECORD >> $EMAIL_FILE;
 					logger -p local3.notice "*** $SCRIPT_NAME $LOG_RECORD"
 					NOTIFY "WARNING $LOG_RECORD"

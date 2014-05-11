@@ -15,13 +15,6 @@ LOG_DIR="/mnt/DATA/log"					# to save system logs (for embedded systems)
 SYSTEM_LOG_DIR="/var/log"						
 SYSTEM_SCRIPT_DIR="/var/scripts"
 SCRIPT_BACKUP_DIR="/mnt/DATA/_scripts"
-SUBNET=192.168.1						# replace these with the actual IP data
-START_IP=1;		END_IP=254
-SUBNET2=10.0.0							# replace these with the actual IP data
-START_IP2=1; 	END_IP2=254
-CRIT_TEMP=38							# threshold:  38 °C
-WARNING=1000000							# threshold:   1 GB
-SEVERE=600000							# threshold: 600 MB
 #-----------------------------------------------
 
 ################################################

@@ -385,7 +385,7 @@ function system_get_swap_info() {
 	foreach ($swap as $swapv) {
 		if (preg_match("/(\/dev\/.*)(?:\s+)(\d+)(?:\s+)(\d+)(?:\s+)(\d+)(?:\s)(.+)/", $swapv, $matches)) {
 			$devswap = array();
-			$devswap['device'] = trim($matches[1]);
+			$devswap['device'] = str_replace("/dev/", "", trim($matches[1]));
 			$devswap['total'] = decode_size(trim($matches[2])*$val);
 			$devswap['used'] = decode_size(trim($matches[3])*$val);
 			$devswap['avail'] = decode_size(trim($matches[4])*$val);
@@ -440,7 +440,7 @@ function system_get_device_iostat($device) {
  */
 function system_get_device_temp($device) {
 	$result = FALSE;
-
+    $device = str_replace("/dev/", "", $device);
 	/* without smart */
 	mwexec2("ataidle /dev/{$device} | grep 'SMART Enabled'", $rawdata);
 	if (!empty($rawdata) && 1 === preg_match("/^SMART Enabled:\s+(\S+)/", $rawdata[0], $matches)) {
@@ -535,14 +535,20 @@ function system_get_volume_model($devicefile) {
  */
 function extension_get_device_space($idx) {
 	global $config;
-    $space = exec("df -k {$idx} | awk '/\// {print $4}'");
-    $space_severe = $config['extended-gui']['space_severe'] * 1000;      // threshold in MB * 1000
-    $space_warning = $config['extended-gui']['space_warning'] * 1000;    // threshold in MB * 1000
-    switch ($space) {
-        case ($space < $space_severe): $space = '<img src="ext/extended-gui/state_error.png" alt="Device FULL" title="Device is (almost) full (below '.$config['extended-gui']['space_severe'].' MB)!"/>'; break;
-        case ($space < $space_warning): $space = '<img src="ext/extended-gui/state_warning.png" alt="Space LOW" title="Free space on device is very low (below '.$config['extended-gui']['space_warning'].' MB)!"/>'; break;
-        default: $space = '<img src="ext/extended-gui/state_ok.png" alt="Space OK" title="Free space on device is ok."/>'; break;
-    }
+    $output = explode(" ", exec("df -k {$idx} | awk '/\// {print $4,$5}'"));
+    $space = $output[0];
+    $space_percent = 100 - str_replace("%", "", $output[1]);
+    $space_warning = $config['extended-gui']['space_warning'] * 1000;           // threshold in MB * 1000
+    $space_warning_percent = $config['extended-gui']['space_warning_percent'];  // threshold in percent
+    $space_severe = $config['extended-gui']['space_severe'] * 1000;             // threshold in MB * 1000
+    $space_severe_percent = $config['extended-gui']['space_severe_percent'];    // threshold in percent
+    if (($space > $space_warning) || ($space_percent > $space_warning_percent)) {
+        $space = "<img src='ext/extended-gui/state_ok.png' alt='Space OK' title='Free space on device is ok.'/>";
+    } elseif (($space > $space_severe) || ($space_percent > $space_severe_percent)) {
+        $space = "<img src='ext/extended-gui/state_warning.png' alt='Space LOW' title='Free space on device is very low (below {$config['extended-gui']['space_warning']} MB & {$config['extended-gui']['space_warning_percent']} %)!'/>";        
+    } else {
+        $space = "<img src='ext/extended-gui/state_error.png' alt='Device FULL' title='Device is (almost) full (below {$config['extended-gui']['space_severe']} MB & {$config['extended-gui']['space_severe_percent']} %)!'/>";
+    }   
     return $space;    
 }
 
@@ -562,7 +568,7 @@ function extension_get_smart_states($idx) {
 	unset($rawdata1);
 	unset($exitval);
 	$temp = "n/a";
-    exec("smartctl -n standby -q silent -A /dev/{$idx}", $rawdata1, $exitval); 
+    exec("smartctl -n standby -q silent -A {$idx}", $rawdata1, $exitval); 
     switch ($exitval) {
         case 4: $smart_state = "<font color='red'>SMART&nbsp;n/a</font>"; break;
         case 2: $smart_state = "<font color='green'>Standby</font>"; break;
@@ -570,7 +576,7 @@ function extension_get_smart_states($idx) {
         case 0: $smart_state = "<font color='red'>Spinning</font>";
             	unset($rawdata1);
             	unset($exitval);
-                exec("smartctl -n standby -A /dev/{$idx} | awk '/Temperature_Celsius/ {print $10}'", $rawdata1, $exitval);
+                exec("smartctl -n standby -A {$idx} | awk '/Temperature_Celsius/ {print $10}'", $rawdata1, $exitval);
                 switch ($rawdata1[0]) {
                     case ($rawdata1[0] > $config['extended-gui']['temp_severe']): $temp = "<font color='red'>{$rawdata1[0]}&nbsp;&deg;C</font>"; break;
                     case ($rawdata1[0] > $config['extended-gui']['temp_warning']): $temp = "<font color='orange'>{$rawdata1[0]}&nbsp;&deg;C</font>"; break;
@@ -579,7 +585,8 @@ function extension_get_smart_states($idx) {
                 break;
         default: $smart_state = "<font color='red'>exit: {$exitval}</font>"; break;
     }
-    return array('device' => $idx, 'smart_state' => $smart_state, 'temp' => $temp);    
+    $device = explode("/", $idx);
+    return array('device' => $device[2], 'smart_state' => $smart_state, 'temp' => $temp);    
 }
 
 /**
@@ -640,7 +647,7 @@ function system_get_mount_usage() {
                     // get the device from the partition for SMART
                     exec("gpart status -s | awk '/{$file_system[2]}/ {print $3}'", $hd_output);
                     $file_system[2] = $hd_output[0];
-                    $hd_status = extension_get_smart_states($file_system[2]);
+                    $hd_status = extension_get_smart_states("/dev/".$file_system[2]);
 					$result[$mountpoint]['device'] = $hd_status['device'];
 					$result[$mountpoint]['smart_state'] = $hd_status['smart_state'];
 					$result[$mountpoint]['temp'] = $hd_status['temp'];
@@ -650,6 +657,16 @@ function system_get_mount_usage() {
 		}
 	}
 	return $result;
+}
+
+function disks_gpt_partition_to_device($gpt_partition) {
+        $labels = disks_get_labels();
+        foreach($labels as $key => $disk_partition) {
+                if (strcmp($gpt_partition, $key) == 0) {
+                        return exec("gpart status -s | grep {$disk_partition} | awk '{print $3}'");
+                }
+        }
+        return $gpt_partition;
 }
 
 /** @afs2
@@ -685,8 +702,21 @@ function zfs_get_pool_devs_list() {
     	// get all devices attached to the pool
         foreach ($rawdata as $line) {
     		$aline = preg_split("/\s+/", $line);
+             // zfs pool on raw disks
             if (array_key_exists($aline[1], $test)) {
-                $result[$idx]['devs'][] = extension_get_smart_states($aline[1]);
+                // device name is taken directly from zpool output
+		$device = "/dev/".$aline[1];
+		$result[$idx]['devs'][] = extension_get_smart_states($device);
+            // zfs pool on disk labels
+            } else if (strpos($aline[1], 'label') !== false) {
+                // getting device name from drive label
+                $device = disks_label_to_device("/dev/".$aline[1]);
+                $result[$idx]['devs'][] = extension_get_smart_states($device);
+             // zfs pool on gpt partitions 
+             } else if (strpos($aline[1], 'gpt') !== false) {
+		// getting device name from gpt partition label 
+                $device = "/dev/".disks_gpt_partition_to_device($aline[1]);
+                $result[$idx]['devs'][] = extension_get_smart_states($device);
             }
         }
         $result[$idx]['space'] = extension_get_device_space($idx);

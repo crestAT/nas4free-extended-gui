@@ -33,11 +33,19 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
+// 2014.05.06   v0.4.3.3    N: ZFS degraded warning email
+//                          N: STATUS | SYSTEM - Network hosts monitor
+//                          N: EXTENSIONS | EXTENDED GUI - system calls service status
+//                          N: save/restore autoshutdown/notification log for embedded systems
+//                          C: STATUS | SYSTEM - disk space warning logic now based on used size AND used percent
+//                          F: DIAGNOSTICS | INFORMATION | DISKS: temperature shows allways n/a (started with 9.2.0.1-943)
+//                          F: STATUS | SYSTEM - rowspan calculation for CPU temperature
+//                          F: STATUS | SYSTEM - support now ZFS pools on gpt partitions and device labels
 // 2014.04.17   v0.4.3.1    F: disks view temperature, temperature typo
-//                          N: UPS view on/off if UPS is enabled/disabled
+//                          N: UPS view on/off if UPS is enabled/disabled 
 // 2014.04.15   v0.4.3      first public release
 
-$version = "v0.4.3.1 (+ ZFS fix)";
+$version = "v0.4.3.3 (+ ZFS fix)";
 $appname = "Extended GUI";
 
 require_once("config.inc");

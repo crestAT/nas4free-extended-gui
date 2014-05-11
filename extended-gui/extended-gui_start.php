@@ -51,6 +51,8 @@ else exec ("logger extended-gui: saved and current GUI files are identical - OK"
 
 if ( !is_dir ( '/usr/local/www/ext/extended-gui')) { exec ("mkdir -p /usr/local/www/ext/extended-gui"); }
 exec ("cp ".$config['extended-gui']['rootfolder']."ext/* /usr/local/www/ext/extended-gui/");
+// restore logs for embedded systems
+exec ("cp ".$config['extended-gui']['rootfolder']."log/* /var/log/ >/dev/null 2>/dev/null");
 exec ("cp -R ".$config['extended-gui']['rootfolder']."scripts /var/");
 if ( !is_link ( "/usr/local/www/extended-gui.php")) { exec ("ln -s /usr/local/www/ext/extended-gui/extended-gui.php /usr/local/www/extended-gui.php"); }
 

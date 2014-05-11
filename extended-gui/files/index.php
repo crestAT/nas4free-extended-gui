@@ -67,13 +67,19 @@ function get_vip_status() {
 
 function get_userinfo() {
     $userinfo = exec("cat /tmp/extended-gui_user_online.log");
-    return $userinfo;     
+    return $userinfo;
+}
+
+function get_hostsinfo() {
+    $hostsinfo = exec("cat /tmp/extended-gui_hosts_online.log");
+    return $hostsinfo;
 }
 
 if (is_ajax()) {
 	$sysinfo = system_get_sysinfo();
 	$vipstatus = get_vip_status();
 	$sysinfo['userinfo'] = get_userinfo();
+	$sysinfo['hostsinfo'] = get_hostsinfo();
 	$sysinfo['vipstatus'] = $vipstatus;
 	render_ajax($sysinfo);
 }
@@ -185,6 +191,8 @@ $(document).ready(function(){
 	gui.recall(5000, 5000, 'index.php', null, function(data) {
 		if ($('#userinfo').size() > 0)
     		$('#userinfo').html(data.userinfo);
+		if ($('#hostsinfo').size() > 0)
+    		$('#hostsinfo').html(data.hostsinfo);
 
 		if ($('#vipstatus').size() > 0)
 			$('#vipstatus').text(data.vipstatus);
@@ -324,8 +332,7 @@ $(document).ready(function(){
 
 $rowcounter = 13;       //@afs2 set/get # of rows for graphs
 if (!empty($config['vinterfaces']['carp'])) { ++$rowcounter; }
-if (!empty($cpuinfo['temperature'])) { ++$rowcounter; }
-if (!empty($cpuinfo['temperature2'])) { ++$rowcounter; }
+if (!empty($cpuinfo['temperature']) || !empty($cpuinfo['temperature2'])) { ++$rowcounter; }
 if (!empty($cpuinfo['freq'])) { ++$rowcounter; } 
 $swapinfo = system_get_swap_info(); 
 if (!empty($swapinfo)) { ++$rowcounter; }	
@@ -440,7 +447,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 				<?php if (!empty($cpuinfo['temperature2'])):
 					echo "<tr>";
 					echo "<td width='25%' class='vncellt'>".gettext("CPU temperature")."</td>";
-					echo "<td width='75%' class='listr'>";
+					echo "<td class='listr'>";
 					echo "<table width='100%' border='0' cellspacing='0' cellpadding='0'><tr><td>\n";
 					$cpus = system_get_cpus();
 					for ($idx = 0; $idx < $cpus; $idx++) {
@@ -751,6 +758,12 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 			  <tr>
 			    <td width="25%" valign="top" class="vncellt"><?=gettext("Users");?></td>
 			    <td class="listr" colspan="2"><span name="userinfo" id="userinfo"><?php echo get_userinfo(); ?></span></td>
+			  </tr>
+<?php } ?>
+<?php if (isset($config['extended-gui']['hosts'])) { ?>
+			  <tr>
+			    <td width="25%" valign="top" class="vncellt"><?=gettext("Hosts");?></td>
+			    <td class="listr" colspan="2"><span name="hostsinfo" id="hostsinfo"><?php echo get_hostsinfo(); ?></span></td>
 			  </tr>
 <?php } ?>
 <?php if (isset($config['extended-gui']['services'])) { ?>
