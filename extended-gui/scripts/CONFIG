@@ -1,0 +1,58 @@
+#!/bin/sh
+# filename:		CONFIG
+# author:		Andreas Schmidhuber
+# purpose:		INITIAL VARIABLES FOR NAS-SCRIPTS
+# usage:		. /path/to/CONFIG -> call in every shell script at the first line
+# version:	date:		description:
+#	2.0		2014.04.07	C: for Extended GUI
+#	1.1		2013.08.19	N: use $HOST instead of `uname -n`
+#	1.0		2013.08.11	N: include IP data
+# 	0.2		2013.05.01	N: LOG_DATE
+# 	0.1		2013.04.09	initial version
+#------------- initialize variables ------------
+# change variables to fit for the used system
+LOG_DIR="/mnt/DATA/log"					# to save system logs (for embedded systems)
+SYSTEM_LOG_DIR="/var/log"						
+SYSTEM_SCRIPT_DIR="/var/scripts"
+SCRIPT_BACKUP_DIR="/mnt/DATA/_scripts"
+SUBNET=192.168.1						# replace these with the actual IP data
+START_IP=1;		END_IP=254
+SUBNET2=10.0.0							# replace these with the actual IP data
+START_IP2=1; 	END_IP2=254
+CRIT_TEMP=38							# threshold:  38 °C
+WARNING=1000000							# threshold:   1 GB
+SEVERE=600000							# threshold: 600 MB
+#-----------------------------------------------
+
+################################################
+# do NOT change the rest of the config file
+################################################
+SCRIPT_NAME=`basename $0`
+PID=$$
+LOCK_DIR="/tmp"							# for script based locks
+LOCK_FILE=$LOCK_DIR/$SCRIPT_NAME.lock
+LOG_MSG_NOTIFY=$SYSTEM_LOG_DIR/notifications.log
+DT_STR="%Y.%m.%d %H:%M:%S"
+LOG_DATE=`date +"%Y.%m.%d_%H-%M"`
+HOST=`uname -n`
+XML_CONFIG_FILE=/conf/config.xml
+#-----------------------------------------------
+
+NOTIFY ()
+{
+	echo "`date +"$DT_STR"` $SCRIPT_NAME $@" >> $LOG_MSG_NOTIFY
+	if [ "$1" == "ERROR" ]; then logger -p local4.notice "$@"; fi
+}
+
+LOCK_SCRIPT ()
+{
+	if [ -e $LOCK_FILE ]; then
+		ps acx | grep -f $LOCK_FILE
+		if [ $? -eq 0 ]; then logger "$1"; NOTIFY "$1"; exit 1; 
+		else NOTIFY "INFO Remove obsolete pid file for pid `cat $LOCK_FILE`, new pid: ${PID}"; rm -f $LOCK_FILE; fi
+	fi
+	echo ${PID} > $LOCK_FILE
+}
+
+UNLOCK_SCRIPT ()
+{ rm -f $LOCK_FILE; }
