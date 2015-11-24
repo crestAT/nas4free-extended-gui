@@ -2,7 +2,7 @@
 /*
     extended-gui_fcopy.inc
 
-    Copyright (c) 2014, Andreas Schmidhuber
+    Copyright (c) 2014 - 2015 Andreas Schmidhuber
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -39,24 +39,29 @@ $files = array(
   // for Diagnostics | Log page search and user column amendment 
     array("diag_log.inc","/usr/local/www/"),
     array("diag_log.php","/usr/local/www/"),
-  // for Status | Disks page amendment additional column Activity
-    array("status_disks.php","/usr/local/www/"),
-  // for Access | Users page amendment showing all groups a user belongs to
-    array("access_users.php","/usr/local/www/"),
+// for Status | Disks page amendment additional column Activity, removed, amendments in r1349
+  //  array("status_disks.php","/usr/local/www/"),
+// for Access | Users page amendment showing all groups a user belongs to, removed, no longer needed, included in r1349
+  //  array("access_users.php","/usr/local/www/"),
+// for Disks | ZFS | Datasets & Volumes error traps and, removed, no longer needed, included in r1349
+  //  array("disks_zfs_dataset.php","/usr/local/www/"),
+  //  array("disks_zfs_volume.php","/usr/local/www/"),
+// ... extended apply message, removed, r1349 incompatibility -> new function verify_xz_file, and r1349 now contains the changes for function print_config_change_box
+  //  array("guiconfig.inc","/usr/local/www/"),
+//-------------------------------> /etc/inc/
+  // for Status | System page extensions -> ZFS pool health status -> replaced in r1395
+//    array("system.inc","/etc/inc/"),
+);
+
+$graph_files = array(
   // for Status | Graph time changes
     array("graph.php","/usr/local/www/"),
     array("status_graph.php","/usr/local/www/"),
     array("graph_cpu.php","/usr/local/www/"),
     array("status_graph_cpu.php","/usr/local/www/"),
-  // for Disks | ZFS | Datasets & Volumes error traps and ...
-    array("disks_zfs_dataset.php","/usr/local/www/"),
-    array("disks_zfs_volume.php","/usr/local/www/"),
-  // ... extended apply message
-    array("guiconfig.inc","/usr/local/www/"),
-//-------------------------------> /etc/inc/
-  // for Status | System page extensions
-    array("system.inc","/etc/inc/"),
 );
+
+if (!isset($config['rrdgraphs']['enable'])) $files = array_merge($files, $graph_files);
 
 $backup_path = $config['extended-gui']['rootfolder']."backup/";
 $extend_path = $config['extended-gui']['rootfolder']."files/";

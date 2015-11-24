@@ -1,9 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 # filename:		extended-gui_system_calls.sh
 # author:		Andreas Schmidhuber
 # purpose:		executes several scripts every n seconds
 # usage:		extended-gui_system_calls.sh (... w/o parameters)
 # version:	date:		description:
+#	3.1		2015.04.16	C: get extension variables from CONFIG2 instead of reading from config.xml
+#	3.0		2015.04.09	C: for Extended GUI version 0.5
 #	2.0		2014.04.07	C: initial version for Extended GUI
 #------------- initialize variables ------------
 cd `dirname $0`
@@ -12,21 +14,24 @@ cd `dirname $0`
 
 LOCK_SCRIPT "ATTEMPT to run the script \"$SCRIPT_NAME\" twice!"
 NOTIFY "INFO System call service started with pid ${PID}"
+change_config=`/usr/local/bin/xml sel -t -v "//lastchange" ${XML_CONFIG_FILE}`
 
 while true
 do
-#NOTIFY "INFO start"
-	RUN_USER=`/usr/local/bin/xml sel -t -v "count(//extended-gui/user)" ${XML_CONFIG_FILE}`
-	RUN_HOSTS=`/usr/local/bin/xml sel -t -v "count(//extended-gui/hosts)" ${XML_CONFIG_FILE}`
-	RUN_AUTOMOUNT=`/usr/local/bin/xml sel -t -v "count(//extended-gui/automount)" ${XML_CONFIG_FILE}`
-	LOOP_DELAY=`/usr/local/bin/xml sel -t -v "//extended-gui/loop_delay" ${XML_CONFIG_FILE}`
-	if [ "$LOOP_DELAY" == "" ]; then LOOP_DELAY=60; fi
+#NOTIFY "INFO system_calls start"
+	lastchange_config=`/usr/local/bin/xml sel -t -v "//lastchange" ${XML_CONFIG_FILE}`
+    if [ "$change_config" != "$lastchange_config" ]; then
+#NOTIFY "INFO2 system_calls start ALT: $change_config NEU: $lastchange_config"
+        su root -c "/usr/local/www/ext/extended-gui/extended-gui_create_config2.php"
+    fi
 
-	$SYSTEM_SCRIPT_DIR/disk_status.sh
+    if [ "$LOOP_DELAY" == "" ]; then LOOP_DELAY=60; fi
+
+	$SYSTEM_SCRIPT_DIR/disk_check.sh
 	if [ $RUN_USER -gt 0 ]; then $SYSTEM_SCRIPT_DIR/user_check.sh; fi
 	if [ $RUN_HOSTS -gt 0 ]; then $SYSTEM_SCRIPT_DIR/hosts_check.sh; fi
 	if [ $RUN_AUTOMOUNT -gt 0 ]; then $SYSTEM_SCRIPT_DIR/automount_usb.sh; fi
-#NOTIFY "INFO end"
+#NOTIFY "INFO system_calls end"
 	sleep $LOOP_DELAY
 done
 

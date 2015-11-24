@@ -4,6 +4,8 @@
 # purpose:		INITIAL VARIABLES FOR NAS-SCRIPTS
 # usage:		. /path/to/CONFIG -> call in every shell script at the first line
 # version:	date:		description:
+#	3.1		2015.05.12	C: path for CONFIG2 for other scripts which are not in $SYSTEM_SCRIPT_DIR 
+#	3.0		2015.04.09	C: for Extended GUI version 0.5 
 #	2.0		2014.04.07	C: for Extended GUI
 #	1.1		2013.08.19	N: use $HOST instead of `uname -n`
 #	1.0		2013.08.11	N: include IP data
@@ -12,7 +14,7 @@
 #------------- initialize variables ------------
 # change variables to fit for the used system
 LOG_DIR="/mnt/DATA/log"					# to save system logs (for embedded systems)
-SYSTEM_LOG_DIR="/var/log"						
+#SYSTEM_LOG_DIR="${clogdir}"    --> obsolete with v3.0 - comes from CONFIG2
 SYSTEM_SCRIPT_DIR="/var/scripts"
 SCRIPT_BACKUP_DIR="/mnt/DATA/_scripts"
 #-----------------------------------------------
@@ -22,7 +24,10 @@ SCRIPT_BACKUP_DIR="/mnt/DATA/_scripts"
 ################################################
 SCRIPT_NAME=`basename $0`
 PID=$$
-LOCK_DIR="/tmp"							# for script based locks
+if [ -e $SYSTEM_SCRIPT_DIR/CONFIG2 ]; then
+. $SYSTEM_SCRIPT_DIR/CONFIG2            # created by extended-gui_start
+fi
+LOCK_DIR="/tmp"                         # for script based locks
 LOCK_FILE=$LOCK_DIR/$SCRIPT_NAME.lock
 LOG_MSG_NOTIFY=$SYSTEM_LOG_DIR/notifications.log
 DT_STR="%Y.%m.%d %H:%M:%S"

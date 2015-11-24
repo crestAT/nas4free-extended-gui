@@ -1,9 +1,11 @@
 #!/bin/sh
 # filename:		user_check.sh
 # author:		Andreas Schmidhuber
-# purpose:		monitoring of users in the home-network
-# usage:		user_check.sh.sh (... w/o parameters) 
+# purpose:		monitoring of users in the home network
+# usage:		user_check.sh (... w/o parameters) 
 # version:	date:		description:
+#	3.1		2015.09.27	N: check if SMB / FTP are enabled to prevent error messages and laggs
+#	3.0		2015.04.16	C: get extension variables from CONFIG2 instead of reading from config.xml
 #	2.1		2014.06.16	C: give user names a color
 #	2.0		2014.04.07	C: initial version for Extended GUI
 #------------- initialize variables ------------
@@ -13,20 +15,18 @@ USER_ONLINE=$LOCK_DIR/extended-gui_user_online.log
 USER_LOG_NEW=$LOCK_DIR/extended-gui_user_new.log
 USER_LOG_OLD=$LOCK_DIR/extended-gui_user_old.log
 EMAIL_FILE=$LOCK_DIR/extended-gui_user_email.log
-EMAIL_ENABLED=`/usr/local/bin/xml sel -t -v "count(//extended-gui/user_email)" ${XML_CONFIG_FILE}`
-EMAIL_TO=`/usr/local/bin/xml sel -t -v "//extended-gui/space_email_add" ${XML_CONFIG_FILE}`
 #-----------------------------------------------
 
 # user online
-smbstatus -b | awk '/\(/ {print "<font color=blue><b>"$2"</b></font>@"$4$5"&nbsp;(CIFS/SMB)"}' > $USER_ONLINE.tmp
+if [ $SMB_ENABLED -gt 0 ]; then
+    smbstatus -b | awk '/\(/ {print "<font color=blue><b>"$2"</b></font>@"$4$5"&nbsp;(CIFS/SMB)"}' > $USER_ONLINE.tmp
+fi
 w -hn | awk '{print "<font color=blue><b>"$1"</b></font>@"$3"@"$2"&nbsp;(SSH)"}' | grep -v '<font color=blue><b>root</b></font>@-@' >> $USER_ONLINE.tmp
-ftpwho -v -o oneline | grep -v 'standalone FTP' | grep -v 'Service class' | grep -v 'no users connected' | awk '{print "<font color=blue><b>"$2"</b></font>@"$8"&nbsp;(FTP)"}' >> $USER_ONLINE.tmp
+if [ $FTP_ENABLED -gt 0 ]; then
+    ftpwho -v -o oneline | grep -v 'standalone FTP' | grep -v 'Service class' | grep -v 'no users connected' | awk '{print "<font color=blue><b>"$2"</b></font>@"$8"&nbsp;(FTP)"}' >> $USER_ONLINE.tmp
+fi
 
 cat $USER_ONLINE.tmp | awk 'BEGIN {ORS=""} {print} {print "&nbsp; "}' > $USER_ONLINE
-#NAMES=""
-#for NAME in `cat $USER_ONLINE.tmp`
-#do NAMES="$NAMES $NAME&nbsp;"; done
-#echo "$NAMES " > $USER_ONLINE
 
 # user login / logout
 cp $USER_ONLINE.tmp $USER_LOG_NEW

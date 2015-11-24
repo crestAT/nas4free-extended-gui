@@ -5,6 +5,7 @@
 # usage:		automount.sh [umount | rmount | amount] mount / unmount USB (ATA) partitions daxxx automatically
 # comment:		for access to the USB drive the N4F user MUST be member of group wheel !!!
 # version:	date:		description:
+#	5.4		2015.01.13	N: sysid 6
 #	5.3		2014.07.15	F: changed chmod position -> after mount command to gain write access for user group
 #	5.2		2014.07.11	F: drives with more then one partition are supported but all partitions/slices must have 
 #							the same file system type => grep --max-count=1 !!!
@@ -56,6 +57,7 @@ A_MOUNT ()
 						11)		FS_TYPE="msdosfs";;			# 0B W95 FAT32
 						12)		FS_TYPE="msdosfs";;			# 0C W95 FAT32 (LBA)
 						7)		FS_TYPE="ntfs";;			# 07 HPFS/NTFS/exFAT
+						6)      FS_TYPE="msdosfs";;         # 06 Primary 'big' DOS (>= 32MB)
 						*)		FS_TYPE="unknown";;
 					esac
 #echo stage 5 $FS_TYPE

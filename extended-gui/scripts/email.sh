@@ -4,6 +4,7 @@
 # purpose:		send email w/o body text or file content
 # usage:		email [ sender@host.at recipiant@host.at ] "subject" [ "message text" | "filename" ]
 # version:	date:		description:
+#	3.0		2015.04.16	C: get extension variables from CONFIG2 instead of reading from config.xml
 #	2.1		2014.04.21	C: removed positive notification
 #	2.0		2014.04.07	C: initial version for Extended GUI
 #	1.1		2013.04.13	C: for universal use on different NAS systems 
@@ -11,7 +12,6 @@
 #------------- initialize variables ------------
 cd `dirname $0`
 . CONFIG
-EMAIL_FROM=`/usr/local/bin/xml sel -t -v "//system/email/from" ${XML_CONFIG_FILE}`
 #-----------------------------------------------
 
 case $# in 

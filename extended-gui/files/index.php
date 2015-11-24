@@ -81,6 +81,35 @@ if (is_ajax()) {
 	$sysinfo['userinfo'] = get_userinfo();
 	$sysinfo['hostsinfo'] = get_hostsinfo();
 	$sysinfo['vipstatus'] = $vipstatus;
+    if (is_array($sysinfo['diskusage'])) {
+        for ($i = 0; $i < count($sysinfo['diskusage']); ++$i) {
+            $mountpoint_details = explode('##', exec("cat /tmp/extended-gui_{$sysinfo['diskusage'][$i]['name']}.smart"));
+            $sysinfo['diskusage'][$i]['space'] = $mountpoint_details[1];
+            $pool_details = explode('#', $mountpoint_details[0]);
+            foreach($pool_details as $a_pool) {
+                $smart_details = explode('|', $a_pool);
+                $a_pool_details['device'] = $smart_details[0];
+                $a_pool_details['smart_state'] = $smart_details[1];
+                $a_pool_details['temp'] = $smart_details[2];
+                $sysinfo['diskusage'][$i]['devs'][] = $a_pool_details;
+            }
+        }
+    }
+    if (is_array($sysinfo['poolusage'])) {
+         for ($i = 0; $i < count($sysinfo['poolusage']); ++$i) {
+            $mountpoint_details = explode('##', exec("cat /tmp/extended-gui_{$sysinfo['poolusage'][$i]['name']}.smart"));
+            $sysinfo['poolusage'][$i]['space'] = $mountpoint_details[1];
+            $pool_details = explode('#', $mountpoint_details[0]);
+            foreach($pool_details as $a_pool) {
+                $smart_details = explode('|', $a_pool);
+                $a_pool_details['device'] = $smart_details[0];
+                $a_pool_details['smart_state'] = $smart_details[1];
+                $a_pool_details['temp'] = $smart_details[2];
+                $sysinfo['poolusage'][$i]['devs'][] = $a_pool_details;
+            }
+        }
+    }
+	
 	render_ajax($sysinfo);
 }
 
@@ -273,11 +302,12 @@ $(document).ready(function(){
 					$('#diskusage_'+du.id+'_total').text(du.size);
 					$('#diskusage_'+du.id+'_used').text(du.used);
 					$('#diskusage_'+du.id+'_free').text(du.avail);
-//@afs1     new variables in -> system.inc: functions system_get_mount_usage, system_get_sysinfo
-//          ---------> #diskusage_'+du.id => span in index.php, (du.nnnn) => array => system.inc
-					$('#diskusage_'+du.id+'_device').html(du.device);
-					$('#diskusage_'+du.id+'_smart_state').html(du.smart_state);
-					$('#diskusage_'+du.id+'_temp').html(du.temp);
+          			for (var idx1 = 0; idx1 < du.devs.length; idx1++) {
+        				var devs = du.devs[idx1];
+     					$('#diskusage_'+du.id+'_'+idx1+'_device').html(devs.device);
+    					$('#diskusage_'+du.id+'_'+idx1+'_smart_state').html(devs.smart_state);
+    					$('#diskusage_'+du.id+'_'+idx1+'_temp').html(devs.temp);
+                    }
 					$('#diskusage_'+du.id+'_space').html(du.space);
 				}
 			}
@@ -291,7 +321,7 @@ $(document).ready(function(){
 					$('#poolusage_'+du.id+'_bar_used').attr('title', du['tooltip'].used);
 					$('#poolusage_'+du.id+'_bar_free').attr('width', (100 - du.percentage) + 'px');
 					$('#poolusage_'+du.id+'_bar_free').attr('title', du['tooltip'].available);
-					$('#poolusage_'+du.id+'_capacity').text(du.cap);
+					$('#poolusage_'+du.id+'_capacity').text(du.capacity);
 					$('#poolusage_'+du.id+'_total').text(du.size);
 					$('#poolusage_'+du.id+'_used').text(du.used);
 					$('#poolusage_'+du.id+'_free').text(du.avail);
@@ -301,7 +331,7 @@ $(document).ready(function(){
     					$('#poolusage_'+du.id+'_'+idx1+'_smart_state').html(devs.smart_state);
     					$('#poolusage_'+du.id+'_'+idx1+'_temp').html(devs.temp);
                     }
-					$('#poolusage_'+du.id+'_space').html(du.space);
+					$('#poolusage_'+du.id+'_space').html(du.space); 
 					$('#poolusage_'+du.id+'_state').html(du.health);
 				}
 			}
@@ -387,6 +417,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
                         </object><br />
 <?php } ?>
 <?php if (!isset($config['extended-gui']['hide_lan_graph'])) { ?>
+                        <br />
                         <form name="form2" action="index.php" method="get">
                             <select name="if" class="formfld" onchange="submit()">
                                 <?php
@@ -560,6 +591,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 							array_sort_key($swapinfo, "device");
 							$ctrlid = 0;
 							foreach ($swapinfo as $swapk => $swapv) {
+                                $swapv['device'] = str_replace("/dev/", "", trim($swapv['device'])); 						      
 								$percent_used = rtrim($swapv['capacity'], "%");
 								$tooltip_used = sprintf(gettext("%sB used of %sB"), $swapv['used'], $swapv['total']);
 								$tooltip_available = sprintf(gettext("%sB available of %sB"), $swapv['avail'], $swapv['total']);
@@ -602,92 +634,113 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 				<tr>
 			    <td width="25%" class="vncellt"><?=gettext("Disk space usage");?></td>
 			    <td class="listr" colspan="2">
-				    <table border="0" cellspacing="0" cellpadding="1">
-				      <?php
-				      $diskusage = system_get_mount_usage();
-				      if (!empty($diskusage)) {
+                <table border="0" cellspacing="0" cellpadding="1">
+				<?php
+				    $diskusage = system_get_mount_usage();
+				    if (!empty($diskusage)) {
 				      	array_sort_key($diskusage, "name");
 				      	$index = 0;
-								foreach ($diskusage as $diskusagek => $diskusagev) {
-									$ctrlid = get_mount_fsid($diskusagev['filesystem'], $diskusagek);
-									$percent_used = rtrim($diskusagev['capacity'],"%");
-									$tooltip_used = sprintf(gettext("%sB used of %sB"), $diskusagev['used'], $diskusagev['size']);
-									$tooltip_available = sprintf(gettext("%sB available of %sB"), $diskusagev['avail'], $diskusagev['size']);
-									echo "<tr style='height:22px'><td><div id='diskusage'>";
-									echo "<span name='diskusage_{$ctrlid}_name' id='diskusage_{$ctrlid}_name' class='name'>{$diskusagev['name']}</span>";
-									echo "</td><td nowrap>&nbsp;&nbsp;<img src='bar_left.gif' class='progbarl' alt='' />";
-									echo "<img src='bar_blue.gif' name='diskusage_{$ctrlid}_bar_used' id='diskusage_{$ctrlid}_bar_used' width='{$percent_used}' class='progbarcf' title='{$tooltip_used}' alt='' />";
-									echo "<img src='bar_gray.gif' name='diskusage_{$ctrlid}_bar_free' id='diskusage_{$ctrlid}_bar_free' width='" . (100 - $percent_used) . "' class='progbarc' title='{$tooltip_available}' alt='' />";
-									echo "<img src='bar_right.gif' class='progbarr' alt='' /> ";
-									echo sprintf(gettext("%s of %sB"),
-										"&nbsp;&nbsp;</td><td nowrap align='left'><span name='diskusage_{$ctrlid}_capacity' id='diskusage_{$ctrlid}_capacity' class='capacity'>{$diskusagev['capacity']}</span>", $diskusagev['size']);
-									echo "</td><td nowrap> || ";
-									echo sprintf(gettext("Total: %s | Used: %s | Free: %s"),
-										"<span name='diskusage_{$ctrlid}_total' id='diskusage_{$ctrlid}_total' class='total' style='display:inline-block; width:35px; text-align:right; font-weight:bold'>{$diskusagev['size']}</span>",
-										"<span name='diskusage_{$ctrlid}_used' id='diskusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$diskusagev['used']}</span>",
-										"<span name='diskusage_{$ctrlid}_free' id='diskusage_{$ctrlid}_free' class='free' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$diskusagev['avail']}</span>");
-									echo " ||";
-                                echo "</td><td><table style='width:200px'>";
+						foreach ($diskusage as $diskusagek => $diskusagev) {
+							$ctrlid = get_mount_fsid($diskusagev['filesystem'], $diskusagek);
+                            $mountpoint_details = explode('##', exec("cat /tmp/extended-gui_{$diskusagev['name']}.smart"));
+                            $diskusagev['space'] = $mountpoint_details[1];
+                            $pool_details = explode('#', $mountpoint_details[0]);
+                            foreach($pool_details as $a_pool) {
+                                $smart_details = explode('|', $a_pool);
+                                $a_pool_details['device'] = $smart_details[0];
+                                $a_pool_details['smart_state'] = $smart_details[1];
+                                $a_pool_details['temp'] = $smart_details[2];
+                                $diskusagev['devs'][] = $a_pool_details;
+                            }
+							$percent_used = rtrim($diskusagev['capacity'],"%");
+							$tooltip_used = sprintf(gettext("%sB used of %sB"), $diskusagev['used'], $diskusagev['size']);
+							$tooltip_available = sprintf(gettext("%sB available of %sB"), $diskusagev['avail'], $diskusagev['size']);
+							echo "<tr style='height:22px'><td><div id='diskusage'>";
+							echo "<span name='diskusage_{$ctrlid}_name' id='diskusage_{$ctrlid}_name' class='name'>{$diskusagev['name']}</span>";
+							echo "</td><td nowrap>&nbsp;&nbsp;<img src='bar_left.gif' class='progbarl' alt='' />";
+							echo "<img src='bar_blue.gif' name='diskusage_{$ctrlid}_bar_used' id='diskusage_{$ctrlid}_bar_used' width='{$percent_used}' class='progbarcf' title='{$tooltip_used}' alt='' />";
+							echo "<img src='bar_gray.gif' name='diskusage_{$ctrlid}_bar_free' id='diskusage_{$ctrlid}_bar_free' width='" . (100 - $percent_used) . "' class='progbarc' title='{$tooltip_available}' alt='' />";
+							echo "<img src='bar_right.gif' class='progbarr' alt='' /> ";
+							echo sprintf(gettext("%s of %sB"),
+								"&nbsp;&nbsp;</td><td nowrap align='left'><span name='diskusage_{$ctrlid}_capacity' id='diskusage_{$ctrlid}_capacity' class='capacity'>{$diskusagev['capacity']}</span>", $diskusagev['size']);
+							echo "</td><td nowrap> || ";
+							echo sprintf(gettext("Total: %s | Used: %s | Free: %s"),
+								"<span name='diskusage_{$ctrlid}_total' id='diskusage_{$ctrlid}_total' class='total' style='display:inline-block; width:35px; text-align:right; font-weight:bold'>{$diskusagev['size']}</span>",
+								"<span name='diskusage_{$ctrlid}_used' id='diskusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$diskusagev['used']}</span>",
+								"<span name='diskusage_{$ctrlid}_free' id='diskusage_{$ctrlid}_free' class='free' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$diskusagev['avail']}</span>");
+							echo " ||";
+                            echo "</td><td><table style='width:200px'>";
+                            foreach($diskusagev['devs'] as $idx => $devs) {
                                 echo "<tr><td style='white-space:nowrap; width:34px;'>";
-    								echo " <span name='diskusage_{$ctrlid}_device' id='diskusage_{$ctrlid}_device' class='device'>{$diskusagev['device']}</span>";
-    								echo "</td><td style='white-space:nowrap; width:70px;'>-> <span name='diskusage_{$ctrlid}_smart_state' id='diskusage_{$ctrlid}_smart_state' class='state'>{$diskusagev['smart_state']}</span>";
-    								echo "</td><td style='white-space:nowrap;'> | Temp: <span name='diskusage_{$ctrlid}_temp' id='diskusage_{$ctrlid}_temp' class='temp' style='font-weight:bold'>{$diskusagev['temp']}</span>";
+								echo " <span name='diskusage_{$ctrlid}_{$idx}_device' id='diskusage_{$ctrlid}_{$idx}_device' class='device'>{$devs['device']}</span>";
+								echo "</td><td style='white-space:nowrap; width:70px;'>-> <span name='diskusage_{$ctrlid}_{$idx}_smart_state' id='diskusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
+								echo "</td><td style='white-space:nowrap;'> | Temp: <span name='diskusage_{$ctrlid}_{$idx}_temp' id='diskusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
                                 echo "</td></tr>";
-                                echo "</table>";
-                                    echo "</td><td style='width:60px;'><span name='diskusage_{$ctrlid}_space' id='diskusage_{$ctrlid}_space'>{$diskusagev['space']}</span>";
-									echo "</td><td style='white-space:nowrap; width:70px;'>&nbsp;</td><td width='500px'>&nbsp;</div></td></tr>";
-								}
-							}
-							$zfspools = zfs_get_pool_devs_list();
-							if (!empty($zfspools)) {
-								if (!empty($diskusage)) {echo "<tr><td colspan='8'><hr size='1' /></td></tr>";}
-								array_sort_key($zfspools, "name");
-								$index = 0;
-								foreach ($zfspools as $poolk => $poolv) {
-									$ctrlid = $poolv['name'];
-									$percent_used = rtrim($poolv['cap'],"%");
-									$tooltip_used = sprintf(gettext("%sB used of %sB"), $poolv['used'], $poolv['size']);
-									$tooltip_available = sprintf(gettext("%sB available of %sB"), $poolv['avail'], $poolv['size']);
-    								echo "<tr><td><div id='diskusage'>";
-									echo "<span name='poolusage_{$ctrlid}_name' id='poolusage_{$ctrlid}_name' class='name'>{$poolv['name']}</span>";
-									echo " </td><td nowrap>&nbsp;&nbsp;<img src='bar_left.gif' class='progbarl' alt='' />";
-									echo "<img src='bar_blue.gif' name='poolusage_{$ctrlid}_bar_used' id='poolusage_{$ctrlid}_bar_used' width='{$percent_used}' class='progbarcf' title='{$tooltip_used}' alt='' />";
-									echo "<img src='bar_gray.gif' name='poolusage_{$ctrlid}_bar_free' id='poolusage_{$ctrlid}_bar_free' width='" . (100 - $percent_used) . "' class='progbarc' title='{$tooltip_available}' alt='' />";
-									echo "<img src='bar_right.gif' class='progbarr' alt='' /> ";
-									echo sprintf(gettext("%s of %sB"),
-										"&nbsp;&nbsp;</td><td nowrap align='left'><span name='poolusage_{$ctrlid}_capacity' id='poolusage_{$ctrlid}_capacity' class='capacity'>{$poolv['cap']}</span>", $poolv['size']);
-									echo "</td><td nowrap> || ";
-									echo sprintf(gettext("Total: %s | Used: %s | Free: %s"),
-										"<span name='poolusage_{$ctrlid}_total' id='poolusage_{$ctrlid}_total' class='total' style='display:inline-block; width:35px; text-align:right; font-weight:bold'>{$poolv['size']}</span>",
-										"<span name='poolusage_{$ctrlid}_used' id='poolusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$poolv['used']}</span>",
-										"<span name='poolusage_{$ctrlid}_free' id='poolusage_{$ctrlid}_free' class='free' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$poolv['avail']}</span>");
-									echo " ||";
-                                echo "</td><td><table style='width:200px'>";
-                                    foreach($poolv['devs'] as $idx => $devs) {
-                                        echo "<tr><td style='white-space:nowrap; width:34px;'>";
-        								echo " <span name='poolusage_{$ctrlid}_{$idx}_device' id='poolusage_{$ctrlid}_{$idx}_device' class='device'>{$devs['device']}</span>";
-        								echo "</td><td style='white-space:nowrap; width:70px;'>-> <span name='poolusage_{$ctrlid}_{$idx}_smart_state' id='poolusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
-        								echo "</td><td style='white-space:nowrap;'> | Temp: <span name='poolusage_{$ctrlid}_{$idx}_temp' id='poolusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
-                                        echo "</td></tr>";
-                                    }
-                                echo "</table>";
-    								echo "</td><td style='width:60px;'><span name='poolusage_{$ctrlid}_space' id='poolusage_{$ctrlid}_space'>{$poolv['space']}</span>";
-									echo "</td><td style='white-space:nowrap; width:70px;'><a href='disks_zfs_zpool_info.php?pool={$poolv['name']}'><span name='poolusage_{$ctrlid}_state' id='poolusage_{$ctrlid}_state' class='state'>{$poolv['health']}</span></a>";
-									echo "</td><td width='500px'>&nbsp;</div></td></tr>";
+                            }
+                            echo "</table>";
+                            echo "</td><td style='width:60px;'><span name='diskusage_{$ctrlid}_space' id='diskusage_{$ctrlid}_space'>{$diskusagev['space']}</span>";
+							echo "</td><td style='white-space:nowrap; width:70px;'>&nbsp;</td><td width='500px'>&nbsp;</div></td></tr>";
+						}
+					}
+					$zfspools = zfs_get_pool_list();
+					if (!empty($zfspools)) {
+						if (!empty($diskusage)) {echo "<tr><td colspan='8'><hr size='1' /></td></tr>";}
+						array_sort_key($zfspools, "name");
+						$index = 0;
+						foreach ($zfspools as $poolk => $poolv) {
+							$ctrlid = $poolv['name'];
+                            $mountpoint_details = explode('##', exec("cat /tmp/extended-gui_{$poolv['name']}.smart"));
+                            $poolv['space'] = $mountpoint_details[1];
+                            $pool_details = explode('#', $mountpoint_details[0]);
+                            foreach($pool_details as $a_pool) {
+                                $smart_details = explode('|', $a_pool);
+                                $a_pool_details['device'] = $smart_details[0];
+                                $a_pool_details['smart_state'] = $smart_details[1];
+                                $a_pool_details['temp'] = $smart_details[2];
+                                $poolv['devs'][] = $a_pool_details;
+                            }
+							$percent_used = rtrim($poolv['cap'],"%");
+							$tooltip_used = sprintf(gettext("%sB used of %sB"), $poolv['used'], $poolv['size']);
+							$tooltip_available = sprintf(gettext("%sB available of %sB"), $poolv['avail'], $poolv['size']);
+							echo "<tr><td><div id='diskusage'>";
+							echo "<span name='poolusage_{$ctrlid}_name' id='poolusage_{$ctrlid}_name' class='name'>{$poolv['name']}</span>";
+							echo " </td><td nowrap>&nbsp;&nbsp;<img src='bar_left.gif' class='progbarl' alt='' />";
+							echo "<img src='bar_blue.gif' name='poolusage_{$ctrlid}_bar_used' id='poolusage_{$ctrlid}_bar_used' width='{$percent_used}' class='progbarcf' title='{$tooltip_used}' alt='' />";
+							echo "<img src='bar_gray.gif' name='poolusage_{$ctrlid}_bar_free' id='poolusage_{$ctrlid}_bar_free' width='" . (100 - $percent_used) . "' class='progbarc' title='{$tooltip_available}' alt='' />";
+							echo "<img src='bar_right.gif' class='progbarr' alt='' /> ";
+							echo sprintf(gettext("%s of %sB"),
+								"&nbsp;&nbsp;</td><td nowrap align='left'><span name='poolusage_{$ctrlid}_capacity' id='poolusage_{$ctrlid}_capacity' class='capacity'>{$poolv['cap']}</span>", $poolv['size']);
+							echo "</td><td nowrap> || ";
+							echo sprintf(gettext("Total: %s | Used: %s | Free: %s"),
+								"<span name='poolusage_{$ctrlid}_total' id='poolusage_{$ctrlid}_total' class='total' style='display:inline-block; width:35px; text-align:right; font-weight:bold'>{$poolv['size']}</span>",
+								"<span name='poolusage_{$ctrlid}_used' id='poolusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$poolv['used']}</span>",
+								"<span name='poolusage_{$ctrlid}_free' id='poolusage_{$ctrlid}_free' class='free' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$poolv['avail']}</span>");
+							echo " ||";
+                            echo "</td><td><table style='width:200px'>";
+                            foreach($poolv['devs'] as $idx => $devs) {
+                                echo "<tr><td style='white-space:nowrap; width:34px;'>";
+								echo " <span name='poolusage_{$ctrlid}_{$idx}_device' id='poolusage_{$ctrlid}_{$idx}_device' class='device'>{$devs['device']}</span>";
+								echo "</td><td style='white-space:nowrap; width:70px;'>-> <span name='poolusage_{$ctrlid}_{$idx}_smart_state' id='poolusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
+								echo "</td><td style='white-space:nowrap;'> | Temp: <span name='poolusage_{$ctrlid}_{$idx}_temp' id='poolusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
+                                echo "</td></tr>";
+                            }
+                            echo "</table>";
+							echo "</td><td style='width:60px;'><span name='poolusage_{$ctrlid}_space' id='poolusage_{$ctrlid}_space'>{$poolv['space']}</span>";
+							echo "</td><td style='white-space:nowrap; width:70px;'><a href='disks_zfs_zpool_info.php?pool={$poolv['name']}'><span name='poolusage_{$ctrlid}_state' id='poolusage_{$ctrlid}_state' class='state'>{$poolv['health']}</span></a>";
+							echo "</td><td width='500px'>&nbsp;</div></td></tr>";
 
-									if (++$index < count($zfspools))
-										echo "<tr><td colspan='8'><hr size='1' /></td></tr>";
-								}
-							}
-
-							if (empty($diskusage) && empty($zfspools)) {
-								echo "<tr><td>";
-								echo gettext("No disk configured");
-								echo "</td></tr>";
-							}
-							?>
-						</table>
-					</td>                                                                          
+							if (++$index < count($zfspools))
+								echo "<tr><td colspan='8'><hr size='1' /></td></tr>";
+						}
+					}
+					if (empty($diskusage) && empty($zfspools)) {
+						echo "<tr><td>";
+						echo gettext("No disk configured");
+						echo "</td></tr>";
+					}
+				?>
+				</table>
+				</td>                                                                          
 				</tr>
 <?php if (isset($config['ups']['enable'])) { ?>
 				<tr>
@@ -813,7 +866,7 @@ echo "</tr>";
 <?php } ?>
 				<?php endif;?>
 			</table>
-		</td>
+		</td>                                                                                                                                                   
 	</tr>
 </table>
 <?php if (Session::isAdmin()):?>

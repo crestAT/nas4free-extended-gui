@@ -6,7 +6,7 @@
     based on silent_disk extension for NAS4Free created by Kruglov Alexey
     extended by Andreas Schmidhuber
     
-    Copyright (c) 2014, Andreas Schmidhuber
+    Copyright (c) 2014 - 2015 Andreas Schmidhuber
     All rights reserved.
     
     Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,34 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
+// 2015.10.04   v0.5        N: combined Install / Update option
+//                          N: check if SMB / FTP are enabled to prevent error messages and lags
+//                          N: autodetect config.xml change
+//                          N: USB Automount: new sysid 6
+//                          N: disk_check.sh includes SMART, SPACE and degraded POOLS checks
+//                          N: STATUS | SYSTEM - support for all RAID variants
+//                          C: installer: always take the current installation directory as rootfolder -> for restored config.xml
+//                          C: take care of systems without ZFS pools
+//                          C: clogdir for CONFIG, notifications.log etc
+//                          C: live view of smart values
+//                          C: extension start/stop procedure
+//                          C: system.inc -> swapdevice, removed /dev/
+//                          C: changed exec -> mwexec in extended-gui_start.php for debuging
+//                          C: removed system.inc -> ZFS pool health status -> replaced in r1395
+//                          C: removed guiconfig.inc because of:
+//                              - F: r1349 incompatibility -> new function verify_xz_file
+//                              - new releases now contains the changes for function print_config_change_box,
+//                                no longer needed -> replaced in r1349
+//                          C: removed disks_zfs_dataset.php and disks_zfs_volume.php replaced in r1349 
+//                              - includes fixes for error traps, no longer needed
+//                          C: removed access_users.php replaced in r1349 - includes fix for user groups,
+//                                no longer needed
+//                          C: removed status_disks.php due to amendments in r1349
+//                          F: if there is more than one vdevice per pool
+//                          F: pools on GPT
+//                          F: chmod for /var/scripts to be sure that scripts are executable
+//                          F: STATUS | GRAPH - take care about installed RRDGraphs extension
+//                          F: Purge - change file find from mtime (modification time) to atime (access time)
 // 2015.01.06   v0.4.4.4    C: STATUS | SYSTEM - UPS display for UPS slave
 //                          C: STATUS | SYSTEM - CPU temperatures in one row 
 //                          F: STATUS | SYSTEM - support .eli encrypted devices
@@ -67,7 +95,7 @@
 //                          N: UPS view on/off if UPS is enabled/disabled 
 // 2014.04.15   v0.4.3      first public release
 
-$version = "v0.4.4.4 (+ ZFS fix)";
+$version = "v0.5";
 $appname = "Extended GUI";
 
 require_once("config.inc");
@@ -83,17 +111,20 @@ if ($platform != "embedded" && $platform != "full" && $platform != "livecd" && $
 
 // display installation option
 $amenuitem['1']['tag'] = "1";
-$amenuitem['1']['item'] = "Install {$appname}";
+$amenuitem['1']['item'] = "Install / Update {$appname}";
 $amenuitem['2']['tag'] = "2";
-$amenuitem['2']['item'] = "Update {$appname}";
-$amenuitem['3']['tag'] = "3";
-$amenuitem['3']['item'] = "Uninstall {$appname}";
-$result = tui_display_menu(" ".$appname." Extension ".$version." ", "Select Install, Update or Uninstall", 60, 10, 6, $amenuitem, $installopt);
+$amenuitem['2']['item'] = "Uninstall {$appname}";
+$result = tui_display_menu(" ".$appname." Extension ".$version." ", "Select Install / Update or Uninstall", 60, 10, 6, $amenuitem, $installopt);
 if (0 != $result) { echo "\fInstallation aborted!\n"; exit(0);}
 
 // remove application section
-if ( $installopt == 3 ) { 
+if ( $installopt == 2 ) { 
     if ( is_array($config['extended-gui'] ) ) {
+        $cwdir = getcwd();
+        $path1 = pathinfo($cwdir);
+        $config['extended-gui']['rootfolder'] =  $path1['dirname']."/".$path1['basename']."/extended-gui/";
+        $cwdir = $config['extended-gui']['rootfolder'];
+
         if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
     		for ($i = 0; $i < count($config['rc']['postinit']['cmd']);) {
     		if (preg_match('/extended-gui/', $config['rc']['postinit']['cmd'][$i])) { unset($config['rc']['postinit']['cmd'][$i]);} else{}
@@ -125,48 +156,32 @@ if ( $installopt == 3 ) {
     else { echo $appname." is not installed!\n"; exit; }
 } // END of remove application section  
 
-// install application on NAS4Free
+// install / update application on NAS4Free
 if ( $installopt == 1 )  {
     $cwdir = getcwd();
     if ( !isset($config['extended-gui']) || !is_array($config['extended-gui'])) {
         $config['extended-gui'] = array();
-        $path1 = pathinfo($cwdir);
-        $config['extended-gui']['version'] = $version;
-        $config['extended-gui']['product_version'] = "-----";
-        $config['extended-gui']['rootfolder'] =  $path1['dirname']."/".$path1['basename']."/extended-gui/";
-        $cwdir = $config['extended-gui']['rootfolder'];
-        write_config();
-        $i = 0;
-        if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
-            for ($i; $i < count($config['rc']['postinit']['cmd']);) {
-                if (preg_match('/extended-gui/', $config['rc']['postinit']['cmd'][$i])) break; ++$i; }
-        }
-        $config['rc']['postinit']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_start.php";
-        $i =0;
-        if ( is_array($config['rc']['shutdown'] ) && is_array( $config['rc']['shutdown']['cmd'] ) ) {
-            for ($i; $i < count($config['rc']['shutdown']['cmd']); ) {
-                if (preg_match('/extended-gui/', $config['rc']['shutdown']['cmd'][$i])) break; ++$i; }
-        }
-        $config['rc']['shutdown']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_stop.php";
-        write_config();
     }
-    else { echo $appname." is already installed!\n"; exit; }
+    $path1 = pathinfo($cwdir);
+    $config['extended-gui']['version'] = $version;
+    $config['extended-gui']['product_version'] = "-----";
+    $config['extended-gui']['rootfolder'] =  $path1['dirname']."/".$path1['basename']."/extended-gui/";
+    $cwdir = $config['extended-gui']['rootfolder'];
+    $i = 0;
+    if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
+        for ($i; $i < count($config['rc']['postinit']['cmd']);) {
+            if (preg_match('/extended-gui/', $config['rc']['postinit']['cmd'][$i])) break; ++$i; }
+    }
+    $config['rc']['postinit']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_start.php";
+    $i =0;
+    if ( is_array($config['rc']['shutdown'] ) && is_array( $config['rc']['shutdown']['cmd'] ) ) {
+        for ($i; $i < count($config['rc']['shutdown']['cmd']); ) {
+            if (preg_match('/extended-gui/', $config['rc']['shutdown']['cmd'][$i])) break; ++$i; }
+    }
+    $config['rc']['shutdown']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_stop.php";
+    write_config();
+    require_once("{$config['extended-gui']['rootfolder']}extended-gui_stop.php");
     require_once("{$config['extended-gui']['rootfolder']}extended-gui_start.php");
-    echo "Installation completed!\n";
-} // END of install application on NAS4Free
-
-// update application on NAS4Free
-if ( $installopt == 2 ) {
-    if ( !isset($config['extended-gui']) || !is_array($config['extended-gui'])) {
-        echo $appname." is not installed!\n"; exit;        
-    }
-    else {
-        $config['extended-gui']['version'] = $version;
-        $config['extended-gui']['product_version'] = "-----";
-        write_config();
-        require_once("{$config['extended-gui']['rootfolder']}extended-gui_stop.php");        
-    }
-    require_once("{$config['extended-gui']['rootfolder']}extended-gui_start.php");
-    echo "Update installation completed!\n";
-} // END of update application on NAS4Free
+    echo "Installation / Update completed!\n";
+} // END of install / update application on NAS4Free
 ?>

@@ -4,6 +4,7 @@
 # purpose:		monitoring of hosts in network
 # usage:		hosts_check.sh (... w/o parameters) 
 # version:	date:		description:
+#	3.0		2015.04.16	C: get extension variables from CONFIG2 instead of reading from config.xml
 #	2.3		2014.06.15	F: let grep -w search for whole words
 #	2.2		2014.06.06	C: display host names if given in /etc/hosts - don't use the own automatically generated name
 #	2.1		2014.05.31	C: display host names if given in /etc/hosts
@@ -12,9 +13,6 @@
 cd `dirname $0`
 . CONFIG
 ONLINE_LOG=$LOCK_DIR/extended-gui_hosts_online.log
-SUBNET=`/usr/local/bin/xml sel -t -v "//extended-gui/hosts_network" ${XML_CONFIG_FILE}`
-START_IP=`/usr/local/bin/xml sel -t -v "//extended-gui/hosts_network_start" ${XML_CONFIG_FILE}`
-END_IP=`/usr/local/bin/xml sel -t -v "//extended-gui/hosts_network_end" ${XML_CONFIG_FILE}`
 #-----------------------------------------------
 
 CHECK_CLIENTS ()

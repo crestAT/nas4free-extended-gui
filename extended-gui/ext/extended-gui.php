@@ -5,7 +5,7 @@
     based on silent_disk extension for NAS4Free created by Kruglov Alexey
     extended by Andreas Schmidhuber
 
-    Copyright (c) 2014, Andreas Schmidhuber
+    Copyright (c) 2014 - 2015 Andreas Schmidhuber
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -81,14 +81,10 @@ if ($_POST) {
         $savemsg = get_std_save_message(write_config());
     }
     if ( isset( $config['extended-gui']['enable'] ) && ( $config['extended-gui']['type'] == "Extended" )) {
-        copy_extended2origin ($files, $backup_path, $extend_path);	
-        killbypid($pidfile);
-        exec("/var/scripts/extended-gui_system_calls.sh >/dev/null 2>/dev/null &");
+        require_once("{$config['extended-gui']['rootfolder']}extended-gui-stop.php"); 
+        require_once("{$config['extended-gui']['rootfolder']}extended-gui-start.php"); 
     }
-    else { 
-        copy_backup2origin ($files, $backup_path, $extend_path); 
-        killbypid($pidfile);
-    } 
+    else { require_once("{$config['extended-gui']['rootfolder']}extended-gui-stop.php"); }
 }	
 
 function get_process_info() {
@@ -176,6 +172,7 @@ function enable_change(enable_change) {
             <?php if (!empty($savemsg)) print_info_box($savemsg);?>
             <table width="100%" border="0" cellpadding="6" cellspacing="0">
             	<?php html_titleline_checkbox("enable", gettext("Extended GUI"), isset($config['extended-gui']['enable']) ? true : false, gettext("Enable"), "enable_change(false)");?>
+                <?php html_text("installation_directory", gettext("Installation directory"), sprintf(gettext("The extension is installed in %s."), $config['extended-gui']['rootfolder']));?>
             	<?php html_combobox("type", gettext("Type"), !empty($config['extended-gui']['type']) ? $config['extended-gui']['type'] : "Standard", array('Standard' =>'Standard','Extended'=> 'Extended'), "Choose view type", true, false, "enable_change(false)" );?>
 			<?php html_separator();?>
 			<?php html_titleline(gettext("Status")." | ".gettext("System"));?>
