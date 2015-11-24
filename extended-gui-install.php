@@ -33,6 +33,7 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
+// 2015.10.08   v0.5.0.1    F: (some) disk SMART values were not shown correctly in rare/special cases  
 // 2015.10.04   v0.5        N: combined Install / Update option
 //                          N: check if SMB / FTP are enabled to prevent error messages and lags
 //                          N: autodetect config.xml change
@@ -95,7 +96,7 @@
 //                          N: UPS view on/off if UPS is enabled/disabled 
 // 2014.04.15   v0.4.3      first public release
 
-$version = "v0.5";
+$version = "v0.5.0.1";
 $appname = "Extended GUI";
 
 require_once("config.inc");

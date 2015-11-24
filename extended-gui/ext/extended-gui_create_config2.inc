@@ -108,12 +108,16 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
                                     $device_raw = explode(".", str_replace("/dev/", "", $config['zfs']['vdevices']['vdevice'][$k]['device'][$l]));    // get rid of .eli .nop etc and /dev/
                                     $dev = $device_raw[0];
                                     foreach($rawdatageom as $key) {                                                         // get disks on GPT
+                                        $key = trim($key);
                                         $device = preg_split("/[\s]+/", $key);
-                                        if (strcmp($dev, $device[1]) == 0) { $dev = $device[3]; }
+                                        if (strcmp($dev, $device[0]) == 0) { $dev = $device[2]; 
+                                        }
                                     }
                                     foreach($rawdatagpart as $key) {                                                        // get disks on label and/or partitions
+                                        $key = trim($key);
                                         $device = preg_split("/[\s]+/", $key);
-                                        if (strcmp($dev, $device[1]) == 0) { $dev = $device[3]; }
+                                        if (strcmp($dev, $device[0]) == 0) { $dev = $device[2];
+                                        }
                                     }
                                     fwrite($eguiconfig, "MOUNT{$i1}DISK{$disk_count}={$dev}"."\n");                         // get vdevice disks
                                     ++$disk_count;
