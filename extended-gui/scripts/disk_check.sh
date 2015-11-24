@@ -5,26 +5,39 @@
 # prereq.:		S.M.A.R.T. must be enabled and existing CONFIG2 file, which will be created at every eGUI startup
 # usage:		disk_check.sh
 # version:	date:		description:
+#   0.6     2015.11.24  N: beep on ERROR
+#   0.5.2   2015.11.19  N: take care of CD/DVDs
+#   0.5.1   2015.11.16  C: more elaborate pool busy states in STATUS | SYSTEM (tooltip)
+#   0.5     2015.11.16  N: include USB drives
+#   0.4.3   2015.11.10  F: degraded pool reporting
+#   0.4.2   2015.11.09  N: pool busy states (scrub, resilver)
+#   0.4.1   2015.11.05  N: add A_USR treatment and optimize code with "case" statement
+#   0.4     2015.10.26  N: add A_OS and A_VAR treatment
 #   0.3     2015.10.03  F: GET_SPACE - return if no disk exists for a mountpoint
 #   0.2     2015.07.29  C: take care of systems without ZFS pools
 #   0.1     2015.04.08  initial version for Extended GUI 
 #------------- initialize variables ------------
 cd `dirname $0`
 . CONFIG
-PREFIX="${LOCK_DIR}/extended-gui_"
 SPACE_WARNING=$(($SPACE_WARNING_MB * 1000))
 SPACE_SEVERE=$(($SPACE_SEVERE_MB * 1000))
+if [ -e USBMP ]; then
+. USBMP
+fi
 #-----------------------------------------------
 
 REPORT_DISK ()
 {
 	if [ ! -e $CTRL_FILE"_"$2".lock" ]; then 
-		NOTIFY "$3 $4"
+		NOTIFY "$3 $4 $5 $6 $7 $8"                                          # extended up to 8 for degraded pool msg
 		echo "Host: $HOST" > $CTRL_FILE"_"$2.lock
 		echo "\n${4}\n" >> $CTRL_FILE"_"$2.lock
 		if [ "$2" == "degraded" ]; then 
 			zpool status -v $1 >> $CTRL_FILE"_"$2.lock
 			if [ $EMAIL_DEGRADED_ENABLED -gt 0 ]; then $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-DISK $2" $CTRL_FILE"_"$2.lock; fi
+            if [ $RUN_BEEP -gt 0 ]; then                                    # call beep when enabled and ERROR condition set
+                $SYSTEM_SCRIPT_DIR/beep ZFS_ERROR &
+            fi
 		else 
 			df -h /mnt/$1 >> $CTRL_FILE"_"$2.lock
 			if [ $EMAIL_SPACE_ENABLED -gt 0 ]; then $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-DISK $2" $CTRL_FILE"_"$2.lock; fi
@@ -52,12 +65,19 @@ GET_SMART_SUB ()
 GET_SMART ()
 {
     MSG_TEMP="n/a"
+    case $1 in
+        xmd[0-9])   OUTPUT="${1}|<font color='black'>RAM-DRV</font>|n/a";
+                    break;;
+        cd[0-9])    OUTPUT="${1}|<font color='black'>CD/DVD</font>|n/a";
+                    break;;
+        *)      ;;
+    esac
 	if [ $TEMP_ALWAYS -eq 0 ]; then SMART_STANDBY="-n standby"; else SMART_STANDBY=""; fi
     smartctl -n standby -q silent -A "/dev/${1}"
     case $? in 
         4) MSG="<font color='black'>SMART&nbsp;n/a</font>";;
         2) MSG="<font color='green'>Standby</font>"; if [ "${TEMP_ALWAYS}" == "1" ]; then GET_SMART_SUB "/dev/${1}"; fi;;
-        1) MSG="<font color='orange'>Unknown</font>";;      
+        1) MSG="<font color='orange'>Unknown</font>";;
         0) MSG="<font color='red'>Spinning</font>"; GET_SMART_SUB "/dev/${1}";;
         *) MSG="<font color='red'>exit: ${?}</font>";;       
     esac;
@@ -68,9 +88,18 @@ GET_SMART ()
 GET_SPACE ()
 {
 	CTRL_FILE=${PREFIX}${1}
-	SPACE=`echo -e "$MOUNTPOINTS" | awk -v mp=\^\/mnt\/${1}\$ '$6 ~ mp {print $4}'`
+    case $1 in                                                          # set awk compare string for mountpoints ...
+        A_OS)	MP_TYPE="/";;                                           # ... for column 6 of df -k output
+        A_USR)	MP_TYPE="/usr/local";;
+        A_VAR)	MP_TYPE="/var";;
+        cd[0-9])    MP_TYPE="cdrom";
+                    OUTPUT="${OUTPUT}##<img src='ext/extended-gui/state_ok.png' alt='Space OK' title='Free space on device is ok.'/>${MSG_ACTION}";;
+        *)      MP_TYPE="/mnt/${1}";;
+    esac
+	SPACE=`echo -e "$MOUNTPOINTS" | awk -v mp=\^${MP_TYPE}\$ '$6 ~ mp {print $4}'`
     if [ "$SPACE" == "" ]; then return; fi                              #F: v0.3
-	SPACE_PERCENT=`echo -e "$MOUNTPOINTS" | awk -v mp=\^\/mnt\/${1}\$ '$6 ~ mp {gsub("%",""); print $5}'`
+	SPACE_PERCENT=`echo -e "$MOUNTPOINTS" | awk -v mp=\^${MP_TYPE}\$ '$6 ~ mp {gsub("%",""); print $5}'`
+    if [ "$SPACE_PERCENT" == "" ]; then return; fi                      #F: v0.3
 	SPACE_PERCENT=$((100 - $SPACE_PERCENT))
     if [ $SPACE -gt $SPACE_WARNING ] || [ $SPACE_PERCENT -gt $SPACE_WARNING_PC ]; then 
         MSG_SPACE="<img src='ext/extended-gui/state_ok.png' alt='Space OK' title='Free space on device is ok.'/>";
@@ -87,11 +116,21 @@ GET_SPACE ()
 		REPORT_DISK $1 full ERROR "$MSG_SPACE_TXT"
         if [ -e $CTRL_FILE"_low.lock" ]; then rm $CTRL_FILE"_low.lock"; fi
     fi
-    OUTPUT="${OUTPUT}##${MSG_SPACE}"
+    POOL_ACT=`echo -e "$POOL_BUSY" | awk -v p=\^${1}\$ 'BEGIN { RS = "" }; $2 ~ p {print $0}; '`
+    ACTION=`echo -e "$POOL_ACT" | awk '/in progress/ {print $2}'`
+    if [ "$ACTION" != "" ]; then
+        ACTION1=`echo -e "$POOL_ACT" | awk '/to go/ {print $8, $9, $10}'`
+        ACTION2=`echo -e "$POOL_ACT" | awk '/done/ {print $3" "$4}'`
+        MSG_SPACE_TXT="Pool ${1}: ${ACTION} in progress, ${ACTION1}, ${ACTION2}!";
+        MSG_ACTION="&nbsp;&nbsp;<img src='ext/extended-gui/${ACTION}.gif' alt='${ACTION} in progress' title='"$MSG_SPACE_TXT"'/>";
+    fi
+    OUTPUT="${OUTPUT}##${MSG_SPACE}${MSG_ACTION}"
+    MSG_ACTION=""
 }
 
-MOUNTPOINTS=`df -k | awk '/\/mnt\// {print}'`                           # get usage for all mountpoints
+MOUNTPOINTS=`df -k`                                                     # get usage for all mountpoints
 POOL_STATUS=`zpool list -H`                                             # get usage and status for all pools
+POOL_BUSY=`zpool status`                                                # get pool busy states (scrub, resilver)
 i=0; counter=MOUNT${i};                                                 # set first mountpoint i
 while [ "${!counter}" != "" ]; do                                       # run through all mountpoints
     j=0; dcounter=MOUNT${i}DISK${j};                                    # set first disk j for mountpoint i
@@ -108,9 +147,12 @@ done
 
 # check for degraded pools
 if [ "$POOL_STATUS" != "" ]; then
-    POOL_MSG=`echo -e "$POOL_STATUS" | awk '!/ONLINE/ {print "REPORT_DISK "$1" degraded ERROR \"ZFS pool "$1" is DEGRADED\" "}'`
+    POOL_MSG=`echo -e "$POOL_STATUS" | awk '!/ONLINE/ {print "REPORT_DISK "$1" degraded ERROR ZFS pool "$1" is DEGRADED"}'`
     if [ "${POOL_MSG}" == "" ]; then if [ -e ${PREFIX}*"_degraded.lock" ]; then rm ${PREFIX}*"_degraded.lock"; fi
-    else ${POOL_MSG}; fi
+    else 
+        CTRL_FILE=${PREFIX}`echo -e ${POOL_MSG} | awk '{ print $2 }'`   # create CTRL_FILE name for pool xxx
+        ${POOL_MSG};                                                    # call REPORT_DISK function
+    fi
 fi
 
 # check for degraded RAID

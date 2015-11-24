@@ -33,7 +33,28 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
-// 2015.10.08   v0.5.0.1    F: (some) disk SMART values were not shown correctly in rare/special cases  
+// 2015.11.24   v0.5.1b6    N: Web installer
+// 2015.11.24   v0.5.1b5    N: CPU temperature monitoring and reporting - monitor CPU temps and optional email reporting like degraded pools etc.
+//                          N: buzzer for degraded pools, CPU temperatures
+// 2015.11.20   v0.5.1b4    C: updated diag_log.inc & index.php to Page base: r2067
+//                          C: STATUS | SYSTEM - correct display of disk columns
+//                          N: introduce spinner for USB Automount and CIFS/SMB purge 
+//                          N: USB Automount - take care of CD/DVDs
+//                          C: USB Automount - allow disks without 'YourMountpointName.mounted' file, but stays though optional
+//                          C: STATUS | SYSTEM - display USB mounted devices
+// 2015.11.10   v0.5.1b31   F: degraded pool reporting
+//                          N: pool busy states (scrub, resilver)
+// 2015.11.08   v0.5.1b3    C: updated index.php to Page base: r1962 = r2003
+//                          F: display pool values live again
+// 2015.11.07   v0.5.1b2b1  C: amendments to purge v03
+//                          N: STATUS | SYSTEM - display /usr/local filesystem (as A_USR) 
+// 2015.10.24   v0.5.1b2    N: added Raspberry Pi to supported architecture
+//                          N: USB Automount: sysid 255 - exFAT
+//                          C: STATUS | SYSTEM - display Operating System (root filesystem as A_OS)
+//                          C: STATUS | SYSTEM - display /var filesystem (as A_VAR)
+//                          C: STATUS | SYSTEM - display temporarely mounted USB devics -> USB Automount
+// 2015.10.16   v0.5.1b1    C: updated index.php to Page base: r1906 (includes BHyVe, VBox, UPS live view and code cleanup)
+// 2015.10.08   v0.5.0.1    F: (some) disk SMART values were not shown correctly in rare/special cases
 // 2015.10.04   v0.5        N: combined Install / Update option
 //                          N: check if SMB / FTP are enabled to prevent error messages and lags
 //                          N: autodetect config.xml change
@@ -96,93 +117,63 @@
 //                          N: UPS view on/off if UPS is enabled/disabled 
 // 2014.04.15   v0.4.3      first public release
 
-$version = "v0.5.0.1";
+$v = "v0.5.1b6";                          // extension version
 $appname = "Extended GUI";
 
 require_once("config.inc");
-require_once("functions.inc");
-require_once("install.inc");
-require_once("util.inc");
-require_once("tui.inc");
 
 $arch = $g['arch'];
 $platform = $g['platform'];
-if (($arch != "i386" && $arch != "amd64") && ($arch != "x86" && $arch != "x64")) { echo "\funsupported architecture!\n"; exit(1);  }
+if (($arch != "i386" && $arch != "amd64") && ($arch != "x86" && $arch != "x64" && $arch != "rpi")) { echo "\f{$arch} is an unsupported architecture!\n"; exit(1);  }
 if ($platform != "embedded" && $platform != "full" && $platform != "livecd" && $platform != "liveusb") { echo "\funsupported platform!\n";  exit(1); }
 
-// display installation option
-$amenuitem['1']['tag'] = "1";
-$amenuitem['1']['item'] = "Install / Update {$appname}";
-$amenuitem['2']['tag'] = "2";
-$amenuitem['2']['item'] = "Uninstall {$appname}";
-$result = tui_display_menu(" ".$appname." Extension ".$version." ", "Select Install / Update or Uninstall", 60, 10, 6, $amenuitem, $installopt);
-if (0 != $result) { echo "\fInstallation aborted!\n"; exit(0);}
+// install extension
+global $input_errors;
+global $savemsg;
 
-// remove application section
-if ( $installopt == 2 ) { 
-    if ( is_array($config['extended-gui'] ) ) {
-        $cwdir = getcwd();
-        $path1 = pathinfo($cwdir);
-        $config['extended-gui']['rootfolder'] =  $path1['dirname']."/".$path1['basename']."/extended-gui/";
-        $cwdir = $config['extended-gui']['rootfolder'];
+$install_dir = dirname(__FILE__)."/";
 
-        if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
-    		for ($i = 0; $i < count($config['rc']['postinit']['cmd']);) {
-    		if (preg_match('/extended-gui/', $config['rc']['postinit']['cmd'][$i])) { unset($config['rc']['postinit']['cmd'][$i]);} else{}
-    		++$i;
-    		}
-    	}
-    	if ( is_array($config['rc']['shutdown'] ) && is_array( $config['rc']['shutdown']['cmd'] ) ) {
-    		for ($i = 0; $i < count($config['rc']['shutdown']['cmd']); ) {
-     		if (preg_match('/extended-gui/', $config['rc']['shutdown']['cmd'][$i])) { unset($config['rc']['shutdown']['cmd'][$i]); } else {}
-    		++$i;	
-    		}
-    	}
-    	// unlink created  links
-    	if (is_dir ("/usr/local/www/ext/extended-gui")) {
-        	foreach ( glob( "{$config['extended-gui']['rootfolder']}ext/*.php" ) as $file ) {
-            	$file = str_replace("{$config['extended-gui']['rootfolder']}ext/", "/usr/local/www", $file);
-            	if ( is_link( $file ) ) { unlink( $file ); } else {}
-            }
-        	mwexec ("rm -rf /usr/local/www/ext/extended-gui");
-    	}
-    	
-        // restore originals from backup
-        require_once("{$config['extended-gui']['rootfolder']}extended-gui_stop.php");
-    
-        // remove application section from config.xml
-    	if ( is_array($config['extended-gui'] ) ) { unset( $config['extended-gui'] ); write_config();}
-    	echo $appname." entries removed. Remove files manually!\n";
+// check FreeBSD release for fetch options >= 9.3
+$release = explode("-", exec("uname -r"));
+if ($release[0] >= 9.3) $verify_hostname = "--no-verify-hostname";
+else $verify_hostname = "";
+// create stripped version name
+$vs = str_replace(".", "", $v);
+$return_val = mwexec("fetch {$verify_hostname} -vo {$install_dir}master.zip 'https://github.com/crestAT/nas4free-extended-gui/releases/download/{$v}/extended-gui-{$vs}.zip'", true);
+if ($return_val == 0) {
+    $return_val = mwexec("tar -xf {$install_dir}master.zip -C {$install_dir} --exclude='.git*' --strip-components 2", true);
+    if ($return_val == 0) {
+        exec("rm {$install_dir}master.zip");
+        exec("chmod -R 775 {$install_dir}");
+        if (is_file("{$install_dir}version.txt")) { $file_version = exec("cat {$install_dir}version.txt"); }
+        else { $file_version = "n/a"; }
+        $savemsg = sprintf(gettext("Update to version %s completed!"), $file_version);
     }
-    else { echo $appname." is not installed!\n"; exit; }
-} // END of remove application section  
+    else { $input_errors[] = sprintf(gettext("Archive file %s not found, installation aborted!"), "master.zip corrupt /"); }
+}
+else { $input_errors[] = sprintf(gettext("Archive file %s not found, installation aborted!"), "master.zip"); }
 
 // install / update application on NAS4Free
-if ( $installopt == 1 )  {
-    $cwdir = getcwd();
-    if ( !isset($config['extended-gui']) || !is_array($config['extended-gui'])) {
-        $config['extended-gui'] = array();
-    }
-    $path1 = pathinfo($cwdir);
-    $config['extended-gui']['version'] = $version;
-    $config['extended-gui']['product_version'] = "-----";
-    $config['extended-gui']['rootfolder'] =  $path1['dirname']."/".$path1['basename']."/extended-gui/";
-    $cwdir = $config['extended-gui']['rootfolder'];
-    $i = 0;
-    if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
-        for ($i; $i < count($config['rc']['postinit']['cmd']);) {
-            if (preg_match('/extended-gui/', $config['rc']['postinit']['cmd'][$i])) break; ++$i; }
-    }
-    $config['rc']['postinit']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_start.php";
-    $i =0;
-    if ( is_array($config['rc']['shutdown'] ) && is_array( $config['rc']['shutdown']['cmd'] ) ) {
-        for ($i; $i < count($config['rc']['shutdown']['cmd']); ) {
-            if (preg_match('/extended-gui/', $config['rc']['shutdown']['cmd'][$i])) break; ++$i; }
-    }
-    $config['rc']['shutdown']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_stop.php";
-    write_config();
-    require_once("{$config['extended-gui']['rootfolder']}extended-gui_stop.php");
-    require_once("{$config['extended-gui']['rootfolder']}extended-gui_start.php");
-    echo "Installation / Update completed!\n";
-} // END of install / update application on NAS4Free
+if ( !isset($config['extended-gui']) || !is_array($config['extended-gui'])) { $config['extended-gui'] = array(); }     
+$config['extended-gui']['appname'] = $appname;
+$config['extended-gui']['version'] = exec("cat {$install_dir}version.txt");
+$config['extended-gui']['product_version'] = "-----";
+$config['extended-gui']['rootfolder'] =  $install_dir;
+$i = 0;
+if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
+    for ($i; $i < count($config['rc']['postinit']['cmd']);) {
+        if (preg_match('/extended-gui/', $config['rc']['postinit']['cmd'][$i])) break; ++$i; }
+}
+$config['rc']['postinit']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_start.php";
+$i =0;
+if ( is_array($config['rc']['shutdown'] ) && is_array( $config['rc']['shutdown']['cmd'] ) ) {
+    for ($i; $i < count($config['rc']['shutdown']['cmd']); ) {
+        if (preg_match('/extended-gui/', $config['rc']['shutdown']['cmd'][$i])) break; ++$i; }
+}
+$config['rc']['shutdown']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_stop.php";
+write_config();
+require_once("{$config['extended-gui']['rootfolder']}extended-gui_stop.php");
+require_once("{$config['extended-gui']['rootfolder']}extended-gui_start.php");
+echo "\n".$appname." Version ".$config['extended-gui']['version']." installed";
+echo "\n\nInstallation completed, use WebGUI | Extensions | ".$appname." to configure \nthe application (don't forget to refresh the WebGUI before use)!\n";
 ?>

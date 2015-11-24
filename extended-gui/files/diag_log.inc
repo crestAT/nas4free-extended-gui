@@ -3,36 +3,44 @@
 	diag_log.inc
 
 	Part of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2013 The NAS4Free Project <info@nas4free.org>.
+	Copyright (c) 2012-2015 The NAS4Free Project <info@nas4free.org>.
 	All rights reserved.
 
 	Portions of freenas (http://www.freenas.org).
 	Copyright (c) 2005-2011 by Olivier Cochard <olivier@freenas.org>.
 	All rights reserved.
 	
-	Portions of m0n0wall (http://m0n0.ch/wall).
-	Copyright (c) 2003-2006 Manuel Kasper <mk@neon1.net>.
-	All rights reserved.	
-
 	Redistribution and use in source and binary forms, with or without
 	modification, are permitted provided that the following conditions are met: 
 
-	1. Redistributions of source code must retain the above copyright notice, this
-	   list of conditions and the following disclaimer. 
-	2. Redistributions in binary form must reproduce the above copyright notice,
-	   this list of conditions and the following disclaimer in the documentation
-	   and/or other materials provided with the distribution. 
+	1. Redistributions of source code must retain the above copyright
+	   notice, this list of conditions and the following disclaimer.
 
-	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-	DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+	2. Redistributions in binary form must reproduce the above copyright
+	   notice, this list of conditions and the following disclaimer in the
+	   documentation and/or other materials provided with the distribution.
+
+	3. Products derived from this software may not be called "NAS4Free"
+	   nor may "NAS4Free" appear in their names without prior written
+	   permission of the NAS4Free Project. For written permission, please
+	   contact info@nas4free.org
+
+	4. Redistributions of any form whatsoever must retain the following
+	   acknowledgment:
+
+	   "This product includes software developed by the NAS4Free Project
+	   for use in the NAS4Free Software Distribution (http://www.nas4free.org)".
+
+	THIS SOFTWARE IS PROVIDED BY THE NAS4FREE PROJECT ``AS IS'' AND ANY
+	EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+	IN NO EVENT SHALL THE NAS4FREE PROJECT OR ITS CONTRIBUTORS BE LIABLE FOR
 	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-	LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-	ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+	LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+	ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+	THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 	The views and conclusions contained in the software and documentation are those
 	of the authors and should not be interpreted as representing official policies, 
@@ -89,78 +97,6 @@ $loginfo = array(
 			array("title" => gettext("Level"), "class" => "listr", "param" => "nowrap=\"nowrap\"", "pmid" => 3),
 			array("title" => gettext("Event"), "class" => "listr", "param" => "", "pmid" => 4)
 		)),
-/* 
-	array(
-		"visible" => TRUE,
-		"desc" => gettext("Jail - proto"),
-		"logfile" => "{$clogdir}/jail_proto_console.log",
-		"filename" => "jail_proto_console.log",
-		"type" => "plain",
-		"pattern" => "/^(.*)$/",
-		"columns" => array(
-			array("title" => gettext("Event"), "class" => "listlr", "param" => "", "pmid" => 1)
-		)),
-	array(
-		"visible" => TRUE,
-		"desc" => gettext("Jail - www"),
-		"logfile" => "{$clogdir}/jail_www_console.log",
-		"filename" => "jail_www_console.log",
-		"type" => "plain",
-		"pattern" => "/^(.*)$/",
-		"columns" => array(
-			array("title" => gettext("Event"), "class" => "listlr", "param" => "", "pmid" => 1)
-		)),
-	array(
-		"visible" => TRUE,
-		"desc" => gettext("Subsonic"),
-		"logfile" => "/jail/proto/var/subsonic/subsonic.log",
-		"filename" => "subsonic.log",
-		"type" => "plain",
-		"pattern" => "/^(\S+\s+\S+)\s+(\S+)\s+(.*)$/",
-		"columns" => array(
- 			array("title" => gettext("Date & Time"), "class" => "listlr", "param" => "nowrap=\"nowrap\"", "pmid" => 1),
-			array("title" => gettext("Level"), "class" => "listr", "param" => "nowrap=\"nowrap\"", "pmid" => 2),
-			array("title" => gettext("Event"), "class" => "listr", "param" => "", "pmid" => 3)
-		)),
-	array(
-		"visible" => TRUE,
-		"desc" => gettext("miniDLNA"),
-		"logfile" => "/jail/proto/var/log/minidlna/minidlna.log",
-		"filename" => "minidlna.log",
-		"type" => "plain",
-		"pattern" => "/^(\S+\s+\S+)\s+(\S+)\s+(\S+)\s+(.*)$/",
-		"columns" => array(
-			array("title" => gettext("Date & Time"), "class" => "listlr", "param" => "nowrap=\"nowrap\"", "pmid" => 1),
-			array("title" => gettext("User"), "class" => "listr", "param" => "nowrap=\"nowrap\"", "pmid" => 2),
-			array("title" => gettext("Level"), "class" => "listr", "param" => "nowrap=\"nowrap\"", "pmid" => 3),
-			array("title" => gettext("Event"), "class" => "listr", "param" => "", "pmid" => 4)
-		)),
-	array(
-		"visible" => TRUE,
-		"desc" => gettext("Universal Media Server"),
-		"logfile" => "/jail/proto/root/ums-2.2.1/debug.log",
-		"filename" => "debug.log",
-		"type" => "plain",
-		"pattern" => "/^(\S+)\s+(\S+\s+\S+)\s+(\S+)\s+(.*)$/",
-		"columns" => array(
- 			array("title" => gettext("Date & Time"), "class" => "listlr", "param" => "nowrap=\"nowrap\"", "pmid" => 2),
-			array("title" => gettext("User"), "class" => "listr", "param" => "nowrap=\"nowrap\"", "pmid" => 3),
-			array("title" => gettext("Level"), "class" => "listr", "param" => "nowrap=\"nowrap\"", "pmid" => 1),
-			array("title" => gettext("Event"), "class" => "listr", "param" => "", "pmid" => 4)
-		)),
-	array(
-		"visible" => TRUE,
-		"desc" => gettext("pyLoad"),
-		"logfile" => "/jail/proto/root/pyload/Logs/log.txt",
-		"filename" => "log.txt",
-		"type" => "plain",
-		"pattern" => "/^(\S+\s+\S+)\s+(\S+\s)\s+(.*)$/",
-		"columns" => array(
-			array("title" => gettext("Date & Time"), "class" => "listlr", "param" => "nowrap=\"nowrap\"", "pmid" => 1),
-			array("title" => gettext("Level"), "class" => "listr", "param" => "nowrap=\"nowrap\"", "pmid" => 2),
-			array("title" => gettext("Event"), "class" => "listr", "param" => "", "pmid" => 3)
-		)),
- */
 	array(
 		"visible" => TRUE,
 		"desc" => gettext("SSH"),
@@ -222,6 +158,8 @@ $loginfo = array(
 			array("title" => gettext("Date & Time"), "class" => "listlr", "param" => "nowrap=\"nowrap\"", "pmid" => 1),
 			array("title" => gettext("IP"), "class" => "listr", "param" => "", "pmid" => 4),
 			array("title" => gettext("User"), "class" => "listr", "param" => "", "pmid" => 11),
+//		array("title" => gettext("File"), "class" => "listr", "param" => "", "pmid" => 6),
+//		array("title" => gettext("Filesize"), "class" => "listr", "param" => "", "pmid" => 5),
 			array("title" => gettext("Event"), "class" => "listr", "param" => "", "pmid" => 2)
 		)),
 	array(
@@ -276,13 +214,25 @@ $loginfo = array(
 		)),
 	array(
 		"visible" => TRUE,
-		"desc" => gettext("UPnP"),
+		"desc" => gettext("UPnP/DLNA - Fuppes"),
 		"logfile" => $fuppes_logfile,
 		"filename" => "fuppes.log",
 		"type" => "plain",
 		"pattern" => "/^(.*)$/",
 		"columns" => array(
 			array("title" => gettext("Event"), "class" => "listlr", "param" => "", "pmid" => 1)
+		)),
+	array(
+		"visible" => TRUE,
+		"desc" => gettext("UPnP/DLNA - MiniDLNA"),
+		"logfile" => "{$clogdir}/minidlna.log",
+		"filename" => "minidlna.log",
+		"type" => "plain",
+		"pattern" => "/^\[(.*?)\]\s+(.*?)\..*?:\d+:\s+.*?:\s+(.*)$/",
+		"columns" => array(
+			array("title" => gettext("Date & Time"), "class" => "listlr", "param" => "nowrap=\"nowrap\"", "pmid" => 1),
+			array("title" => gettext("Who"), "class" => "listr", "param" => "nowrap=\"nowrap\"", "pmid" => 2),
+			array("title" => gettext("Event"), "class" => "listr", "param" => "", "pmid" => 3)
 		)),
 	array(
 		"visible" => TRUE,

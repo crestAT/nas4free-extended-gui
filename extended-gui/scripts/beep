@@ -4,6 +4,7 @@
 # purpose:		provide different beeps for scripts
 # usage:		beep [ NW_FAILED | USER_LOGGED_IN | FSCK_FINISHED | tones ]
 # version:	date:		description:
+#   0.5     2015.11.24  N: beep on CPU and ZFS ERROR
 #	0.4		2015.04.16	C: get extension variables from CONFIG2 instead of reading from config.xml
 #	0.3		2014.05.29	C: initial version for Extended GUI (check enabled/disabled)
 #	0.2		2012.11.24	N: FSCK_FINISHED and optimizations
@@ -12,9 +13,23 @@
 cd `dirname $0`
 . CONFIG
 SPEAKER="/dev/speaker"
+CTRL_FILE_CPU="${PREFIX}cpu.alarm"
+CTRL_FILE_ZFS="${PREFIX}zfs.alarm"
 # from FreNAS: echo O3L30cO4L30cO5L30cO5L30g > $SPEAKER
 # from FreNAS: echo O5L30gO5L30cO4L30cO3L30c > $SPEAKER
 #-----------------------------------------------
+
+CPU_ERROR ()
+{
+    touch $CTRL_FILE_CPU
+    while [ -e $CTRL_FILE_CPU ]; do echo L8cPL8c > $SPEAKER; sleep 5; done
+}
+
+ZFS_ERROR ()
+{
+    touch $CTRL_FILE_ZFS
+    while [ -e $CTRL_FILE_ZFS ]; do echo L8aPL8a > $SPEAKER; sleep 5; done
+}
 
 NW_FAILED ()
 ( while true; do echo L4afgL1cP4L4cgaL1f > $SPEAKER; sleep 2; done )
@@ -31,6 +46,8 @@ echo L4afgL1cP4L4cgaL1f > $SPEAKER; sleep 2; echo O3L30cO4L30c > $SPEAKER;
 if [ $RUN_BEEP -eq 0 ]; then exit; fi
 
 case "$1" in
+    CPU_ERROR)      CPU_ERROR;;
+    ZFS_ERROR)      ZFS_ERROR;;
 	FSCK_FINISHED)	FSCK_FINISHED;;
 	USER_LOGGED_IN)	USER_LOGGED_IN;;
 	NW_FAILED) 		NW_FAILED;;

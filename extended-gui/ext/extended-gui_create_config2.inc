@@ -39,8 +39,21 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
     fwrite($eguiconfig, "FTP_ENABLED=".$txt."\n");
     $txt = isset($config['extended-gui']['beep']) ? "1" : "0";                                          // for beep script
     fwrite($eguiconfig, "RUN_BEEP=".$txt."\n");
+    $txt = isset($config['extended-gui']['boot']) ? "1" : "0";                                          // for disk_check.sh script
+    fwrite($eguiconfig, "OS_FS=A_OS"."\n");
+    $txt = isset($config['extended-gui']['varfs']) ? "1" : "0";                                         // for disk_check.sh script
+    fwrite($eguiconfig, "VAR_FS=A_VAR"."\n");
+    $txt = isset($config['extended-gui']['usrfs']) ? "1" : "0";                                         // for disk_check.sh script
+    fwrite($eguiconfig, "USR_FS=A_USR"."\n");
     $txt = isset($config['extended-gui']['temp_always']) ? "1" : "0";                                   // for disk_check.sh script
     fwrite($eguiconfig, "TEMP_ALWAYS=".$txt."\n");
+    $txt = system_get_cpus();                                                                           // for cpu_check.sh script
+    fwrite($eguiconfig, "CPU_NUMBER='{$txt}'"."\n");       
+    fwrite($eguiconfig, "CPU_TEMP_WARNING='{$config['extended-gui']['cpu_temp_warning']}'"."\n");
+    fwrite($eguiconfig, "CPU_TEMP_SEVERE='{$config['extended-gui']['cpu_temp_severe']}'"."\n");
+    fwrite($eguiconfig, "CPU_TEMP_HYSTERESIS='{$config['extended-gui']['cpu_temp_hysteresis']}'"."\n");
+    $txt = isset($config['extended-gui']['cpu_temp_email']) ? "1" : "0";
+    fwrite($eguiconfig, "EMAIL_CPU_TEMP_ENABLED=".$txt."\n");
     fwrite($eguiconfig, "TEMP_WARNING='{$config['extended-gui']['temp_warning']}'"."\n");               // for disk_check.sh script
     fwrite($eguiconfig, "TEMP_SEVERE='{$config['extended-gui']['temp_severe']}'"."\n");
     fwrite($eguiconfig, "SPACE_WARNING_MB='{$config['extended-gui']['space_warning']}'"."\n");          // for disk_check.sh script
@@ -59,6 +72,8 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
     fwrite($eguiconfig, "RUN_HOSTS=".$txt."\n");
     $txt = isset($config['extended-gui']['automount']) ? "1" : "0";
     fwrite($eguiconfig, "RUN_AUTOMOUNT=".$txt."\n");
+    if ($g['platform'] == "full") fwrite($eguiconfig, "FIRST_USB='0'"."\n");                            // for automount.sh script
+    else fwrite($eguiconfig, "FIRST_USB='1'"."\n");
     fwrite($eguiconfig, "LOOP_DELAY='{$config['extended-gui']['loop_delay']}'"."\n");
     fwrite($eguiconfig, "SUBNET='{$config['extended-gui']['hosts_network']}'"."\n");                    // for hosts_check.sh script
     fwrite($eguiconfig, "START_IP='{$config['extended-gui']['hosts_network_start']}'"."\n");
@@ -93,9 +108,9 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
         }
     }
     $i1 = $i;                                                                           // use $i1 to continue the mount index for pools
+    exec("geom label status -s", $rawdatageom);
+    exec("gpart status -s", $rawdatagpart);
     if (is_array($config['zfs']) && is_array($config['zfs']['pools']) && is_array($config['zfs']['pools']['pool'])) {       // get pools
-        exec("geom label status -s", $rawdatageom);
-        exec("gpart status -s", $rawdatagpart);
         for ($i = 0; $i < count($config['zfs']['pools']['pool']); ++$i) {
             fwrite($eguiconfig, "MOUNT{$i1}={$config['zfs']['pools']['pool'][$i]['name']}"."\n");                           // get pool name
             $disk_count = 0;          // necessary if there is more than one vdevice per pool to get consecutive disknumber in CONFIG2
@@ -129,6 +144,53 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
             ++$i1;
         }
     }
+    $i = $i1;
+    if (isset($config['extended-gui']['boot'])) {
+        $mount_device = str_replace("/dev/", "", exec("df | awk '$6 ~ /\/$/ {print $1}'"));
+        if (!empty($mount_device)) {
+            foreach($rawdatageom as $key) {                                                         // get disks on GPT
+                $key = trim($key);
+                $device = preg_split("/[\s]+/", $key);
+                if (strcmp($mount_device, $device[0]) == 0) { $mount_device = $device[2];
+                }
+            }
+            foreach($rawdatagpart as $key) {                                                        // get disks on label and/or partitions
+                $key = trim($key);
+                $device = preg_split("/[\s]+/", $key);
+                if (strcmp($mount_device, $device[0]) == 0) { $mount_device = $device[2];
+                }
+            }
+            foreach($rawdatagpart as $key) {                                                        // get disks on label and/or partitions
+                $key = trim($key);
+                $device = preg_split("/[\s]+/", $key);
+                if (strcmp($mount_device, $device[0]) == 0) { $mount_device = $device[2];
+                }
+            }
+            fwrite($eguiconfig, "MOUNT{$i}=A_OS"."\n");
+            fwrite($eguiconfig, "MOUNT{$i}DISK0={$mount_device}"."\n");
+            ++$i;
+        }
+    }
+    if (isset($config['extended-gui']['varfs'])) {
+        $mount_device = str_replace("/dev/", "", exec("df | awk '$6 ~ /\/var$/ {print $1}'"));
+        if (!empty($mount_device)) {
+            fwrite($eguiconfig, "MOUNT{$i}=A_VAR"."\n");
+            fwrite($eguiconfig, "MOUNT{$i}DISK0={$mount_device}"."\n");
+            ++$i;
+        }
+    }
+    if (isset($config['extended-gui']['usrfs'])) {
+        $mount_device = str_replace("/dev/", "", exec("df | awk '$6 ~ /\/usr\/local$/ {print $1}'"));
+        if (!empty($mount_device)) {
+            fwrite($eguiconfig, "MOUNT{$i}=A_USR"."\n");
+            fwrite($eguiconfig, "MOUNT{$i}DISK0={$mount_device}"."\n");
+            ++$i;
+        }
+    }
 fclose($eguiconfig);
+$nextMP = fopen("/var/scripts/nextMP", "w");                                                       // for USB mountpoints
+fwrite($nextMP, "NEXT_MP={$i}"."\n");
+fclose($nextMP);
+
 //mwexec("logger extended-gui: CONFIG2 created");
 ?>

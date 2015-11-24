@@ -35,6 +35,8 @@ require("guiconfig.inc");
 $pgtitle = array(gettext("Extensions"), "Extended GUI ".$config['extended-gui']['version'], gettext("Tools"));
 
 $hours = array(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23);
+$confirm_message = gettext("The selected operation will be completed. Please do not click any other buttons!");
+$alert_message = gettext("Please wait for the previous operation to complete!");
 
 function cronjob_process_updatenotification($mode, $data) {
 	global $config;
@@ -149,11 +151,13 @@ if ($_POST) {
                 write_config();
             }   // end of enable_schedule
             else {
-            	updatenotify_set("cronjob", UPDATENOTIFY_MODE_DIRTY, $config['extended-gui']['purge']['schedule_uuid']);
-            	if (is_array($config['cron']['job'])) {
-    				$index = array_search_ex($data, $config['cron']['job'], "uuid");
-    				if (false !== $index) { unset($config['cron']['job'][$index]); }
-    			}
+            	if (is_array($config['cron'])) {
+                    updatenotify_set("cronjob", UPDATENOTIFY_MODE_DIRTY, $config['extended-gui']['purge']['schedule_uuid']);
+                	if (is_array($config['cron']['job'])) {
+        				$index = array_search_ex($data, $config['cron']['job'], "uuid");
+        				if (false !== $index) { unset($config['cron']['job'][$index]); }
+        			}
+        		}
             	write_config();
             }   // end of disable_schedule -> remove cronjob
     		$retval = 0;
@@ -182,11 +186,13 @@ if ($_POST) {
         		}
         	}
         	//remove purge schedule
-            updatenotify_set("cronjob", UPDATENOTIFY_MODE_DIRTY, $config['extended-gui']['purge']['schedule_uuid']);
-        	if (is_array($config['cron']['job'])) {
-				$index = array_search_ex($data, $config['cron']['job'], "uuid");
-				if (false !== $index) { unset($config['cron']['job'][$index]); }
-			}
+           	if (is_array($config['cron'])) {
+                updatenotify_set("cronjob", UPDATENOTIFY_MODE_DIRTY, $config['extended-gui']['purge']['schedule_uuid']);
+            	if (is_array($config['cron']['job'])) {
+    				$index = array_search_ex($data, $config['cron']['job'], "uuid");
+    				if (false !== $index) { unset($config['cron']['job'][$index]); }
+    			}
+    		}
     		$retval = 0;
     		if (!file_exists($d_sysrebootreqd_path)) {
     			$retval |= updatenotify_process("cronjob", "cronjob_process_updatenotification");
@@ -203,7 +209,7 @@ if ($_POST) {
     
     if (isset($_POST['purge_now']) && $_POST['purge_now']) {
 		unset($input_errors);
-       	mwexec("/var/scripts/purge.sh", true);
+       	mwexec("/var/scripts/purge.sh 0", true);
     }   // end of purge_now    
 
     if (isset($_POST['automount_save']) && $_POST['automount_save']) {
@@ -223,11 +229,10 @@ function update_change() {
 <!-- This function allows the pages to render the buttons impotent whilst carrying out various functions -->
 
 function fetch_handler() {
-	if ( document.iform.beenSubmitted )
-		alert('Please wait for the previous operation to complete!!');
-	else{
-		return confirm('The selected operation will be completed. Please do not click any other buttons.');
-	}
+    var varConfirm = <?php echo json_encode($confirm_message); ?>;
+    var varAlert = <?php echo json_encode($alert_message); ?>;
+	if ( document.iform.beenSubmitted ) alert(varAlert);
+	else return confirm(varConfirm);
 }
 
 function purge_enable_change(enable_change) {
@@ -237,7 +242,7 @@ function purge_enable_change(enable_change) {
 	document.iform.purge_closedown.disabled = endis;
 	document.iform.purge_schedule.disabled = endis;
 	document.iform.purge_schedule_hour.disabled = endis;
-//	document.iform.purge_now.disabled = endis;
+	document.iform.purge_now.disabled = endis;
 }
 //-->
 </script>
@@ -247,6 +252,7 @@ function purge_enable_change(enable_change) {
     		<ul id="tabnav">
     			<li class="tabinact"><a href="extended-gui.php"><span><?=gettext("Configuration");?></span></a></li>
     			<li class="tabact"><a href="extended-gui_tools.php"><span><?=gettext("Tools");?></span></a></li>
+                <li class="tabinact"><a href="extended-gui_update_extension.php"><span><?=gettext("Extension Maintenance");?></span></a></li>
     		</ul>
     	</td></tr>
         <tr><td class="tabcont">
@@ -254,7 +260,7 @@ function purge_enable_change(enable_change) {
             <?php if (!empty($savemsg)) print_info_box($savemsg);?>
             <table width="100%" border="0" cellpadding="6" cellspacing="0">
             <?php html_titleline_checkbox("purge", gettext("Purge"), isset($config['extended-gui']['purge']['enable']) ? true : false, gettext("Enable"), "purge_enable_change(false)");?>
-    			<?php html_text("purge_description", gettext("Description"), "Clean recycle bins of CIFS/SMB shares (.recycle directories) from deleted files. Can be done automatically at system startup, closedown, at a specific hour as a daily schedule and/or on demand.");?>
+    			<?php html_text("purge_description", gettext("Description"), gettext("Clean recycle bins of CIFS/SMB shares (.recycle directories) from deleted files. Can be done automatically at system startup, closedown, at a specific hour as a daily schedule and/or on demand."));?>
                 <tr><td class="vncell"><?=gettext("Active");?></td>
                 <td class="vtable"><span name="purge_run" id="purge_run">
                     <input id="purge_startup" name="purge_startup" type="checkbox" class="checkbox" <?=isset($config['extended-gui']['purge']['startup']) ? 'checked' : '';?> />&nbsp;<?=gettext("at system startup");?>&nbsp;&nbsp;&nbsp;
@@ -264,20 +270,19 @@ function purge_enable_change(enable_change) {
                 <?php html_combobox("purge_schedule_hour", gettext("Daily schedule"), $config['extended-gui']['purge']['schedule_hour'], $hours, gettext("Choose an hour for daily purge of recycle bins."), false);?>
             	<?php html_inputbox("purge_days", gettext("Days"), !empty($config['extended-gui']['purge']['days']) ? $config['extended-gui']['purge']['days'] : 30, sprintf(gettext("Define the number of days after which files will be deleted from recycle bins. Default number of days are %d."), 30), true, 3);?>
     			<?php html_text("purge_bins", gettext("Recycle bins found"), `/var/scripts/purge.sh show`);?>
-<!-- for debugging     			<?php html_text("uuid", gettext("uuid"), $config['extended-gui']['purge']['schedule_uuid']);?> -->
     			<?php html_separator();?>
             </table>
             <div id="purge_submit">
                 <input id="purge_save" name="purge_save" type="submit" class="formbtn" value="<?=gettext("Save");?>" />
-                <?php if (isset($config['extended-gui']['purge']['days']) && ($config['extended-gui']['purge']['days'] > 0)) { ?>        
-                    <input id="purge_now" name="purge_now" type="submit" class="formbtn" value="<?=gettext("Purge now");?>" onClick="return fetch_handler();" />
+                <?php if (isset($config['extended-gui']['purge']['days']) && ($config['extended-gui']['purge']['days'] >= 0)) { ?>        
+                    <input id="purge_now" name="purge_now" type="submit" class="formbtn" title="<?=gettext("Purge now all CIFS/SMB recycle bins!");?>" value="<?=gettext("Purge now");?>" onClick="return fetch_handler();" />
                 <?php } ?>
             </div>
             <table width="100%" border="0" cellpadding="6" cellspacing="0">
 			<?php html_separator();?>
             <?php html_titleline_checkbox("automount", gettext("USB Automount"), isset($config['extended-gui']['automount']) ? true : false, gettext("Enable"), "");?>
-    			<?php html_text("automount_description", gettext("Description"), "Automatically mounting of USB drives. Un-mount / re-mount these drives via WebGUI function buttons (on ".gettext("Status")." | ".gettext("System").").");?>
-    			<?php html_text("automount_prerequisites", gettext("Prerequisite"), "In order to use this function it is neccessary to create a file in the root directory of each USB drive with the extension '*.<b>mounted</b>' (e.g. USB2000GB.mounted) for the first time the drive is attached to the system. This can be done via the WebGUI ".gettext("Advanced")." | ".gettext("Command")." function - enter the command: <b>touch&nbsp;/mnt/<i>YourUSBDevice</i>/<i>YourMountpointName</i>.mounted</b> and click ".gettext("Execute").". The information, which device is actually used, you can find in <a href='diag_log.php?log=2'>".gettext("Diagnostics")." | ".gettext("Log")."</a>. The file name will be used as the name of the mount point. After that re-mount the USB drive via the function button on ".gettext("Status")." | ".gettext("System")." - the USB drive will be shown there like every other built-in drive.");?>
+    			<?php html_text("automount_description", gettext("Description"), "Automatically mounting of USB drives and CD/DVDs. Un-mount / re-mount these drives via WebGUI function buttons (on ".gettext("Status")." | ".gettext("System").").");?>
+    			<?php html_text("automount_prerequisites", gettext("Prerequisite"), "USB drives will be mounted and shown with their device names (e.g. da1s1) on ".gettext("Status")." | ".gettext("System").". Alternatively one can create a file in the root directory of each USB drive with the extension '*.<b>mounted</b>' (e.g. USB2000GB.mounted). The next time this USB drive will be mounted the file name will be used as an alias for the mount point and shown at ".gettext("Status")." | ".gettext("System").".");?>
             </table>
             <br /><?php html_remark("automount_warning", gettext("Warning"), "<b>Always un-mount drives before you detach them from the system, otherwise this could lead to serious problems. Use the USB Automount function on your own risc!</b><br />");?>
             <br /><input id="automount_save" name="automount_save" type="submit" class="formbtn" value="<?=gettext("Save");?>" />

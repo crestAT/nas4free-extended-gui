@@ -1,0 +1,51 @@
+﻿Version Date        Description
+0.5.0.1 2015.10.08  F: (some) disk SMART values were not shown correctly in rare/special cases
+
+0.5     2015.10.04  This is a new release which includes full N4F 10.x support (removed all dependencies of system files so it should be save for future os versions) and a complete redesigned logic which reduces disk accesses to an absolute minimum, especially to avoid unneccesary disk access at every refresh.
+                    N: STATUS | SYSTEM - support for all RAID variants
+                    N: combined Install / Update option
+                    N: check if SMB / FTP are enabled to prevent error messages and lags
+                    N: autodetect config.xml change
+                    N: USB Automount: new sysid 6
+                    C: installer: always take the current installation directory as rootfolder -> for restored config.xml
+                    C: take care of systems without ZFS pools
+                    C: clogdir for CONFIG, notifications.log etc
+                    F: STATUS | GRAPH - take care about installed RRDGraphs extension
+                    F: Purge - change file find from mtime (modification time) to atime (access time)
+NOTE: the display of Operating System (root filesystem as A_OS) and /var filesystem (as A_VAR) is not yet implemented, will come with the next release!
+
+0.4.4.4 2015.01.06  F: STATUS | SYSTEM - support .eli encrypted devices -> http://forums.nas4free.org/viewtopic.php?f=71&t=6405&p=48538#p48361
+                    F: STATUS | SYSTEM - Network hosts monitor, search for whole IP@ for correct display
+                    F: USB Automount: drives with more than one partition
+                    N: USB Automount: new sysid 12
+                    C: STATUS | SYSTEM - UPS display for UPS slave
+                    C: STATUS | SYSTEM - CPU temperatures in one row
+                    C: STATUS | SYSTEM - Users monitor, display user names in color
+
+0.4.4               N: TOOLS section in EXTENSIONS | EXTENDED GUI for Purge and USB Automount
+                    N: Purge: clean recycle bins of CIFS/SMB shares (.recycle directories) from deleted files
+                    N: USB Automount: for USB disks and Flash drives
+                    N: STATUS | SYSTEM - Function buttons
+                    - Purge 1 day
+                    - unmount/remount USB disks
+                    N: STATUS | SYSTEM - display Operating System (root filesystem as A_OS)
+                    N: STATUS | SYSTEM - display /var filesystem (as A_VAR)
+                    N: STATUS | SYSTEM - enable/disable LAN graph
+                    N: STATUS | SYSTEM - show disk temperatures even if disks are in standby (enable/disable experimental switch in configuration)
+                    N: audible alarms for Extended GUI (optional - for users login/out, USB drives mount/unmount/errors)
+                    C: STATUS | SYSTEM - Network hosts monitor, display IP@s AND host names (as defined in /etc/hosts)
+                    F: STATUS | SYSTEM - support ZFS .nop devices
+                    F: STATUS | SYSTEM - check for special case -> zvol from jail
+
+0.4.3.3             N: ZFS degraded warning email -> in case of degraded pools you can optionally get a warning email
+                    N: STATUS | SYSTEM - Network hosts monitor -> get (ping) information which hosts are up (in a free configurable network range)
+                    N: EXTENSIONS | EXTENDED GUI - system calls service status
+                    N: save/restore notification log for embedded systems
+                    C: STATUS | SYSTEM - disk space warning logic now based on used size AND used percent (usefull for systems with mixed big and small drives)
+                    FIXED: DIAGNOSTICS | INFORMATION | DISKS: temperature shows allways n/a (started with N4F release 9.2.0.1-943)
+                    FIXED: STATUS | SYSTEM - rowspan calculation for CPU temperature
+                    FIXED: STATUS | SYSTEM - supports now ZFS pools on gpt partitions and device labels -> thanks to user ava1ar
+
+N: ...  new feature
+C: ...  changes
+F: ...  bug fix
