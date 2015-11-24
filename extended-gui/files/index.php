@@ -93,6 +93,21 @@ function tblrow ($name, $value, $symbol = null, $id = null) {
 	if($symbol == 'Hz')
 		$value = sprintf("%d", $value);
 
+	if ($symbol == ' seconds'
+			&& $value > 60) {
+		$minutes = (int) ($value / 60);
+		$seconds = $value % 60;
+
+		if ($minutes > 60) {
+			$hours = (int) ($minutes / 60);
+			$minutes = $minutes % 60;
+			$value = $hours;
+			$symbol = ' hours '.$minutes.' minutes '.$seconds.$symbol;
+		} else {
+			$value = $minutes;
+			$symbol = ' minutes '.$seconds.$symbol;
+		}
+	}
 	
 	if ($symbol == 'pre') {
 		$value = '<pre>'.$value;
@@ -100,14 +115,16 @@ function tblrow ($name, $value, $symbol = null, $id = null) {
 	}
 
 	print(<<<EOD
-<tr id='{$id}'>
-	<td>
+  <td style='white-space:nowrap;'>
 		<div id='ups_status'>
-			<span name='ups_status_name' id='ups_status_name' class='name'><b>{$name}</b></span><br />
+			<span name='ups_status_name' id='ups_status_name' class='name'> || <b>{$name}:</b></span>
+<!-- 
+  </td>
+  <td style='white-space:nowrap;' colspan="3">
+ -->
 			{$value}{$symbol}
 		</div>
 	</td>
-</tr>
 EOD
 	."\n");
 }
@@ -152,15 +169,22 @@ function tblrowbar ($name, $value, $symbol, $red, $yellow, $green) {
 	$span_used = sprintf("%s%%", "<span name='ups_status_used' id='ups_status_used' class='capacity'>".$value."</span>");
 	
 	print(<<<EOD
-<tr>
-  <td>
+<!--   <td style='white-space:nowrap; height:18px;'> -->
+  <td style='white-space:nowrap;'>
 	<div id='ups_status'>
-		<span name='ups_status_name' id='ups_status_name' class='name'><b>{$name}</b></span><br />
+		<span name='ups_status_name' id='ups_status_name' class='name'><b>{$name}</b>&nbsp;&nbsp;</span>
+  </td>
+  <td style='white-space:nowrap; width:1px;'>
 		<img src="bar_left.gif" class="progbarl" alt="" /><img src="bar_blue.gif" name="ups_status_bar_used" id="ups_status_bar_used" width="{$value}" class="progbarcf" title="{$tooltip_used}" alt="" /><img src="bar_gray.gif" name="ups_status_bar_free" id="ups_status_bar_free" width="{$available}" class="progbarc" title="{$tooltip_available}" alt="" /><img src="bar_right.gif" class="progbarr" alt="" />
-		{$span_used}
+  <td style='white-space:nowrap; width:1px; text-align:right;'>
+		&nbsp;&nbsp;{$span_used}
+<!--   
+  </td>
+  <td>
+ -->
+   </td>
 	</div>
   </td>
-</tr>
 EOD
 	."\n");
 }
@@ -355,12 +379,14 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 			    <td width="25%" class="vncellt"><?=gettext("Hostname");?></td>
 			    <td class="listr"><?=system_get_hostname();?></td>
                 <?php if (Session::isAdmin()):?>
+<?php if (!isset($config['extended-gui']['hide_cpu_graph']) || !isset($config['extended-gui']['hide_lan_graph'])) { ?>
                     <td align="center" width="300" rowspan="<?=$rowcounter;?>" class="listr">
 <?php if (!isset($config['extended-gui']['hide_cpu_graph'])) { ?>
                         <object id="graph" data="graph_index_cpu.php" type="image/svg+xml" width="300" height="150">
                             <param name="src" value="index.php" />
                         </object><br />
 <?php } ?>
+<?php if (!isset($config['extended-gui']['hide_lan_graph'])) { ?>
                         <form name="form2" action="index.php" method="get">
                             <select name="if" class="formfld" onchange="submit()">
                                 <?php
@@ -383,7 +409,9 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
                         <object id="graph1" align="center" data="graph_index.php?ifnum=<?=$ifnum;?>&amp;ifname=<?=rawurlencode($ifdescrs[$curif]);?>" type="image/svg+xml" width="300" height="150">
                             <param name="src" value="index.php?ifnum=<?=$ifnum;?>&amp;ifname=<?=rawurlencode($ifdescrs[$curif]);?>" />
                         </object>
+<?php } ?>
                     </td>
+<?php } ?>
                 <?php endif;?>
 			  </tr>
 			  <tr>
@@ -451,10 +479,8 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 					echo "<table width='100%' border='0' cellspacing='0' cellpadding='0'><tr><td>\n";
 					$cpus = system_get_cpus();
 					for ($idx = 0; $idx < $cpus; $idx++) {
-						echo "<tr><td>";
 						echo "<input style='padding: 0; border: 0;' size='2' name='cputemp${idx}' id='cputemp${idx}' value='".htmlspecialchars($cpuinfo['temperature2'][$idx])."' />";
-					echo $idx['temperature2']."&#176;C";	
-					echo "</td></tr>";
+    					echo $idx['temperature2']."&deg;C &nbsp;&nbsp;";	
 					}
 					echo "</table></td>";
 					echo "</tr>\n";
@@ -667,7 +693,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 				<tr>
 					<td width="25%" class="vncellt"><?=gettext("UPS Status");?></td>
 					<td class="listr" colspan="2">
-						<table width="100%" border="0" cellspacing="0" cellpadding="2">
+						<table border="0" cellspacing="0" cellpadding="2">
 							<?php if (!isset($config['ups']['enable'])):?>
 								<tr>
 									<td>
@@ -677,7 +703,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 								</tr>
 							<?php else:?>
 								<?php
-								$cmd = "/usr/local/bin/upsc {$config['ups']['upsname']}@localhost";
+								$cmd = "/usr/local/bin/upsc {$config['ups']['upsname']}@{$config['ups']['ip']}";
 								$handle = popen($cmd, 'r');
 								
 								if($handle) {
@@ -699,46 +725,56 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 										if($disp_status) $disp_status .= ', ';
 										switch ($condition) {
 											case 'WAIT':
-												$disp_status .= gettext('UPS Waiting');
+												$disp_status .= "<font color=orange><b>".gettext('UPS Waiting')."</b></font>";
 												break;
 										case 'OFF':
-												$disp_status .= gettext('UPS Off Line');
+												$disp_status .= "<font color=red><b>".gettext('UPS Off Line')."</b></font>";
 												break;
 										case 'OL':
-												$disp_status .= gettext('UPS On Line');
+												$disp_status .= "<font color=green><b>".gettext('UPS On Line')."</b></font>";
 												break;
 										case 'OB':
-												$disp_status .= gettext('UPS On Battery');
+												$disp_status .= "<font color=red><b>".gettext('UPS On Battery')."</b></font>";
 												break;
 										case 'TRIM':
-												$disp_status .= gettext('SmartTrim');
+												$disp_status .= "<font color=orange><b>".gettext('SmartTrim')."</b></font>";
 												break;
 										case 'BOOST':
-												$disp_status .= gettext('SmartBoost');
+												$disp_status .= "<font color=orange><b>".gettext('SmartBoost')."</b></font>";
 												break;
 										case 'OVER':
-												$disp_status .= gettext('Overload');
+												$disp_status .= "<font color=red><b>".gettext('Overload')."</b></font>";
 												break;
 										case 'LB':
-												$disp_status .= gettext('Battery Low');
+												$disp_status .= "<font color=red><b>".gettext('Battery Low')."</b></font>";
 												break;
 										case 'RB':
-												$disp_status .= gettext('Replace Battery UPS');
+												$disp_status .= "<font color=red><b>".gettext('Replace Battery UPS')."</b></font>";
 												break;
 										case 'CAL':
-												$disp_status .= gettext('Calibration Battery');
+												$disp_status .= "<font color=orange><b>".gettext('Calibration Battery')."</b></font>";
 												break;
 										case 'CHRG':
-												$disp_status .= gettext('Charging Battery');
+												$disp_status .= "<font color=orange><b>".gettext('Charging Battery')."</b></font>";
 												break;
 										default:
 												$disp_status .= $condition;
 												break;
 									}
 								}
-									tblrow(gettext('Status'), $disp_status. " <small>[<a href='diag_infos_ups.php'>".gettext("Show ups information")."</a></small>]");
-									tblrowbar(gettext('Load'), $ups['ups.load'], '%', '100-80', '79-60', '59-0');
+/* 
+echo "<tr>";
+ 									tblrow(gettext('Status'), $disp_status. " <small>[<a href='diag_infos_ups.php'>".gettext("Show ups information")."</a></small>]");
+echo "</tr>";
+ */
+echo "<tr>";
 									tblrowbar(gettext('Battery Level'), $ups['battery.charge'], '%', '0-29' ,'30-79', '80-100');
+ 									tblrow(gettext('Status'), $disp_status. " <small>[<a href='diag_infos_ups.php'>".gettext("Show ups information")."</a></small>]");
+echo "</tr>";
+echo "<tr>";
+									tblrowbar(gettext('Load'), $ups['ups.load'], '%', '100-80', '79-60', '59-0');
+            						tblrow(gettext('Remaining battery runtime'), $ups['battery.runtime'], ' seconds');
+echo "</tr>";
 								}
 								
 								unset($handle);
@@ -771,6 +807,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 			    <td width="25%" valign="top" class="vncellt"><?=gettext("Services");?></td>
 			    <td class="listr" colspan="2">
                 <?php echo exec("/var/scripts/autoshutdown.sh"); ?>
+
                 </td>
 			  </tr>
 <?php } ?>
@@ -779,25 +816,33 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 		</td>
 	</tr>
 </table>
-<?php if (isset($config['extended-gui']['buttons'])) { ?>
+<?php if (Session::isAdmin()):?>
 <center>
 	<form action="index.php" method="post" name="iform" id="iform">
 		<br>
+<?php if (isset($config['extended-gui']['buttons'])) { ?>
+<!--
 		<input name="ai_00" type="submit" class="formbtn" value="<?=gettext("AI 0");?>">
 		<input name="ai_01" type="submit" class="formbtn" value="<?=gettext("AI 1");?>">
 		<input name="ai_02" type="submit" class="formbtn" value="<?=gettext("AI 2");?>">
 		<input name="ai_03" type="submit" class="formbtn" value="<?=gettext("AI 3");?>">
 		<input name="ai_04" type="submit" class="formbtn" value="<?=gettext("AI 4");?>">
 		<input name="ai_05" type="submit" class="formbtn" value="<?=gettext("AI 5");?>">
-		<input name="fsck_all" type="submit" class="formbtn" value="<?=gettext("FSCK All");?>">
+ 		<input name="amount" type="submit" class="formbtn" value="<?=gettext("Un-mount ATA-Drives");?>">
+ 		<input name="fsck_all" type="submit" class="formbtn" value="<?=gettext("FSCK All");?>"> 
+--> 		
+<?php if (isset($config['extended-gui']['purge']['enable'])) { ?>
 		<input name="purge" type="submit" class="formbtn" value="<?=gettext("Purge 1 Day");?>">
-		<input name="amount" type="submit" class="formbtn" value="<?=gettext("Un-mount ATA-Drives");?>">
+<?php } ?>
+<?php } ?>
+<?php if (isset($config['extended-gui']['automount'])) { ?>
 		<input name="umount" type="submit" class="formbtn" value="<?=gettext("Un-mount USB-Drives");?>">
 		<input name="rmount" type="submit" class="formbtn" value="<?=gettext("Re-mount USB-Drives");?>">
-    	<input name="auto_shutdown" type="submit" class="formbtn" value="<?=gettext("Autoshutdown");?>">
+<?php } ?>
+<!--     	<input name="auto_shutdown" type="submit" class="formbtn" value="<?=gettext("Autoshutdown");?>"> -->
  		<?php include("formend.inc"); ?>
 	</form>
 	</td>
 </center>
-<?php } ?>
+<?php endif;?>
 <?php include("fend.inc");?>

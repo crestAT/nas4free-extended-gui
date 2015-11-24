@@ -55,6 +55,7 @@ exec ("cp ".$config['extended-gui']['rootfolder']."ext/* /usr/local/www/ext/exte
 exec ("cp ".$config['extended-gui']['rootfolder']."log/* /var/log/ >/dev/null 2>/dev/null");
 exec ("cp -R ".$config['extended-gui']['rootfolder']."scripts /var/");
 if ( !is_link ( "/usr/local/www/extended-gui.php")) { exec ("ln -s /usr/local/www/ext/extended-gui/extended-gui.php /usr/local/www/extended-gui.php"); }
+if ( !is_link ( "/usr/local/www/extended-gui_tools.php")) { exec ("ln -s /usr/local/www/ext/extended-gui/extended-gui_tools.php /usr/local/www/extended-gui_tools.php"); }
 
 if ( isset( $config['extended-gui']['enable'] )) {
 	if ($config['extended-gui']['type'] == "Standard" ) { 

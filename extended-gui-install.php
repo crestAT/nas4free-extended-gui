@@ -33,6 +33,28 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
+// 2015.01.06   v0.4.4.4    C: STATUS | SYSTEM - UPS display for UPS slave
+//                          C: STATUS | SYSTEM - CPU temperatures in one row 
+//                          F: STATUS | SYSTEM - support .eli encrypted devices
+// 2014.07.16   v0.4.4.3    C: STATUS | SYSTEM - UPS display
+// 2014.07.11   v0.4.4.2    F: USB Automount: drives with more than one partition
+// 2014.06.16   v0.4.4.1    N: USB Automount: new sysid 12
+//                          C: STATUS | SYSTEM - Users monitor, display user names in color
+//                          C: STATUS | SYSTEM - Network hosts monitor, display host names in color
+//                          F: STATUS | SYSTEM - Network hosts monitor, search for whole IP@ for correct display
+// 2014.06.06   v0.4.4      N: TOOLS section in EXTENSIONS | EXTENDED GUI for Purge and USB Automount
+//                          N: Purge: clean recycle bins of CIFS/SMB shares (.recycle directories) from deleted files 
+//                          N: USB Automount: for USB disks and Flash drives 
+//                          N: STATUS | SYSTEM - Function buttons
+//                              - Purge 1 day
+//                              - unmount/remount USB disks
+//                          N: STATUS | SYSTEM - display Operating System (root filesystem as A_OS)
+//                          N: STATUS | SYSTEM - display /var filesystem (as A_VAR)
+//                          N: STATUS | SYSTEM - enable/disable LAN graph
+//                          N: STATUS | SYSTEM - show disk temperatures even if disks are in standby (enable/disable experimental switch in configuration)
+//                          C: STATUS | SYSTEM - Network hosts monitor, display IP@s AND host names (as defined in /etc/hosts) but not the own automatically generated hostname
+//                          F: STATUS | SYSTEM - support ZFS .nop devices
+//                          F: check for special case -> zvol from jail
 // 2014.05.06   v0.4.3.3    N: ZFS degraded warning email
 //                          N: STATUS | SYSTEM - Network hosts monitor
 //                          N: EXTENSIONS | EXTENDED GUI - system calls service status
@@ -45,7 +67,7 @@
 //                          N: UPS view on/off if UPS is enabled/disabled 
 // 2014.04.15   v0.4.3      first public release
 
-$version = "v0.4.3.3 (+ ZFS fix)";
+$version = "v0.4.4.4 (+ ZFS fix)";
 $appname = "Extended GUI";
 
 require_once("config.inc");

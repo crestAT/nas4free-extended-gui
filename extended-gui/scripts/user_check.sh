@@ -4,6 +4,7 @@
 # purpose:		monitoring of users in the home-network
 # usage:		user_check.sh.sh (... w/o parameters) 
 # version:	date:		description:
+#	2.1		2014.06.16	C: give user names a color
 #	2.0		2014.04.07	C: initial version for Extended GUI
 #------------- initialize variables ------------
 cd `dirname $0`
@@ -17,14 +18,15 @@ EMAIL_TO=`/usr/local/bin/xml sel -t -v "//extended-gui/space_email_add" ${XML_CO
 #-----------------------------------------------
 
 # user online
-smbstatus -b | awk '/\(/ {print "<b>"$2"</b>@"$4$5"&nbsp;(CIFS/SMB)"}' > $USER_ONLINE.tmp
-w -hn | awk '{print "<b>"$1"</b>@"$3"@"$2"&nbsp;(SSH)"}' | grep -v '<b>root</b>@-@' >> $USER_ONLINE.tmp
-ftpwho -v -o oneline | grep -v 'standalone FTP' | grep -v 'Service class' | grep -v 'no users connected' | awk '{print "<b>"$2"</b>@"$8"&nbsp;(FTP)"}' >> $USER_ONLINE.tmp
+smbstatus -b | awk '/\(/ {print "<font color=blue><b>"$2"</b></font>@"$4$5"&nbsp;(CIFS/SMB)"}' > $USER_ONLINE.tmp
+w -hn | awk '{print "<font color=blue><b>"$1"</b></font>@"$3"@"$2"&nbsp;(SSH)"}' | grep -v '<font color=blue><b>root</b></font>@-@' >> $USER_ONLINE.tmp
+ftpwho -v -o oneline | grep -v 'standalone FTP' | grep -v 'Service class' | grep -v 'no users connected' | awk '{print "<font color=blue><b>"$2"</b></font>@"$8"&nbsp;(FTP)"}' >> $USER_ONLINE.tmp
 
-NAMES=""
-for NAME in `cat $USER_ONLINE.tmp`
-do NAMES="$NAMES $NAME&nbsp;"; done
-echo "$NAMES " > $USER_ONLINE
+cat $USER_ONLINE.tmp | awk 'BEGIN {ORS=""} {print} {print "&nbsp; "}' > $USER_ONLINE
+#NAMES=""
+#for NAME in `cat $USER_ONLINE.tmp`
+#do NAMES="$NAMES $NAME&nbsp;"; done
+#echo "$NAMES " > $USER_ONLINE
 
 # user login / logout
 cp $USER_ONLINE.tmp $USER_LOG_NEW
@@ -37,7 +39,7 @@ if [ $? != 0 ]; then
 		if [ "$NAME" == "<" ]; then LOG_RECORD="User logged in: "; 
 		else if [ "$NAME" == ">" ]; then LOG_RECORD="User logged out: "
 			else if [ "`echo $NAME | awk '/@/ {print $1}'`" != "" ]; then 
-					LOG_RECORD="$LOG_RECORD `echo $NAME | awk '{gsub("<b>",""); gsub("</b>",""); gsub("&nbsp;"," ");print}'`";
+					LOG_RECORD="$LOG_RECORD `echo $NAME | awk '{gsub("color=blue><b>",""); gsub("</b></font>",""); gsub("&nbsp;"," ");print}'`";
 					echo $LOG_RECORD >> $EMAIL_FILE;
 					logger -p local3.notice "*** $SCRIPT_NAME $LOG_RECORD"
 					NOTIFY "WARNING $LOG_RECORD"

@@ -1,0 +1,38 @@
+#!/bin/sh
+# filename:		
+# author:		Andreas Schmidhuber
+# purpose:		provide different beeps for scripts
+# usage:		beep [ NW_FAILED | USER_LOGGED_IN | FSCK_FINISHED | tones ]
+# version:	date:		description:
+#	0.3		2014.05.29	C: initial version for Extended GUI (check enabled/disabled)
+#	0.2		2012.11.24	N: FSCK_FINISHED and optimizations
+# 	0.1					initial version
+#------------- initialize variables ------------
+cd `dirname $0`
+. CONFIG
+RUN_BEEP=`/usr/local/bin/xml sel -t -v "count(//extended-gui/beep)" ${XML_CONFIG_FILE}`
+SPEAKER="/dev/speaker"
+# from FreNAS: echo O3L30cO4L30cO5L30cO5L30g > $SPEAKER
+# from FreNAS: echo O5L30gO5L30cO4L30cO3L30c > $SPEAKER
+#-----------------------------------------------
+
+NW_FAILED ()
+( while true; do echo L4afgL1cP4L4cgaL1f > $SPEAKER; sleep 2; done )
+
+USER_LOGGED_IN ()
+( echo g1O3L30cO4L30c > $SPEAKER )
+
+FSCK_FINISHED ()
+( echo L4afgL1cP4L4cgaL1f > $SPEAKER; sleep 2; echo O3L30cO4L30c > $SPEAKER; sleep 2;
+echo L4afgL1cP4L4cgaL1f > $SPEAKER; sleep 2; echo O3L30cO4L30c > $SPEAKER; sleep 2;
+echo L4afgL1cP4L4cgaL1f > $SPEAKER; sleep 2; echo O3L30cO4L30c > $SPEAKER;
+)
+
+if [ $RUN_BEEP -eq 0 ]; then exit; fi
+
+case "$1" in
+	FSCK_FINISHED)	FSCK_FINISHED;;
+	USER_LOGGED_IN)	USER_LOGGED_IN;;
+	NW_FAILED) 		NW_FAILED;;
+	*)				echo "$1" > $SPEAKER;
+esac

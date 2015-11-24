@@ -450,7 +450,7 @@ function system_get_device_temp($device) {
 		}
 	}
 	/* with smart */
-	mwexec2("smartctl -n standby -A /dev/{$device}", $rawdata);
+	mwexec2("smartctl -A /dev/{$device}", $rawdata);
 	foreach ($rawdata as $rawdatav) {
 		$arawdatav = preg_split("/\s+/", $rawdatav);
 		if (!empty($arawdatav[1]) && (0 == strncmp(trim($arawdatav[1]), "Temperature_", 12)) &&
@@ -567,26 +567,49 @@ function extension_get_smart_states($idx) {
 	global $config;
 	unset($rawdata1);
 	unset($exitval);
-	$temp = "n/a";
-    exec("smartctl -n standby -q silent -A {$idx}", $rawdata1, $exitval); 
-    switch ($exitval) {
-        case 4: $smart_state = "<font color='red'>SMART&nbsp;n/a</font>"; break;
-        case 2: $smart_state = "<font color='green'>Standby</font>"; break;
-        case 1: $smart_state = "<font color='orange'>Unknown</font>"; break;
-        case 0: $smart_state = "<font color='red'>Spinning</font>";
-            	unset($rawdata1);
-            	unset($exitval);
-                exec("smartctl -n standby -A {$idx} | awk '/Temperature_Celsius/ {print $10}'", $rawdata1, $exitval);
-                switch ($rawdata1[0]) {
-                    case ($rawdata1[0] > $config['extended-gui']['temp_severe']): $temp = "<font color='red'>{$rawdata1[0]}&nbsp;&deg;C</font>"; break;
-                    case ($rawdata1[0] > $config['extended-gui']['temp_warning']): $temp = "<font color='orange'>{$rawdata1[0]}&nbsp;&deg;C</font>"; break;
-                    default: $temp = "<font color='blue'>{$rawdata1[0]}&nbsp;&deg;C</font>"; break;
-                }
-                break;
-        default: $smart_state = "<font color='red'>exit: {$exitval}</font>"; break;
+    $idx = str_replace(".eli", "", $idx);
+	if (isset($config['extended-gui']['temp_always'])) {
+        exec("smartctl -n standby -q silent -A {$idx}", $rawdata1, $exitval);
+        switch ($exitval) {
+            case 4: $smart_state = "<font color='red'>SMART&nbsp;n/a</font>"; break;
+            case 2: $smart_state = "<font color='green'>Standby</font>"; break;
+            case 1: $smart_state = "<font color='orange'>Unknown</font>"; break;
+            case 0: $smart_state = "<font color='red'>Spinning</font>"; break;
+            default: $smart_state = "<font color='red'>exit: {$exitval}</font>"; break;
+        }
+        $temp = system_get_device_temp($idx);
+        if (!is_bool($temp)) {
+            switch ($temp) {
+                case ($temp >= $config['extended-gui']['temp_severe']): $temp = "<font color='red'>{$temp}&nbsp;&deg;C</font>"; break;
+                case ($temp >= $config['extended-gui']['temp_warning']): $temp = "<font color='orange'>{$temp}&nbsp;&deg;C</font>"; break;
+                default: $temp = "<font color='blue'>{$temp}&nbsp;&deg;C</font>"; break;
+            }
+        }
+        else $temp = "n/a"; 
+        return array('device' => str_replace("/dev/", "", $idx), 'smart_state' => $smart_state, 'temp' => $temp);
     }
-    $device = explode("/", $idx);
-    return array('device' => $device[2], 'smart_state' => $smart_state, 'temp' => $temp);    
+    else {
+    	$temp = "n/a";
+        exec("smartctl -n standby -q silent -A {$idx}", $rawdata1, $exitval); 
+        switch ($exitval) {
+            case 4: $smart_state = "<font color='red'>SMART&nbsp;n/a</font>"; break;
+            case 2: $smart_state = "<font color='green'>Standby</font>"; break;
+            case 1: $smart_state = "<font color='orange'>Unknown</font>"; break;
+            case 0: $smart_state = "<font color='red'>Spinning</font>";
+                	unset($rawdata1);
+                	unset($exitval);
+                    exec("smartctl -n standby -A {$idx} | awk '/Temperature_Celsius/ {print $10}'", $rawdata1, $exitval);
+                    switch ($rawdata1[0]) {
+                        case ($rawdata1[0] >= $config['extended-gui']['temp_severe']): $temp = "<font color='red'>{$rawdata1[0]}&nbsp;&deg;C</font>"; break;
+                        case ($rawdata1[0] >= $config['extended-gui']['temp_warning']): $temp = "<font color='orange'>{$rawdata1[0]}&nbsp;&deg;C</font>"; break;
+                        default: $temp = "<font color='blue'>{$rawdata1[0]}&nbsp;&deg;C</font>"; break;
+                    }
+                    break;
+            default: $smart_state = "<font color='red'>exit: {$exitval}</font>"; break;
+        }
+        $device = explode("/", $idx);
+        return array('device' => $device[2], 'smart_state' => $smart_state, 'temp' => $temp);    
+    }
 }
 
 /**
@@ -613,7 +636,9 @@ function system_get_mount_usage() {
 	$result = array();
 
 	exec("/bin/df -h", $rawdata);
-    exec("df -h | awk '/\/dev\// && /\/mnt\// {print $6}'| cut -d/ -f3", $sharenames);
+    exec("df -h | awk '/\/dev\// && /\/mnt\// && !/\/dev\/zvol\// {print $6}'| cut -d/ -f3", $sharenames);
+    if (isset($config['extended-gui']['boot'])) { $sharenames[] = 'A_OS'; }
+    if (isset($config['extended-gui']['varfs'])) { $sharenames[] = 'A_VAR'; }
 	foreach ($rawdata as $line) {
 		if (0 == preg_match("/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+%)\s+(.+)/", $line, $aline))
 			continue;
@@ -626,6 +651,8 @@ function system_get_mount_usage() {
 
 		if (is_array($config['mounts']) && is_array($config['mounts']['mount'])) {
 			foreach ($sharenames as $mountcfg) {
+                if (isset($config['extended-gui']['boot']) && ($mountpoint == "/")) { $mountpoint = "/mnt/A_OS"; }
+                if (isset($config['extended-gui']['varfs']) && ($mountpoint == "/var")) { $mountpoint = "/mnt/A_VAR"; }
 				if (0 == strcmp($mountpoint, "{$g['media_path']}/{$mountcfg}")) {
 					$result[$mountpoint] = array();
 					$result[$mountpoint]['mountpoint'] = $mountpoint;
@@ -645,7 +672,7 @@ function system_get_mount_usage() {
                     }                                        
                     unset($hd_output);
                     // get the device from the partition for SMART
-                    exec("gpart status -s | awk '/{$file_system[2]}/ {print $3}'", $hd_output);
+                    $hd_output = preg_split('/[ps][0-9]/', $file_system[2]);
                     $file_system[2] = $hd_output[0];
                     $hd_status = extension_get_smart_states("/dev/".$file_system[2]);
 					$result[$mountpoint]['device'] = $hd_status['device'];
@@ -714,8 +741,12 @@ function zfs_get_pool_devs_list() {
                 $result[$idx]['devs'][] = extension_get_smart_states($device);
              // zfs pool on gpt partitions 
              } else if (strpos($aline[1], 'gpt') !== false) {
-		// getting device name from gpt partition label 
+		// getting device name from gpt partition label
                 $device = "/dev/".disks_gpt_partition_to_device($aline[1]);
+                $result[$idx]['devs'][] = extension_get_smart_states($device);
+             } else if (strpos($aline[1], '.nop') !== false) {
+		// getting device name for .nop device
+                $device = "/dev/".str_replace(".nop", "", $aline[1]);
                 $result[$idx]['devs'][] = extension_get_smart_states($device);
             }
         }

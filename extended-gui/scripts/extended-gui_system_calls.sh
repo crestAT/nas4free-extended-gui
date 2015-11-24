@@ -18,14 +18,15 @@ do
 #NOTIFY "INFO start"
 	RUN_USER=`/usr/local/bin/xml sel -t -v "count(//extended-gui/user)" ${XML_CONFIG_FILE}`
 	RUN_HOSTS=`/usr/local/bin/xml sel -t -v "count(//extended-gui/hosts)" ${XML_CONFIG_FILE}`
+	RUN_AUTOMOUNT=`/usr/local/bin/xml sel -t -v "count(//extended-gui/automount)" ${XML_CONFIG_FILE}`
 	LOOP_DELAY=`/usr/local/bin/xml sel -t -v "//extended-gui/loop_delay" ${XML_CONFIG_FILE}`
 	if [ "$LOOP_DELAY" == "" ]; then LOOP_DELAY=60; fi
 
 	$SYSTEM_SCRIPT_DIR/disk_status.sh
 	if [ $RUN_USER -gt 0 ]; then $SYSTEM_SCRIPT_DIR/user_check.sh; fi
 	if [ $RUN_HOSTS -gt 0 ]; then $SYSTEM_SCRIPT_DIR/hosts_check.sh; fi
+	if [ $RUN_AUTOMOUNT -gt 0 ]; then $SYSTEM_SCRIPT_DIR/automount_usb.sh; fi
 #NOTIFY "INFO end"
-
 	sleep $LOOP_DELAY
 done
 
