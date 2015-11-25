@@ -35,11 +35,11 @@ require("guiconfig.inc");
 bindtextdomain("nas4free", "/usr/local/share/locale-rrd");
 $pgtitle = array(gettext("Extensions"), "Extended GUI ".$config['extended-gui']['version'], gettext("Extension Maintenance"));
 
-if (is_file("{$config['extended-gui']['log']}oneload")) { require_once("{$config['extended-gui']['log']}oneload"); }
+if (is_file("{$config['extended-gui']['rootfolder']}log/oneload")) { require_once("{$config['extended-gui']['rootfolder']}log/oneload"); }
 
-$return_val = mwexec("fetch -o {$config['extended-gui']['log']}version.txt https://raw.github.com/crestAT/nas4free-extended-gui/master/extended-gui/version.txt", true);
+$return_val = mwexec("fetch -o {$config['extended-gui']['rootfolder']}log/version.txt https://raw.github.com/crestAT/nas4free-extended-gui/master/extended-gui/version.txt", true);
 if ($return_val == 0) { 
-    $server_version = exec("cat {$config['extended-gui']['log']}version.txt"); 
+    $server_version = exec("cat {$config['extended-gui']['rootfolder']}log/version.txt"); 
     if ($server_version != $config['extended-gui']['version']) { $savemsg = sprintf(gettext("New extension version %s available, push '%s' button to install the new version!"), $server_version, gettext("Update Extension")); }
     mwexec("fetch -o {$config['extended-gui']['rootfolder']}release_notes.txt https://raw.github.com/crestAT/nas4free-extended-gui/master/extended-gui/release_notes.txt", false);
 }
@@ -66,6 +66,8 @@ function cronjob_process_updatenotification($mode, $data) {
 }
 
 if (isset($_POST['ext_remove']) && $_POST['ext_remove']) {
+// restore original pages
+    require_once("{$config['extended-gui']['rootfolder']}extended-gui-stop.php");
 // remove start/stop commands
     if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
 		for ($i = 0; $i < count($config['rc']['postinit']['cmd']);) {
@@ -82,21 +84,15 @@ if (isset($_POST['ext_remove']) && $_POST['ext_remove']) {
 // unlink created links and remove extension pages
 	if (is_dir ("/usr/local/www/ext/extended-gui")) {
 	foreach ( glob( "{$config['extended-gui']['rootfolder']}ext/*.php" ) as $file ) {
-	$file = str_replace("{$config['extended-gui']['rootfolder']}ext/", "/usr/local/www/", $file);         // trailing backslash !!!
-	if ( is_link( $file ) ) { unlink( $file ); } else {} }
+    	$file = str_replace("{$config['extended-gui']['rootfolder']}ext/", "/usr/local/www/", $file);      // trailing backslash !!!
+    	if ( is_link( $file ) ) { unlink( $file ); } else {} 
+    }
 	mwexec ("rm -rf /usr/local/www/ext/extended-gui");
 	}
-// remove additional *.php files
-	foreach ( glob( "{$config['extended-gui']['rootfolder']}files/*.php" ) as $file ) {
-	   $file = str_replace("{$config['extended-gui']['rootfolder']}files/", "/usr/local/www/", $file);    // trailing backslash !!!
-        if (is_file($file)) { unlink($file); } 
-    }
-// restore original pages
-    require_once("{$config['extended-gui']['rootfolder']}extended-gui-stop.php");
 // remove cronjobs
-	if (is_array($config['cron']['job'])) {                                                            // check if cron jobs exists !!!
+	if (is_array($config['cron']['job'])) {                                                                // check if cron jobs exists !!!
         $a_cronjob = &$config['cron']['job'];
-        $uuid = isset($config['extended-gui']['schedule_uuid']) ? $config['extended-gui']['schedule_uuid'] : false;
+        $uuid = isset($config['extended-gui']['purge']['schedule_uuid']) ? $config['extended-gui']['purge']['schedule_uuid'] : false;
         if (isset($uuid) && (FALSE !== ($cnid = array_search_ex($uuid, $a_cronjob, "uuid")))) {
         	$a_cronjob[$cnid]['enable'] = false;
         }

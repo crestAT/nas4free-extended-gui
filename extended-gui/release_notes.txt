@@ -1,7 +1,8 @@
 ﻿Version Date        Description
 0.5.0.1 2015.10.08  F: (some) disk SMART values were not shown correctly in rare/special cases
 
-0.5     2015.10.04  This is a new release which includes full N4F 10.x support (removed all dependencies of system files so it should be save for future os versions) and a complete redesigned logic which reduces disk accesses to an absolute minimum, especially to avoid unneccesary disk access at every refresh.
+0.5     2015.10.04  
+This is a new release which includes full N4F 10.x support (removed all dependencies of system files so it should be save for future os versions) and a complete redesigned logic which reduces disk accesses to an absolute minimum, especially to avoid unneccesary disk access at every refresh.
                     N: STATUS | SYSTEM - support for all RAID variants
                     N: combined Install / Update option
                     N: check if SMB / FTP are enabled to prevent error messages and lags

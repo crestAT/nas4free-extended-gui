@@ -58,6 +58,7 @@ mwexec("cp -R {$config['extended-gui']['rootfolder']}scripts /var/", true);
 mwexec("chmod -R 770 /var/scripts", true);                           // to be sure that scripts are executable   
 if ( !is_link("/usr/local/www/extended-gui.php")) { mwexec("ln -s {$extension_dir}/extended-gui.php /usr/local/www/extended-gui.php", true); }
 if ( !is_link("/usr/local/www/extended-gui_tools.php")) { mwexec("ln -s {$extension_dir}/extended-gui_tools.php /usr/local/www/extended-gui_tools.php", true); }
+if ( !is_link("/usr/local/www/extended-gui_update_extension.php")) { mwexec("ln -s {$extension_dir}/extended-gui_update_extension.php /usr/local/www/extended-gui_update_extension.php", true); }
 
 if ( isset( $config['extended-gui']['enable'] )) {
 	if ($config['extended-gui']['type'] == "Standard" ) { 
