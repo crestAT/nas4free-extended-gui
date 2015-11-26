@@ -351,7 +351,7 @@ if(function_exists("date_default_timezone_set") and function_exists("date_defaul
 if ($_POST['clear_alarms']) {
     if (file_exists('/tmp/extended-gui_cpu.alarm')) { unlink('/tmp/extended-gui_cpu.alarm'); }
     if (file_exists('/tmp/extended_gui_zfs.alarm')) { unlink('/tmp/extended_gui_zfs.alarm'); }
-    $errormsg .= gettext("Audible alarms for CPU and ZFS errors cleared (until next occurence of error condition)!");
+    $errormsg .= gettext("Audible alarms for CPU and ZFS errors cleared!");
 	$errormsg .= "<br />\n";
 }
 if ($_POST['umount']) {
@@ -1044,4 +1044,4 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 </center>
 <?php endif;?>
 <?php include("fend.inc");?>
-</div>
+</div>  <!-- foo -->

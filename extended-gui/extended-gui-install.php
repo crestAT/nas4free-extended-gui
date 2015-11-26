@@ -1,4 +1,3 @@
-#!/usr/local/bin/php-cgi -f
 <?php
 /* 
     extended-gui-install.php
@@ -131,7 +130,7 @@ if ($platform != "embedded" && $platform != "full" && $platform != "livecd" && $
 global $input_errors;
 global $savemsg;
 
-$install_dir = dirname(__FILE__)."/";
+$install_dir = dirname(__FILE__)."/";                           // get directory where the installer script resides
 
 // check FreeBSD release for fetch options >= 9.3
 $release = explode("-", exec("uname -r"));
@@ -139,6 +138,7 @@ if ($release[0] >= 9.3) $verify_hostname = "--no-verify-hostname";
 else $verify_hostname = "";
 // create stripped version name
 $vs = str_replace(".", "", $v);
+// fetch release archive
 $return_val = mwexec("fetch {$verify_hostname} -vo {$install_dir}master.zip 'https://github.com/crestAT/nas4free-extended-gui/releases/download/{$v}/extended-gui-{$vs}.zip'", true);
 if ($return_val == 0) {
     $return_val = mwexec("tar -xf {$install_dir}master.zip -C {$install_dir} --exclude='.git*' --strip-components 2", true);
@@ -149,31 +149,48 @@ if ($return_val == 0) {
         else { $file_version = "n/a"; }
         $savemsg = sprintf(gettext("Update to version %s completed!"), $file_version);
     }
-    else { $input_errors[] = sprintf(gettext("Archive file %s not found, installation aborted!"), "master.zip corrupt /"); }
+    else { 
+        $input_errors[] = sprintf(gettext("Archive file %s not found, installation aborted!"), "master.zip corrupt /"); 
+        return;
+    }
 }
-else { $input_errors[] = sprintf(gettext("Archive file %s not found, installation aborted!"), "master.zip"); }
+else { 
+    $input_errors[] = sprintf(gettext("Archive file %s not found, installation aborted!"), "master.zip"); 
+    return;
+}
 
 // install / update application on NAS4Free
-if ( !isset($config['extended-gui']) || !is_array($config['extended-gui'])) { $config['extended-gui'] = array(); }     
-$config['extended-gui']['appname'] = $appname;
-$config['extended-gui']['version'] = exec("cat {$install_dir}version.txt");
-$config['extended-gui']['product_version'] = "-----";
-$config['extended-gui']['rootfolder'] =  $install_dir;
-$i = 0;
-if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
-    for ($i; $i < count($config['rc']['postinit']['cmd']);) {
-        if (preg_match('/extended-gui/', $config['rc']['postinit']['cmd'][$i])) break; ++$i; }
+if ( !isset($config['extended-gui']) || !is_array($config['extended-gui'])) { 
+// new installation
+    $config['extended-gui'] = array();      
+    $config['extended-gui']['appname'] = $appname;
+    $config['extended-gui']['version'] = exec("cat {$install_dir}version.txt");
+    $config['extended-gui']['product_version'] = "-----";
+    $config['extended-gui']['rootfolder'] = $install_dir;
+    $i = 0;
+    if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
+        for ($i; $i < count($config['rc']['postinit']['cmd']);) {
+            if (preg_match('/extended-gui/', $config['rc']['postinit']['cmd'][$i])) break; ++$i; }
+    }
+    $config['rc']['postinit']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_start.php";
+    $i =0;
+    if ( is_array($config['rc']['shutdown'] ) && is_array( $config['rc']['shutdown']['cmd'] ) ) {
+        for ($i; $i < count($config['rc']['shutdown']['cmd']); ) {
+            if (preg_match('/extended-gui/', $config['rc']['shutdown']['cmd'][$i])) break; ++$i; }
+    }
+    $config['rc']['shutdown']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_stop.php";
+    write_config();
+    require_once("{$config['extended-gui']['rootfolder']}extended-gui-start.php");
+    echo "\n".$appname." Version ".$config['extended-gui']['version']." installed";
+    echo "\n\nInstallation completed, use WebGUI | Extensions | ".$appname." to configure \nthe application (don't forget to refresh the WebGUI before use)!\n";
 }
-$config['rc']['postinit']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_start.php";
-$i =0;
-if ( is_array($config['rc']['shutdown'] ) && is_array( $config['rc']['shutdown']['cmd'] ) ) {
-    for ($i; $i < count($config['rc']['shutdown']['cmd']); ) {
-        if (preg_match('/extended-gui/', $config['rc']['shutdown']['cmd'][$i])) break; ++$i; }
+else {
+// update release
+    $config['extended-gui']['version'] = exec("cat {$install_dir}version.txt");
+    $config['extended-gui']['product_version'] = "-----";
+    $config['extended-gui']['rootfolder'] = $install_dir;
+    write_config();
+    require_once("{$config['extended-gui']['rootfolder']}extended-gui-stop.php");
+    require_once("{$config['extended-gui']['rootfolder']}extended-gui-start.php");
 }
-$config['rc']['shutdown']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_stop.php";
-write_config();
-require_once("{$config['extended-gui']['rootfolder']}extended-gui_stop.php");
-require_once("{$config['extended-gui']['rootfolder']}extended-gui_start.php");
-echo "\n".$appname." Version ".$config['extended-gui']['version']." installed";
-echo "\n\nInstallation completed, use WebGUI | Extensions | ".$appname." to configure \nthe application (don't forget to refresh the WebGUI before use)!\n";
 ?>

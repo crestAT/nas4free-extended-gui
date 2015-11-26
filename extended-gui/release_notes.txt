@@ -1,4 +1,22 @@
 ﻿Version Date        Description
+0.5.1b6 2015.11.26  N: Web installer
+                    N: CPU temperature monitoring and reporting - monitor CPU temps and optional email reporting like degraded pools etc.
+                    N: buzzer for degraded pools, CPU temperatures, button to clear alarms on STATUS | SYSTEM
+                    N: spinner for USB Automount and CIFS/SMB purge on STATUS | SYSTEM
+                    N: STATUS | SYSTEM - pool busy states (scrub, resilver)
+                    N: STATUS | SYSTEM - display /usr/local filesystem (as A_USR)
+                    N: added Raspberry Pi to supported architecture
+                    N: USB Automount: sysid 255 - exFAT - experimental !!!
+                    N: USB Automount - take care of CD/DVDs
+                    C: USB Automount - allow disks without 'YourMountpointName.mounted' file, but stays though optional
+                    C: updated diag_log.inc & index.php to Page base: r2067
+                    C: STATUS | SYSTEM - correct display of disk columns
+                    C: STATUS | SYSTEM - display USB mounted devices
+                    C: STATUS | SYSTEM - display Operating System (root filesystem as A_OS)
+                    C: STATUS | SYSTEM - display /var filesystem (as A_VAR)
+                    C: STATUS | SYSTEM - display temporarely mounted USB devics -> USB Automount
+                    F: degraded pool reporting
+
 0.5.0.1 2015.10.08  F: (some) disk SMART values were not shown correctly in rare/special cases
 
 0.5     2015.10.04  

@@ -31,9 +31,9 @@ REPORT ()
 		echo "\n$2" >> ${CTRL_FILE}_${1}.lock
         if [ $EMAIL_CPU_TEMP_ENABLED -gt 0 ] && [ -e ${CTRL_FILE}_ERROR.lock ]; then 
             $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-CPU" ${CTRL_FILE}_ERROR.lock; 
-        fi
-        if [ $RUN_BEEP -gt 0 ]; then                                            # call beep when enabled and ERROR condition set
-            $SYSTEM_SCRIPT_DIR/beep CPU_ERROR &
+            if [ $RUN_BEEP -gt 0 ]; then                                        # call beep when enabled and ERROR condition set
+                $SYSTEM_SCRIPT_DIR/beep CPU_ERROR &
+            fi
         fi
 	fi
 }
@@ -45,7 +45,7 @@ GET_TEMPERATURE ()
 	while [ $x -lt $CPU_NUMBER ]
 	do
         TEMPERATURE=`sysctl -q -n dev.cpu.${x}.temperature | awk '{gsub("C", ""); print}'`
-#echo 1 "actual temp ${TEMPERATURE}, warning temp ${CPU_TEMP_WARNING} minus $HYSTERESIS = `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`"
+#echo 1 "CPU${x} actual temp ${TEMPERATURE}, warning temp ${CPU_TEMP_WARNING} minus $HYSTERESIS = `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`"
         COMPARE ${TEMPERATURE} ${CPU_TEMP_SEVERE}                               # test if temperature is >= CPU_TEMP_SEVERE
         if [ $? -ge 1 ]; then 
             MSG_TEMP="<font color='red'>${TEMPERATURE}&nbsp;&deg;C</font>"
