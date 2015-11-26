@@ -32,6 +32,7 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
+// 2015.11.26   v0.5.1      release
 // 2015.11.24   v0.5.1b6    N: Web installer
 // 2015.11.24   v0.5.1b5    N: CPU temperature monitoring and reporting - monitor CPU temps and optional email reporting like degraded pools etc.
 //                          N: buzzer for degraded pools, CPU temperatures
@@ -116,7 +117,7 @@
 //                          N: UPS view on/off if UPS is enabled/disabled 
 // 2014.04.15   v0.4.3      first public release
 
-$v = "v0.5.1b6";                          // extension version
+$v = "v0.5.1";            // extension version
 $appname = "Extended GUI";
 
 require_once("config.inc");

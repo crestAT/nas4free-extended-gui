@@ -1,5 +1,5 @@
 ﻿Version Date        Description
-0.5.1b6 2015.11.26  N: Web installer
+0.5.1   2015.11.26  N: Web installer
                     N: CPU temperature monitoring and reporting - monitor CPU temps and optional email reporting like degraded pools etc.
                     N: buzzer for degraded pools, CPU temperatures, button to clear alarms on STATUS | SYSTEM
                     N: spinner for USB Automount and CIFS/SMB purge on STATUS | SYSTEM
