@@ -215,6 +215,8 @@ if ($_POST) {
     if (isset($_POST['automount_save']) && $_POST['automount_save']) {
         $config['extended-gui']['automount'] = isset($_POST['automount']) ? true : false;
         $savemsg = get_std_save_message(write_config());
+        require("{$config['extended-gui']['rootfolder']}extended-gui-stop.php");
+        require("{$config['extended-gui']['rootfolder']}extended-gui-start.php");
     }   // end of automount_save
 }   // end of post	
 
@@ -282,7 +284,7 @@ function purge_enable_change(enable_change) {
 			<?php html_separator();?>
             <?php html_titleline_checkbox("automount", gettext("USB Automount"), isset($config['extended-gui']['automount']) ? true : false, gettext("Enable"), "");?>
     			<?php html_text("automount_description", gettext("Description"), "Automatically mounting of USB drives and CD/DVDs. Un-mount / re-mount these drives via WebGUI function buttons (on ".gettext("Status")." | ".gettext("System").").");?>
-    			<?php html_text("automount_prerequisites", gettext("Prerequisite"), "USB drives will be mounted and shown with their device names (e.g. da1s1) on ".gettext("Status")." | ".gettext("System").". Alternatively one can create a file in the root directory of each USB drive with the extension '*.<b>mounted</b>' (e.g. USB2000GB.mounted). The next time this USB drive will be mounted the file name will be used as an alias for the mount point and shown at ".gettext("Status")." | ".gettext("System").".");?>
+    			<?php html_text("automount_prerequisites", gettext("Prerequisite"), "For NTFS drives it is necessary to add <b>fuse_load=YES</b> to <b>loader.conf</b> and <b>fusefs_enable=YES</b> to <b>rc.conf</b> and restart the server.<br /><br />USB drives will be mounted and shown with their device names (e.g. da1s1) on ".gettext("Status")." | ".gettext("System").". Alternatively one can create a file in the root directory of each USB drive with the extension '*.<b>mounted</b>' (e.g. USB2000GB.mounted). The next time this USB drive is mounted the file name will be used as an alias for the mount point and shown as USB2000GB at ".gettext("Status")." | ".gettext("System").".");?>
             </table>
             <br /><?php html_remark("automount_warning", gettext("Warning"), "<b>Always un-mount drives before you detach them from the system, otherwise this could lead to serious problems. Use the USB Automount function on your own risc!</b><br />");?>
             <br /><input id="automount_save" name="automount_save" type="submit" class="formbtn" value="<?=gettext("Save");?>" />

@@ -32,6 +32,14 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
+// 2015.11.29   v0.5.1.1    C: updated index.php to Page base: 2115
+//                          C: USB Automount - further improvements
+//                          C: USB Automount - description and prerequisite:
+//                              loader.conf: fuse_load       YES 
+//                              rc.conf:     fusefs_enable   YES  
+//                          F: USB Automount - activation in WebGUI must recreate CONFIG2
+//                          F: USB devices and root, var and usr filesystems were not displayed on systems only with ZFS
+//                          F: save new command script path for updates with backuped config.xml
 // 2015.11.26   v0.5.1      release
 // 2015.11.24   v0.5.1b6    N: Web installer
 // 2015.11.24   v0.5.1b5    N: CPU temperature monitoring and reporting - monitor CPU temps and optional email reporting like degraded pools etc.
@@ -117,7 +125,7 @@
 //                          N: UPS view on/off if UPS is enabled/disabled 
 // 2014.04.15   v0.4.3      first public release
 
-$v = "v0.5.1";            // extension version
+$v = "v0.5.1.1";            // extension version
 $appname = "Extended GUI";
 
 require_once("config.inc");
@@ -190,6 +198,18 @@ else {
     $config['extended-gui']['version'] = exec("cat {$install_dir}version.txt");
     $config['extended-gui']['product_version'] = "-----";
     $config['extended-gui']['rootfolder'] = $install_dir;
+    $i = 0;
+    if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
+        for ($i; $i < count($config['rc']['postinit']['cmd']);) {
+            if (preg_match('/extended-gui/', $config['rc']['postinit']['cmd'][$i])) break; ++$i; }
+    }
+    $config['rc']['postinit']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_start.php";
+    $i =0;
+    if ( is_array($config['rc']['shutdown'] ) && is_array( $config['rc']['shutdown']['cmd'] ) ) {
+        for ($i; $i < count($config['rc']['shutdown']['cmd']); ) {
+            if (preg_match('/extended-gui/', $config['rc']['shutdown']['cmd'][$i])) break; ++$i; }
+    }
+    $config['rc']['shutdown']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_stop.php";
     write_config();
     require_once("{$config['extended-gui']['rootfolder']}extended-gui-stop.php");
     require_once("{$config['extended-gui']['rootfolder']}extended-gui-start.php");

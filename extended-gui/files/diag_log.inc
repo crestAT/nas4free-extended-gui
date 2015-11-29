@@ -54,6 +54,8 @@ $clogdir = rc_getenv_ex("clog_logdir", $g['varlog_path']);
 $rsync_client_logfile = rc_getenv_ex("rsync_client_logfile", "{$g['varlog_path']}/rsync_client.log");
 $rsync_local_logfile = rc_getenv_ex("rsync_local_logfile", "{$g['varlog_path']}/rsync_local.log");
 $fuppes_logfile = rc_getenv_ex("fuppes_logfile", "{$g['varlog_path']}/fuppes.log");
+$minidlna_logdir = rc_getenv_ex("minidlna_logdir", "{$g['varlog_path']}");
+$minidlna_logfile = "$minidlna_logdir/minidlna.log";
 $mtdaapd_logfile = rc_getenv_ex("mtdaapd_logfile", "{$g['varlog_path']}/mt-daapd.log");
 $proftpd_modban_logfile = rc_getenv_ex("proftpd_modban_banlog", "{$g['varlog_path']}/proftpd/ban.log");
 
@@ -225,7 +227,7 @@ $loginfo = array(
 	array(
 		"visible" => TRUE,
 		"desc" => gettext("UPnP/DLNA - MiniDLNA"),
-		"logfile" => "{$clogdir}/minidlna.log",
+		"logfile" =>  $minidlna_logfile,
 		"filename" => "minidlna.log",
 		"type" => "plain",
 		"pattern" => "/^\[(.*?)\]\s+(.*?)\..*?:\d+:\s+.*?:\s+(.*)$/",

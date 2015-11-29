@@ -34,7 +34,7 @@
 	of the authors and should not be interpreted as representing official policies,
 	either expressed or implied, of the NAS4Free Project.
 */
-// Page base: r2067 -> revisited pool values alloc, used, avail, free !!!
+// Page base: r2115
 // Configure page permission
 $pgperm['allowuser'] = TRUE;
 
@@ -189,6 +189,7 @@ function get_mount_usage() {
     if (isset($config['extended-gui']['boot'])) { $sharenames[] = 'A_OS'; }
     if (isset($config['extended-gui']['varfs'])) { $sharenames[] = 'A_VAR'; }
     if (isset($config['extended-gui']['usrfs'])) { $sharenames[] = 'A_USR'; }
+//print_r ($rawdata);           //debugging
 	foreach ($rawdata as $line) {
 		if (0 == preg_match("/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+%)\s+(.+)/", $line, $aline))
 			continue;
@@ -199,7 +200,7 @@ function get_mount_usage() {
 		$capacity = chop($aline[5]);
 		$mountpoint = chop($aline[6]);
 
-		if (is_array($config['mounts']) && is_array($config['mounts']['mount'])) {
+//systems only with zfs 		if (is_array($config['mounts']) && is_array($config['mounts']['mount'])) {
 			foreach ($sharenames as $mountcfg) {
                 if (isset($config['extended-gui']['boot']) && ($mountpoint == "/")) { $mountpoint = "/mnt/A_OS"; }
                 if (isset($config['extended-gui']['varfs']) && ($mountpoint == "/var")) { $mountpoint = "/mnt/A_VAR"; }
@@ -217,7 +218,7 @@ function get_mount_usage() {
                     $result[$mountpoint]['tooltip']['available'] = sprintf(gettext("%sB available of %sB"), $avail, $size);
  				}
 			}
-		}
+//		}
 	}
 	return $result;
 }
@@ -313,6 +314,12 @@ function tblrow ($name, $value, $symbol = null, $id = null) {
 
 	if($symbol == 'Hz')
 		$value = sprintf("%d", $value);
+
+	
+	if ($symbol == 'pre') {
+		$value = '<pre>'.$value;
+		$symbol = '</pre>';
+	}
 
 	print(<<<EOD
 	<td>
@@ -456,8 +463,8 @@ $(document).ready(function(){
 					$('#diskusage_'+pu.id+'_bar_free').attr('title', pu['tooltip'].available);
 					$('#diskusage_'+pu.id+'_capacity').text(pu.capacity);
 					$('#diskusage_'+pu.id+'_total').text(pu.size);
-					$('#diskusage_'+pu.id+'_used').text(pu.used);
-					$('#diskusage_'+pu.id+'_free').text(pu.avail);
+					$('#diskusage_'+pu.id+'_used').text(pu.alloc);
+					$('#diskusage_'+pu.id+'_free').text(pu.free);
           			for (var idx1 = 0; idx1 < pu.devs.length; idx1++) {
         				var devs = pu.devs[idx1];
      					$('#diskusage_'+pu.id+'_'+idx1+'_device').html(devs.device);
@@ -780,7 +787,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
     		<?php
     		    $diskusage = get_mount_usage();
 //print_r($diskusage);
-     		    if (!empty($diskusage)) {
+//systems only with zfs     		    if (!empty($diskusage) or (file_exists('/var/scripts/USBMP')) or ($config['extended-gui']['boot']) == 1) {
     		      	array_sort_key($diskusage, "name");
     		      	$index = 0;
     				foreach ($diskusage as $diskusagek => $diskusagev) {
@@ -824,7 +831,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
                         echo "</td><td style='white-space:nowrap; width:60px;'><span name='diskusage_{$ctrlid}_space' id='diskusage_{$ctrlid}_space'>{$diskusagev['space']}</span>";
     					echo "</td><td style='white-space:nowrap; width:50%;'>&nbsp;&nbsp;</td></tr>";
     				}
-    			}
+//    			}
 
 				$zfspools = zfs_get_pool_list();
 				if (!empty($zfspools)) {
@@ -833,6 +840,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 					$index = 0;
 					foreach ($zfspools as $poolk => $poolv) {
 						$ctrlid = $poolv['name'];
+						$ctrlid = preg_replace('/[-\.: ]/', '_', $ctrlid);
                         $mountpoint_details = explode('##', exec("cat /tmp/extended-gui_{$poolv['name']}.smart"));
                         $poolv['space'] = $mountpoint_details[1];
                         $pool_details = explode('#', $mountpoint_details[0]);

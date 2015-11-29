@@ -1,4 +1,13 @@
 ﻿Version Date        Description
+0.5.1.1 2015.11.29  C: updated index.php to Page base: 2115
+                    C: USB Automount - further improvements
+                    C: USB Automount - description and prerequisite:
+                        loader.conf: fuse_load       YES
+                        rc.conf:     fusefs_enable   YES
+                    F: USB Automount - activation in WebGUI must recreate CONFIG2
+                    F: USB devices and root, var and usr filesystems were not displayed on systems only with ZFS
+                    F: save new command script path for updates with backuped config.xml
+
 0.5.1   2015.11.26  N: Web installer
                     N: CPU temperature monitoring and reporting - monitor CPU temps and optional email reporting like degraded pools etc.
                     N: buzzer for degraded pools, CPU temperatures, button to clear alarms on STATUS | SYSTEM

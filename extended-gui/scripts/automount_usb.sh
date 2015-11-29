@@ -79,9 +79,10 @@ A_MOUNT ()
 			if [ $? -ne 0 ]
 			then
 # check if disk was already auto mounted OR disk mount failed (!), if YES do nothing
-#echo stage 4
-				if [ ! -e /mnt/$DEVICE.automount* ]
+echo stage 4
+				if [ ! -e /mnt/$DEVICE.automount ] && [ ! -e /mnt/$DEVICE.automount.failed ]
 				then
+echo stage 4.1 no automount AND no automount.failed
 # mount as $DEVICE - works ONLY for disks with ONE partition
 					if [ ! -e /mnt/$DEVICE ]; then mkdir -m 777 /mnt/$DEVICE; fi
 					chmod 777 /mnt/$DEVICE
@@ -111,9 +112,10 @@ A_MOUNT ()
 						*)		FS_TYPE="unknown";;
 					esac
                     MOUNT_CMD="${MOUNT_CMD}${FS_TYPE}";
-#echo "stage 5 FS_TYPE $FS_TYPE for DEVICE /dev/$1$x MP = /mnt/$DEVICE"
+echo "stage 5 FS_TYPE $FS_TYPE for DEVICE /dev/$1$x MP = /mnt/$DEVICE"
 #fdisk /dev/$1$x
 					if [ "$FS_TYPE" == "unknown" ]; then 
+echo "stage 5.1 FS_TYPE $FS_TYPE for DEVICE /dev/$1$x MP = /mnt/$DEVICE - FAILED"
                         FAILED "File system type with sysid $TEST UNKNOWN - automount for $PART_NAME not possible"
                         rmdir /mnt/$DEVICE
 					else
@@ -123,26 +125,29 @@ A_MOUNT ()
                             /usr/local/bin/mount.exfat $PART_NAME /mnt/$DEVICE  ;
 #                        else mount -o sync -t $FS_TYPE $PART_NAME /mnt/$DEVICE  >> $LOG_MSG_NOTIFY 2>&1 ; fi
                         else 
-#echo "stage 6 $MOUNT_CMD $PART_NAME /mnt/$DEVICE"
+echo "stage 6 $MOUNT_CMD $PART_NAME /mnt/$DEVICE"
                             $MOUNT_CMD $PART_NAME /mnt/$DEVICE  >> $LOG_MSG_NOTIFY 2>&1 ; 
                         fi
 						MOUNT_ERROR=$?
+echo "stage 6.1 $MOUNT_CMD $PART_NAME /mnt/$DEVICE - result = $MOUNT_ERROR"
 						if [ $MOUNT_ERROR -ne 0 ]; then 
                             FAILED "Partition $PART_NAME mount error $MOUNT_ERROR - mount for $DEVICE failed"
-#echo "stage 7 FAILED Partition $PART_NAME mount return code $MOUNT_ERROR - mount for $DEVICE failed"
+echo "stage 7.1 FAILED Partition $PART_NAME mount return code $MOUNT_ERROR - mount for $DEVICE failed"
                             rmdir /mnt/$DEVICE
                             EXITCODE=27
 						else
-#echo "stage 7 SUCCESS Partition $PART_NAME mounted"
+echo "stage 7.2 SUCCESS Partition $PART_NAME mounted"
 							if [ ! -e /mnt/$DEVICE/*.mounted ]; then 
-								chmod 777 /mnt/$DEVICE
                                 NOTIFY INFO "Partition $PART_NAME mounted as $DEVICE with file system type $TEST $FS_TYPE"
-                                NOTIFY INFO "No diskname as alias available for your device $DEVICE - you could create a file with the command \"touch /mnt/${DEVICE}/YourMountpointName.mounted\" (e.g. USBxxxxGB.mounted) in the root directory on this drive (current mountpoint $DEVICE). After that re-mount all USB-drives to see this device with alias in SYSTEM | STATUS."
+								if [ "$TEST" != "cdrom" ]; then 
+                                    chmod 777 /mnt/$DEVICE
+                                    NOTIFY INFO "No diskname as alias available for device $DEVICE - you could create a file with the command \"touch /mnt/${DEVICE}/YourMountpointName.mounted\" (e.g. USBxxxxGB.mounted) in the root directory on this drive (current mountpoint $DEVICE). After that re-mount all USB-drives to see this device with alias in SYSTEM | STATUS."
+                                fi
                                 CREATE_DISPLAY ${DEVICE} ${DEVICE}
 							else
 # fetch diskname 
 								DISK_NAME=`ls /mnt/$DEVICE/*.mounted | cut -d/ -f4 | cut -d. -f1`
-#echo "stage 8 DISK_NAME $DISK_NAME"
+echo "stage 8 DISK_NAME $DISK_NAME"
 								chmod 000 /mnt/$DEVICE/$DISK_NAME.mounted				# to make sure that the file survives
 								umount /mnt/$DEVICE
 								if [ $? -eq 0 ]; then rmdir /mnt/$DEVICE; fi
