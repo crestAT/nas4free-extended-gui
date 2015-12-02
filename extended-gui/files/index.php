@@ -34,7 +34,7 @@
 	of the authors and should not be interpreted as representing official policies,
 	either expressed or implied, of the NAS4Free Project.
 */
-// Page base: r2115
+// Page base: r2118
 // Configure page permission
 $pgperm['allowuser'] = TRUE;
 
@@ -249,6 +249,37 @@ function get_disk_usage() {
 	}
 	return $value;
 }
+
+// needed for compatibility reasons for 9.3 (up to 9.3.0.2.1955) and 10.1 releases
+if (!function_exists('html_textinfo')) {
+    // derived from: /etc/inc/wui.inc
+    class HTMLTextInfo extends HTMLBaseControl {
+    	function __construct($ctrlname, $title, $text) {
+    		$this->SetCtrlName($ctrlname);
+    		$this->SetTitle($title);
+    		$this->SetValue($text);
+    	}
+    
+    	function Render() {
+    		$ctrlname = $this->GetCtrlName();
+    		$title = $this->GetTitle();
+    		$class1 = "vncellt";
+    		$class2 = "listr";
+    		$text = $this->GetValue();
+    
+    		echo "<tr id='{$ctrlname}_tr'>\n";
+    		echo "	<td width='22%' class='{$class1}'>{$title}</td>\n";
+    		echo "	<td width='78%' class='{$class2}'><span id='{$ctrlname}'>{$text}</span></td>\n";
+    		echo "</tr>\n";
+    	}
+    }
+    
+    // derived from: /usr/local/www/guiconfig.inc
+    function html_textinfo($ctrlname, $title, $text) {
+    	$ctrl = new HTMLTextInfo($ctrlname, $title, $text);
+    	$ctrl->Render();
+    }
+} 
 
 if (is_ajax()) {
 	$sysinfo = system_get_sysinfo();

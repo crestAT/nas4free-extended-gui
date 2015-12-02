@@ -32,6 +32,9 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
+// v0.5.1.2     2015.12.02  C: index.php: Page base: 2118
+//                          C: index.php: added function html_textinfo and class HTMLTextInfo for compatibility reasons (9.3 and older 10.x releases)
+//                          F: avoid multiple SSH entries if CIFS/SMB is disabled
 // 2015.11.29   v0.5.1.1    C: updated index.php to Page base: 2115
 //                          C: USB Automount - further improvements
 //                          C: USB Automount - description and prerequisite:
@@ -125,7 +128,7 @@
 //                          N: UPS view on/off if UPS is enabled/disabled 
 // 2014.04.15   v0.4.3      first public release
 
-$v = "v0.5.1.1";            // extension version
+$v = "v0.5.1.2";            // extension version
 $appname = "Extended GUI";
 
 require_once("config.inc");
