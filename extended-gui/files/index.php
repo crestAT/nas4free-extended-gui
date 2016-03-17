@@ -2,8 +2,11 @@
 /*
 	index.php
 
-	Part of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2015 The NAS4Free Project <info@nas4free.org>.
+    Copyright (c) 2014 - 2016 Andreas Schmidhuber
+    All rights reserved.
+
+	Portions of NAS4Free (http://www.nas4free.org).
+	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
 	All rights reserved.
 
 	Portions of freenas (http://www.freenas.org).
@@ -34,7 +37,7 @@
 	of the authors and should not be interpreted as representing official policies,
 	either expressed or implied, of the NAS4Free Project.
 */
-// Page base: r2118
+// Page base: r2407
 // Configure page permission
 $pgperm['allowuser'] = TRUE;
 
@@ -42,7 +45,7 @@ require("auth.inc");
 require("guiconfig.inc");
 require("zfs.inc");
 
-$pgtitle = array(gettext("System information"));
+$pgtitle = array(gettext("System Information"));
 $pgtitle_omit = true;
 
 if (!isset($config['vinterfaces']['carp']) || !is_array($config['vinterfaces']['carp']))
@@ -162,6 +165,38 @@ function get_vbox_vminfo($user, $uuid) {
 	return $vminfo;
 }
 
+function get_xen_info() {
+	$info = array();
+	unset($rawdata);
+	mwexec2("/usr/local/sbin/xl info", $rawdata);
+	foreach ($rawdata as $line) {
+		if (preg_match("/^([^:]+)\s+:\s+(.+)\s*$/", $line, $match)) {
+			$a = array();
+			$a['raw'] = $match[0];
+			$a['key'] = trim($match[1]);
+			$a['value'] = trim($match[2]);
+			$info[$a['key']] = $a;
+		}
+	}
+	return $info;
+}
+
+function get_xen_console($domid) {
+	$info = array();
+	unset($rawdata);
+	mwexec2("/usr/local/bin/xenstore-ls /local/domain/{$domid}/console", $rawdata);
+	foreach ($rawdata as $line) {
+		if (preg_match("/^([^=]+)\s+=\s+\"(.+)\"$/", $line, $match)) {
+			$a = array();
+			$a['raw'] = $match[0];
+			$a['key'] = trim($match[1]);
+			$a['value'] = trim($match[2]);
+			$info[$a['key']] = $a;
+		}
+	}
+	return $info;
+}
+
 /* 
 function get_cputemp() {
     $userinfo = exec("cat /tmp/extended-gui_cpu_check.log");
@@ -169,6 +204,16 @@ function get_cputemp() {
 }
  */
  
+function get_indexrefresh() {
+    if (is_file("/tmp/extended-gui_index.refresh")) {
+        unlink("/tmp/extended-gui_index.refresh");
+        write_log("extended-gui: autmount refresh");
+        $indexrefresh = "automount";
+    }
+    else $indexrefresh = "";
+    return $indexrefresh;
+}
+
 function get_userinfo() {
     $userinfo = exec("cat /tmp/extended-gui_user_online.log");
     return $userinfo;
@@ -179,27 +224,21 @@ function get_hostsinfo() {
     return $hostsinfo;
 }
 
-function get_mount_usage() {
+function egui_get_mount_usage() {
 	global $config, $g;
 
 	$result = array();
-
 	exec("/bin/df -h", $rawdata);
-    exec("df -h | awk '/\/dev\// && /\/mnt\// && !/\/dev\/zvol\// {print $6}'| cut -d/ -f3", $sharenames);
-    if (isset($config['extended-gui']['boot'])) { $sharenames[] = 'A_OS'; }
-    if (isset($config['extended-gui']['varfs'])) { $sharenames[] = 'A_VAR'; }
-    if (isset($config['extended-gui']['usrfs'])) { $sharenames[] = 'A_USR'; }
-//print_r ($rawdata);           //debugging
+    exec("df -h | awk '/\/dev\// && /\/mnt\// {print $6}'| cut -d/ -f3", $sharenames);
+    if (!empty($config['extended-gui']['shares'])) foreach($config['extended-gui']['shares'] as $a_share) $sharenames[] = $a_share; // put file systems and datasets in sharenames
 	foreach ($rawdata as $line) {
-		if (0 == preg_match("/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+%)\s+(.+)/", $line, $aline))
-			continue;
+		if (0 == preg_match("/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+%)\s+(.+)/", $line, $aline)) continue;
 		$filesystem = chop($aline[1]);
 		$size = chop($aline[2]);
 		$used = chop($aline[3]);
 		$avail = chop($aline[4]);
 		$capacity = chop($aline[5]);
 		$mountpoint = chop($aline[6]);
-
 //systems only with zfs 		if (is_array($config['mounts']) && is_array($config['mounts']['mount'])) {
 			foreach ($sharenames as $mountcfg) {
                 if (isset($config['extended-gui']['boot']) && ($mountpoint == "/")) { $mountpoint = "/mnt/A_OS"; }
@@ -207,44 +246,32 @@ function get_mount_usage() {
                 if (isset($config['extended-gui']['usrfs']) && ($mountpoint == "/usr/local")) { $mountpoint = "/mnt/A_USR"; }
 				if (0 == strcmp($mountpoint, "{$g['media_path']}/{$mountcfg}")) {
 					$result[$mountpoint] = array();
+                    $result[$mountpoint]['id'] = str_replace('/', '', $mountcfg);;  // derived from get_disk_usage
 					$result[$mountpoint]['mountpoint'] = $mountpoint;
 					$result[$mountpoint]['name'] = $mountcfg;
 					$result[$mountpoint]['filesystem'] = $filesystem;
 					$result[$mountpoint]['capacity'] = $capacity;
-					$result[$mountpoint]['avail'] = $avail;
-					$result[$mountpoint]['used'] = $used;
+                    $result[$mountpoint]['percentage'] = rtrim($capacity, "%");     // derived from get_disk_usage
 					$result[$mountpoint]['size'] = $size;
-                    $result[$mountpoint]['tooltip']['used'] = sprintf(gettext("%sB used of %sB"), $used, $size);
-                    $result[$mountpoint]['tooltip']['available'] = sprintf(gettext("%sB available of %sB"), $avail, $size);
+					$result[$mountpoint]['used'] = $used;
+					$result[$mountpoint]['avail'] = $avail;
+                    $result[$mountpoint]['capofsize'] = sprintf(gettext("%s of %sB"), $result[$mountpoint]['capacity'], $result[$mountpoint]['size']);
+                    $result[$mountpoint]['tooltip']['used'] = sprintf(gettext("%sB used of %sB"), $result[$mountpoint]['used'], $result[$mountpoint]['size']);
+                    $result[$mountpoint]['tooltip']['avail'] = sprintf(gettext("%sB available of %sB"), $result[$mountpoint]['avail'], $result[$mountpoint]['size']);
  				}
 			}
-//		}
+//systems only with zfs		}
 	}
 	return $result;
 }
 
-function get_disk_usage() {
-
+// needed for compatibility reasons for native N4F javascript code
+function egui_get_disk_usage() {
 	$value = array();
-
-	$a_diskusage = get_mount_usage();
+	$a_diskusage = egui_get_mount_usage();
 	if (is_array($a_diskusage) && (0 < count($a_diskusage))) {
 		foreach ($a_diskusage as $diskusagek => $diskusagev) {
-//			$fsid = get_mount_fsid($diskusagev['filesystem'], $diskusagek);
-			$fsid = $diskusagev['name'];
-			$diskinfo = array();
-			$diskinfo['id'] = $fsid;
-			$diskinfo['mountpoint'] = $diskusagev['mountpoint'];
-			$diskinfo['name'] = $diskusagev['name'];
-			$diskinfo['capacity'] = $diskusagev['capacity'];
-			$diskinfo['percentage'] = rtrim($diskusagev['capacity'], "%");
-			$diskinfo['size'] = $diskusagev['size'];
-			$diskinfo['used'] = $diskusagev['used'];
-			$diskinfo['avail'] = $diskusagev['avail'];
-			$diskinfo['tooltip']['used'] = sprintf(gettext("%sB used of %sB"), $diskusagev['used'], $diskusagev['size']);
-			$diskinfo['tooltip']['available'] = sprintf(gettext("%sB available of %sB"), $diskusagev['avail'], $diskusagev['size']);
-
-			$value[] = $diskinfo;
+			$value[] = $diskusagev;
 		}
 	}
 	return $value;
@@ -287,9 +314,10 @@ if (is_ajax()) {
 	$sysinfo['vipstatus'] = $vipstatus;
 	$upsinfo = get_upsinfo();
 	$sysinfo['upsinfo'] = $upsinfo;
+	$sysinfo['indexrefresh'] = get_indexrefresh();
 	$sysinfo['userinfo'] = get_userinfo();
 	$sysinfo['hostsinfo'] = get_hostsinfo();
-    $sysinfo['diskusage'] = get_disk_usage();
+    $sysinfo['diskusage'] = egui_get_disk_usage();
     if (is_array($sysinfo['diskusage'])) {
         for ($i = 0; $i < count($sysinfo['diskusage']); ++$i) {
             $mountpoint_details = explode('##', exec("cat /tmp/extended-gui_{$sysinfo['diskusage'][$i]['name']}.smart"));
@@ -413,6 +441,11 @@ if ($_POST['purge']) { exec("/var/scripts/purge.sh 0"); }
 $(document).ready(function(){
 	var gui = new GUI;
 	gui.recall(5000, 5000, 'index.php', null, function(data) {
+		if (data.indexrefresh == 'automount') location.assign("index.php");
+//        location.reload();
+		if ($('#userinfo').size() > 0) $('#userinfo').html(data.userinfo);
+		if ($('#hostsinfo').size() > 0)$('#hostsinfo').html(data.hostsinfo);
+
 		if ($('#vipstatus').size() > 0)
 			$('#vipstatus').text(data.vipstatus);
 		if ($('#system_uptime').size() > 0)
@@ -455,24 +488,21 @@ $(document).ready(function(){
 			}
 		}
 
-		if ($('#userinfo').size() > 0)
-    		$('#userinfo').html(data.userinfo);
-		if ($('#hostsinfo').size() > 0)
-    		$('#hostsinfo').html(data.hostsinfo);
-
 		if (typeof(data.diskusage) != 'undefined') {
 			for (var idx = 0; idx < data.diskusage.length; idx++) {
 				var du = data.diskusage[idx];
+//a1    don't use '/' in javascript 'id'
 				if ($('#diskusage_'+du.id+'_bar_used').size() > 0) {
 					$('#diskusage_'+du.id+'_name').text(du.name);
 					$('#diskusage_'+du.id+'_bar_used').attr('width', du.percentage + 'px');
 					$('#diskusage_'+du.id+'_bar_used').attr('title', du['tooltip'].used);
 					$('#diskusage_'+du.id+'_bar_free').attr('width', (100 - du.percentage) + 'px');
-					$('#diskusage_'+du.id+'_bar_free').attr('title', du['tooltip'].available);
+					$('#diskusage_'+du.id+'_bar_free').attr('title', du['tooltip'].avail);
 					$('#diskusage_'+du.id+'_capacity').text(du.capacity);
-					$('#diskusage_'+du.id+'_total').text(du.size);
+					$('#diskusage_'+du.id+'_capofsize').text(du.capofsize);
+					$('#diskusage_'+du.id+'_size').text(du.size);
 					$('#diskusage_'+du.id+'_used').text(du.used);
-					$('#diskusage_'+du.id+'_free').text(du.avail);
+					$('#diskusage_'+du.id+'_avail').text(du.avail);
           			for (var idx1 = 0; idx1 < du.devs.length; idx1++) {
         				var devs = du.devs[idx1];
      					$('#diskusage_'+du.id+'_'+idx1+'_device').html(devs.device);
@@ -486,24 +516,25 @@ $(document).ready(function(){
 		if (typeof(data.poolusage) != 'undefined') {
 			for (var idx = 0; idx < data.poolusage.length; idx++) {
 				var pu = data.poolusage[idx];
-				if ($('#diskusage_'+pu.id+'_bar_used').size() > 0) {
-					$('#diskusage_'+pu.id+'_name').text(pu.name);
-					$('#diskusage_'+pu.id+'_bar_used').attr('width', pu.percentage + 'px');
-					$('#diskusage_'+pu.id+'_bar_used').attr('title', pu['tooltip'].used);
-					$('#diskusage_'+pu.id+'_bar_free').attr('width', (100 - pu.percentage) + 'px');
-					$('#diskusage_'+pu.id+'_bar_free').attr('title', pu['tooltip'].available);
-					$('#diskusage_'+pu.id+'_capacity').text(pu.capacity);
-					$('#diskusage_'+pu.id+'_total').text(pu.size);
-					$('#diskusage_'+pu.id+'_used').text(pu.alloc);
-					$('#diskusage_'+pu.id+'_free').text(pu.free);
+				if ($('#poolusage_'+pu.id+'_bar_used').size() > 0) {
+					$('#poolusage_'+pu.id+'_name').text(pu.name);
+					$('#poolusage_'+pu.id+'_bar_used').attr('width', pu.percentage + 'px');
+					$('#poolusage_'+pu.id+'_bar_used').attr('title', pu['tooltip'].used);
+					$('#poolusage_'+pu.id+'_bar_free').attr('width', (100 - pu.percentage) + 'px');
+					$('#poolusage_'+pu.id+'_bar_free').attr('title', pu['tooltip'].avail);
+					$('#poolusage_'+pu.id+'_capacity').text(pu.capacity);
+					$('#poolusage_'+pu.id+'_capofsize').text(pu.capofsize);
+					$('#poolusage_'+pu.id+'_size').text(pu.size);
+					$('#poolusage_'+pu.id+'_used').text(pu.used);
+					$('#poolusage_'+pu.id+'_avail').text(pu.avail);
           			for (var idx1 = 0; idx1 < pu.devs.length; idx1++) {
         				var devs = pu.devs[idx1];
-     					$('#diskusage_'+pu.id+'_'+idx1+'_device').html(devs.device);
-    					$('#diskusage_'+pu.id+'_'+idx1+'_smart_state').html(devs.smart_state);
-    					$('#diskusage_'+pu.id+'_'+idx1+'_temp').html(devs.temp);
+     					$('#poolusage_'+pu.id+'_'+idx1+'_device').html(devs.device);
+    					$('#poolusage_'+pu.id+'_'+idx1+'_smart_state').html(devs.smart_state);
+    					$('#poolusage_'+pu.id+'_'+idx1+'_temp').html(devs.temp);
                     }
-					$('#diskusage_'+pu.id+'_space').html(pu.space);
-					$('#diskusage_'+pu.id+'_state').text(pu.health);
+					$('#poolusage_'+pu.id+'_space').html(pu.space);
+					$('#poolusage_'+pu.id+'_state').children().text(pu.health);
 				}
 			}
 		}
@@ -511,20 +542,22 @@ $(document).ready(function(){
 			for (var idx = 0; idx < data.swapusage.length; idx++) {
 				var su = data.swapusage[idx];
 				if ($('#swapusage_'+su.id+'_bar_used').size() > 0) {
+//					$('#swapusage_'+su.id+'_name').text(su.name);
 					$('#swapusage_'+su.id+'_bar_used').attr('width', su.percentage + 'px');
 					$('#swapusage_'+su.id+'_bar_used').attr('title', su['tooltip'].used);
 					$('#swapusage_'+su.id+'_bar_free').attr('width', (100 - su.percentage) + 'px');
-					$('#swapusage_'+su.id+'_bar_free').attr('title', su['tooltip'].available);
+					$('#swapusage_'+su.id+'_bar_free').attr('title', su['tooltip'].avail);
 					$('#swapusage_'+su.id+'_capacity').text(su.capacity);
-					$('#swapusage_'+su.id+'_total').text(su.total);
+					$('#swapusage_'+su.id+'_capofsize').text(su.capofsize);
+					$('#swapusage_'+su.id+'_size').text(su.size);
 					$('#swapusage_'+su.id+'_used').text(su.used);
-					$('#swapusage_'+su.id+'_free').text(su.avail);
+					$('#swapusage_'+su.id+'_avail').text(su.avail);
 				}
 			}
 		}
 		if (typeof(data.upsinfo) != 'undefined' && data.upsinfo !== null) {
 			if ($('#ups_status_disp_status').size() > 0)
-				$('#ups_status_disp_status').html(data.upsinfo.disp_status);
+				$('#ups_status_disp_status').text(data.upsinfo.disp_status);
 			var ups_id = "load";
 			var ui = data.upsinfo[ups_id];
 			if ($('#ups_status_'+ups_id+'_bar_used').size() > 0) {
@@ -615,7 +648,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
     <td class="tabcont">
     <table width="100%" border="0" cellspacing="0" cellpadding="0">
     <tr>
-        <td colspan="3" class="listtopic"><?=gettext("System information");?></td>
+        <td colspan="3" class="listtopic"><?=gettext("System Information");?></td>
     </tr>
     <tr>
         <?php if (isset($config['extended-gui']['hide_cpu_graph']) && isset($config['extended-gui']['hide_lan_graph'])) :?>
@@ -669,20 +702,26 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 	<?php html_textinfo("vipstatus", gettext("Virtual IP address"), htmlspecialchars(get_vip_status()));?>
 	<?php endif;?>
 	<?php html_textinfo("version", gettext("Version"), sprintf("<strong>%s %s</strong> (%s %s)", get_product_version(), get_product_versionname(), gettext("revision"), get_product_revision()));?>
-	<?php html_textinfo("builddate", gettext("Build date"), get_product_buildtime());?>
+	<?php html_textinfo("builddate", gettext("Compiled"), htmlspecialchars(get_datetime_locale(get_product_buildtimestamp())));?>
 	<?php
 		exec("/sbin/sysctl -n kern.osrevision", $osrevision);
 		exec("/sbin/sysctl -n kern.version", $osversion);
 	?>
 	<?php html_textinfo("platform_os", gettext("Platform OS"), sprintf("FreeBSD Revision: %s<br/>%s",  $osrevision[0], $osversion[0]));?>
 	<?php html_textinfo("platform", gettext("Platform"), sprintf(gettext("%s on %s"), $g['fullplatform'], $cpuinfo['model']));?>
-	<?php html_textinfo("system", gettext("System"), sprintf("%s %s", htmlspecialchars($smbios['planar']['maker']), htmlspecialchars($smbios['planar']['product'])));?>
+	<?php
+		if (!empty($smbios['planar'])) {
+			html_textinfo("system", gettext("System"), sprintf("%s %s", htmlspecialchars($smbios['planar']['maker']), htmlspecialchars($smbios['planar']['product'])));
+		} else {
+			html_textinfo("system", gettext("System"), sprintf("%s %s", htmlspecialchars($smbios['system']['maker']), htmlspecialchars($smbios['system']['product'])));
+		}
+	?>
 	<?php html_textinfo("system_bios", gettext("System bios"), sprintf("%s %s %s %s", htmlspecialchars($smbios['bios']['vendor']), gettext("version:"), htmlspecialchars($smbios['bios']['version']), htmlspecialchars($smbios['bios']['reldate'])));?>
-	<?php html_textinfo("system_datetime", gettext("System time"), htmlspecialchars(shell_exec("date")));?>
+	<?php html_textinfo("system_datetime", gettext("System time"), htmlspecialchars(get_datetime_locale()));?>
 	<?php html_textinfo("system_uptime", gettext("System uptime"), htmlspecialchars(system_get_uptime()));?>
     <?php if (Session::isAdmin()):?>
 		<?php if ($config['lastchange']):?>
-			<?php html_textinfo("last_config_change", gettext("Last config change"), htmlspecialchars(date("D M j G:i:s T Y", $config['lastchange'])));?>
+			<?php html_textinfo("last_config_change", gettext("System last config change"), htmlspecialchars(get_datetime_locale($config['lastchange'])));?>
 		<?php endif;?>
 				<?php if (!empty($cpuinfo['temperature2'])):
 					echo "<tr>";
@@ -762,39 +801,36 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 			<input style="padding: 0; border: 0; background-color:#FCFCFC;" size="30" name="memusage" id="memusage" value="<?=sprintf(gettext("%d%% of %dMiB"), $percentage, round($raminfo['physical'] / 1024 / 1024));?>" />
 			</td>
 		</tr>
-		<?php $swapinfo = system_get_swap_info(); if (!empty($swapinfo)):?>
+		<?php $a_swapusage = get_swap_usage(); if (!empty($a_swapusage)):?>
 		<tr>
 			<td width="25%" class="vncellt"><?=gettext("Swap usage");?></td>
 			<td width="75%" class="listr">
 			<table width="100%" border="0" cellspacing="0" cellpadding="1">
 			<?php
-				array_sort_key($swapinfo, "device");
-				$ctrlid = 0;
-				foreach ($swapinfo as $swapk => $swapv) {
-                    $swapv['device'] = str_replace("/dev/", "", trim($swapv['device']));
-					$percent_used = rtrim($swapv['capacity'], "%");
-					$tooltip_used = sprintf(gettext("%sB used of %sB"), $swapv['used'], $swapv['total']);
-					$tooltip_available = sprintf(gettext("%sB available of %sB"), $swapv['avail'], $swapv['total']);
+				$index = 0;
+				foreach ($a_swapusage as $r_swapusage) {
+					$ctrlid = $r_swapusage['id'];
+					$percent_used = $r_swapusage['percentage'];
+					$tooltip_used = $r_swapusage['tooltip']['used'];
+					$tooltip_avail = $r_swapusage['tooltip']['avail'];
+					$r_swapusage['name'] = str_replace("/dev/", "", trim($r_swapusage['name']));
 
 					echo "<tr><td nowrap><div id='swapusage'>";
 					echo "<img src='bar_left.gif' class='progbarl' alt='' />";
 					echo "<img src='bar_blue.gif' name='swapusage_{$ctrlid}_bar_used' id='swapusage_{$ctrlid}_bar_used' width='{$percent_used}' class='progbarcf' title='{$tooltip_used}' alt='' />";
-					echo "<img src='bar_gray.gif' name='swapusage_{$ctrlid}_bar_free' id='swapusage_{$ctrlid}_bar_free' width='" . (100 - $percent_used) . "' class='progbarc' title='{$tooltip_available}' alt='' />";
+					echo "<img src='bar_gray.gif' name='swapusage_{$ctrlid}_bar_free' id='swapusage_{$ctrlid}_bar_free' width='" . (100 - $percent_used) . "' class='progbarc' title='{$tooltip_avail}' alt='' />";
 					echo "<img src='bar_right.gif' class='progbarr' alt='' /> ";
-					echo sprintf(gettext("%s of %sB"),
-						"&nbsp;<span name='swapusage_{$ctrlid}_capacity' id='swapusage_{$ctrlid}_capacity' class='capacity'>{$swapv['capacity']}</span>",
-						$swapv['total']);
+					echo "<span name='swapusage_{$ctrlid}_capofsize' id='swapusage_{$ctrlid}_capofsize' class='capofsize'>{$r_swapusage['capofsize']}</span>";
 					echo " || ";
 					echo sprintf(gettext("Device: %s | Total: %s | Used: %s | Free: %s"),
-						"<span name='swapusage_{$ctrlid}_device' id='swapusage_{$ctrlid}_device' class='device'>{$swapv['device']}</span>",
-						"<span name='swapusage_{$ctrlid}_total' id='swapusage_{$ctrlid}_total' class='total'>{$swapv['total']}</span>",
-						"<span name='swapusage_{$ctrlid}_used' id='swapusage_{$ctrlid}_used' class='used' style='color:blue'>{$swapv['used']}</span>",
-						"<span name='swapusage_{$ctrlid}_free' id='swapusage_{$ctrlid}_free' class='free' style='color:green'>{$swapv['avail']}</span>");
+						"<span name='swapusage_{$ctrlid}_name' id='swapusage_{$ctrlid}_name' class='name'>{$r_swapusage['name']}</span>",
+						"<span name='swapusage_{$ctrlid}_size' id='swapusage_{$ctrlid}_size' class='size'>{$r_swapusage['size']}</span>",
+						"<span name='swapusage_{$ctrlid}_used' id='swapusage_{$ctrlid}_used' class='used' style='color:blue'>{$r_swapusage['used']}</span>",
+						"<span name='swapusage_{$ctrlid}_avail' id='swapusage_{$ctrlid}_avail' class='avail' style='color:green'>{$r_swapusage['avail']}</span>");
 					echo "</div></td></tr>";
 
-					$ctrlid++;
-					if ($ctrlid < count($swapinfo))
-						echo "<tr><td><hr size='1' /></td></tr>";
+					if (++$index < count($a_swapusage))
+						echo "<tr><td><hr size='1' /></td></tr>\n";
 				}
 			?>
 			</table></td>
@@ -808,7 +844,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 				$loadaverage = substr(strrchr($result[0], "load averages:"), 15);
 				?>
 				<input style="padding: 0; border: 0; background-color:#FCFCFC;" size="14" name="loadaverage" id="loadaverage" value="<?=$loadaverage;?>" />
-				<?="<small>[<a href='status_process.php'>".gettext("Show process information")."</a></small>]";?>
+				<?="<small>[<a href='status_process.php'>".gettext("Show Process Information")."</a></small>]";?>
 			</td>
 		</tr>
 		<tr>
@@ -816,13 +852,11 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
     	    <td class="listr" colspan="2">
             <table border="0" cellspacing="0" cellpadding="1">
     		<?php
-    		    $diskusage = get_mount_usage();
-//print_r($diskusage);
-//systems only with zfs     		    if (!empty($diskusage) or (file_exists('/var/scripts/USBMP')) or ($config['extended-gui']['boot']) == 1) {
-    		      	array_sort_key($diskusage, "name");
+    		    $a_diskusage = egui_get_mount_usage();
+    		      	array_sort_key($a_diskusage, "name");
     		      	$index = 0;
-    				foreach ($diskusage as $diskusagek => $diskusagev) {
-			            $ctrlid = $diskusagev['name'];
+    				foreach ($a_diskusage as $diskusagek => $diskusagev) {
+			            $ctrlid = str_replace('/', '', $diskusagev['name']);     // remove '/' to get javascript running
                         $mountpoint_details = explode('##', exec("cat /tmp/extended-gui_{$diskusagev['name']}.smart"));
                         $diskusagev['space'] = $mountpoint_details[1];
                         $pool_details = explode('#', $mountpoint_details[0]);
@@ -833,22 +867,21 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
                             $a_pool_details['temp'] = $smart_details[2];
                             $diskusagev['devs'][] = $a_pool_details;
                         }
-    					$percent_used = rtrim($diskusagev['capacity'],"%");
-    					$tooltip_used = sprintf(gettext("%sB used of %sB"), $diskusagev['used'], $diskusagev['size']);
-    					$tooltip_available = sprintf(gettext("%sB available of %sB"), $diskusagev['avail'], $diskusagev['size']);
+    					$percent_used = $diskusagev['percentage'];
+						$tooltip_used = $diskusagev['tooltip']['used'];
+						$tooltip_avail = $diskusagev['tooltip']['avail'];
     					echo "<tr style='height:22px'><td><div id='diskusage'>";
     					echo "<span name='diskusage_{$ctrlid}_name' id='diskusage_{$ctrlid}_name' class='name'>{$diskusagev['name']}</span>";
     					echo "</td><td nowrap>&nbsp;&nbsp;<img src='bar_left.gif' class='progbarl' alt='' />";
     					echo "<img src='bar_blue.gif' name='diskusage_{$ctrlid}_bar_used' id='diskusage_{$ctrlid}_bar_used' width='{$percent_used}' class='progbarcf' title='{$tooltip_used}' alt='' />";
-    					echo "<img src='bar_gray.gif' name='diskusage_{$ctrlid}_bar_free' id='diskusage_{$ctrlid}_bar_free' width='" . (100 - $percent_used) . "' class='progbarc' title='{$tooltip_available}' alt='' />";
+    					echo "<img src='bar_gray.gif' name='diskusage_{$ctrlid}_bar_free' id='diskusage_{$ctrlid}_bar_free' width='" . (100 - $percent_used) . "' class='progbarc' title='{$tooltip_avail}' alt='' />";
     					echo "<img src='bar_right.gif' class='progbarr' alt='' /> ";
-    					echo sprintf(gettext("%s of %sB"),
-    						"&nbsp;&nbsp;</td><td nowrap align='left'><span name='diskusage_{$ctrlid}_capacity' id='diskusage_{$ctrlid}_capacity' class='capacity'>{$diskusagev['capacity']}</span>", $diskusagev['size']);
+    					echo "&nbsp;&nbsp;</td><td nowrap align='left'><span name='diskusage_{$ctrlid}_capofsize' id='diskusage_{$ctrlid}_capofsize' class='capofsize'>{$diskusagev['capofsize']}</span>";
     					echo "</td><td nowrap> || ";
     					echo sprintf(gettext("Total: %s | Used: %s | Free: %s"),
-    						"<span name='diskusage_{$ctrlid}_total' id='diskusage_{$ctrlid}_total' class='total' style='display:inline-block; width:35px; text-align:right; font-weight:bold'>{$diskusagev['size']}</span>",
+    						"<span name='diskusage_{$ctrlid}_size' id='diskusage_{$ctrlid}_size' class='size' style='display:inline-block; width:35px; text-align:right; font-weight:bold'>{$diskusagev['size']}</span>",
     						"<span name='diskusage_{$ctrlid}_used' id='diskusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$diskusagev['used']}</span>",
-    						"<span name='diskusage_{$ctrlid}_free' id='diskusage_{$ctrlid}_free' class='free' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$diskusagev['avail']}</span>");
+    						"<span name='diskusage_{$ctrlid}_avail' id='diskusage_{$ctrlid}_avail' class='avail' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$diskusagev['avail']}</span>");
     					echo " ||";
                         echo "</td><td><table style='width:200px'>";
                         foreach($diskusagev['devs'] as $idx => $devs) {
@@ -862,11 +895,11 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
                         echo "</td><td style='white-space:nowrap; width:60px;'><span name='diskusage_{$ctrlid}_space' id='diskusage_{$ctrlid}_space'>{$diskusagev['space']}</span>";
     					echo "</td><td style='white-space:nowrap; width:50%;'>&nbsp;&nbsp;</td></tr>";
     				}
-//    			}
+//systems only with zfs    			}
 
-				$zfspools = zfs_get_pool_list();
+				$zfspools = get_pool_usage();
 				if (!empty($zfspools)) {
-					if (!empty($diskusage)) {echo "<tr><td colspan='7'><hr size='1' /></td></tr>";}
+					if (!empty($a_diskusage)) {echo "<tr><td colspan='7'><hr size='1' /></td></tr>";}
 					array_sort_key($zfspools, "name");
 					$index = 0;
 					foreach ($zfspools as $poolk => $poolv) {
@@ -882,35 +915,33 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
                             $a_pool_details['temp'] = $smart_details[2];
                             $poolv['devs'][] = $a_pool_details;
                         }
-						$percent_used = rtrim($poolv['cap'],"%");
-						$tooltip_used = sprintf(gettext("%sB used of %sB"), $poolv['alloc'], $poolv['size']);
-						$tooltip_available = sprintf(gettext("%sB available of %sB"), $poolv['free'], $poolv['size']);
-
-						echo "<tr><td><div id='diskusage'>";
-						echo "<span name='diskusage_{$ctrlid}_name' id='diskusage_{$ctrlid}_name' class='name'>{$poolv['name']}</span>";
+						$percent_used = $poolv['percentage'];
+						$tooltip_used = $poolv['tooltip']['used'];
+						$tooltip_avail = $poolv['tooltip']['avail'];
+						echo "<tr><td><div id='poolusage'>";
+						echo "<span name='poolusage_{$ctrlid}_name' id='poolusage_{$ctrlid}_name' class='name'>{$poolv['name']}</span>";
 						echo " </td><td nowrap>&nbsp;&nbsp;<img src='bar_left.gif' class='progbarl' alt='' />";
-						echo "<img src='bar_blue.gif' name='diskusage_{$ctrlid}_bar_used' id='diskusage_{$ctrlid}_bar_used' width='{$percent_used}' class='progbarcf' title='{$tooltip_used}' alt='' />";
-						echo "<img src='bar_gray.gif' name='diskusage_{$ctrlid}_bar_free' id='diskusage_{$ctrlid}_bar_free' width='" . (100 - $percent_used) . "' class='progbarc' title='{$tooltip_available}' alt='' />";
+						echo "<img src='bar_blue.gif' name='poolusage_{$ctrlid}_bar_used' id='poolusage_{$ctrlid}_bar_used' width='{$percent_used}' class='progbarcf' title='{$tooltip_used}' alt='' />";
+						echo "<img src='bar_gray.gif' name='poolusage_{$ctrlid}_bar_free' id='poolusage_{$ctrlid}_bar_free' width='" . (100 - $percent_used) . "' class='progbarc' title='{$tooltip_avail}' alt='' />";
 						echo "<img src='bar_right.gif' class='progbarr' alt='' /> ";
-						echo sprintf(gettext("%s of %sB"),
-							"&nbsp;&nbsp;</td><td nowrap align='left'><span name='diskusage_{$ctrlid}_capacity' id='diskusage_{$ctrlid}_capacity' class='capacity'>{$poolv['cap']}</span>", $poolv['size']);
+						echo "&nbsp;&nbsp;</td><td nowrap align='left'><span name='poolusage_{$ctrlid}_capofsize' id='poolusage_{$ctrlid}_capofsize' class='capofsize'>{$poolv['capofsize']}</span>";
 						echo "</td><td nowrap> || ";
-						echo sprintf(gettext("Total: %s | Alloc: %s | Free: %s"),
-							"<span name='diskusage_{$ctrlid}_total' id='diskusage_{$ctrlid}_total' class='total' style='display:inline-block; width:35px; text-align:right; font-weight:bold'>{$poolv['size']}</span>",
-							"<span name='diskusage_{$ctrlid}_used' id='diskusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$poolv['alloc']}</span>",
-							"<span name='diskusage_{$ctrlid}_free' id='diskusage_{$ctrlid}_free' class='free' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$poolv['free']}</span>");
+    					echo sprintf(gettext("Total: %s | Used: %s | Free: %s"),
+							"<span name='poolusage_{$ctrlid}_size' id='poolusage_{$ctrlid}_size' class='size' style='display:inline-block; width:35px; text-align:right; font-weight:bold'>{$poolv['size']}</span>",
+							"<span name='poolusage_{$ctrlid}_used' id='poolusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$poolv['used']}</span>",
+							"<span name='poolusage_{$ctrlid}_avail' id='poolusage_{$ctrlid}_avail' class='avail' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$poolv['avail']}</span>");
 						echo " ||";
                         echo "</td><td><table style='width:200px'>";
                         foreach($poolv['devs'] as $idx => $devs) {
                             echo "<tr><td style='white-space:nowrap; width:34px;'>";
-							echo " <span name='diskusage_{$ctrlid}_{$idx}_device' id='diskusage_{$ctrlid}_{$idx}_device' class='device'>{$devs['device']}</span>";
-							echo "</td><td style='white-space:nowrap; width:70px;'>-> <span name='diskusage_{$ctrlid}_{$idx}_smart_state' id='diskusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
-							echo "</td><td style='white-space:nowrap;'> | Temp: <span name='diskusage_{$ctrlid}_{$idx}_temp' id='diskusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
+							echo " <span name='poolusage_{$ctrlid}_{$idx}_device' id='poolusage_{$ctrlid}_{$idx}_device' class='device'>{$devs['device']}</span>";
+							echo "</td><td style='white-space:nowrap; width:70px;'>-> <span name='poolusage_{$ctrlid}_{$idx}_smart_state' id='poolusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
+							echo "</td><td style='white-space:nowrap;'> | Temp: <span name='poolusage_{$ctrlid}_{$idx}_temp' id='poolusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
                             echo "</td></tr>";
                         }
                         echo "</table>";
-						echo "</td><td style='white-space:nowrap; width:60px;'><span name='diskusage_{$ctrlid}_space' id='diskusage_{$ctrlid}_space'>{$poolv['space']}</span>";
-						echo "</td><td style='white-space:nowrap; width:50%;'>&nbsp;&nbsp;<a href='disks_zfs_zpool_info.php?pool={$poolv['name']}'><span name='diskusage_{$ctrlid}_state' id='diskusage_{$ctrlid}_state' class='state'>{$poolv['health']}</span></a>";
+						echo "</td><td style='white-space:nowrap; width:60px;'><span name='poolusage_{$ctrlid}_space' id='poolusage_{$ctrlid}_space'>{$poolv['space']}</span>";
+						echo "</td><td style='white-space:nowrap; width:50%;'>&nbsp;&nbsp;<a href='disks_zfs_zpool_info.php?pool={$poolv['name']}'><span name='poolusage_{$ctrlid}_state' id='poolusage_{$ctrlid}_state' class='state'>{$poolv['health']}</span></a>";
 						echo "</td></tr>";
 
 						if (++$index < count($zfspools))
@@ -918,7 +949,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 					}
 				}
 
-				if (empty($diskusage) && empty($zfspools)) {
+				if (empty($a_diskusage) && empty($zfspools)) {
 					echo "<tr><td>";
 					echo gettext("No disk configured");
 					echo "</td></tr>";
@@ -984,8 +1015,19 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 			$vbox_ipaddr = get_ipaddr($vbox_if);
 			if (isset($config['vbox']['enable'])) {
 				mwexec2("/usr/local/bin/sudo -u {$vbox_user} /usr/local/bin/VBoxManage list runningvms", $vmlist2);
+			} else {
+				$vmlist2 = array();
 			}
-			if (!empty($vmlist) || !empty($vmlist2)):
+			unset($vmlist3);
+			if ($g['arch'] == "dom0") {
+				$xen_if = get_ifname($config['interfaces']['lan']['if']);
+				$xen_ipaddr = get_ipaddr($xen_if);
+				$vmlist_json = shell_exec("/usr/local/sbin/xl list -l");
+				$vmlist3 = json_decode($vmlist_json, true);
+			} else {
+				$vmlist3 = array();
+			}
+			if (!empty($vmlist) || !empty($vmlist2) || !empty($vmlist3)):
 		?>
 		<tr>
 			<td width="25%" class="vncellt"><?=gettext("Virtual Machine");?></td>
@@ -1031,6 +1073,78 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 					if (++$index < count($vmlist2))
 						echo "<tr><td><hr size='1' /></td></tr>\n";
 				}
+
+				$vmtype = "Xen";
+				$index = 0;
+				$vncport_unused = 5900;
+				foreach ($vmlist3 as $k => $v) {
+					$domid = $v['domid'];
+					$type = $v['config']['c_info']['type'];
+					$vm = $v['config']['c_info']['name'];
+					$vram = (int)(($v['config']['b_info']['target_memkb'] + 1023 ) / 1024);
+					$vcpus = 1;
+					if ($domid == 0) {
+						$vcpus = @exec("/sbin/sysctl -q -n hw.ncpu");
+						$info = get_xen_info();
+						$cpus = $info['nr_cpus']['value'];
+						$th = $info['threads_per_core']['value'];
+						if (empty($th)) {
+							$th = 1;
+						}
+						$core = (int)($cpus / $th);
+						$mem = $info['total_memory']['value'];
+						$ver = $info['xen_version']['value'];
+					} else if (!empty($v['config']['b_info']['max_vcpus'])) {
+						$vcpus = $v['config']['b_info']['max_vcpus'];
+					}
+					echo "<tr><td><div id='vminfo3_$index'>";
+					echo htmlspecialchars("$vmtype $type: $vm ($vram MiB / $vcpus VCPUs)");
+					if ($domid == 0) {
+						echo " ";
+						echo htmlspecialchars("Xen version {$ver} / {$mem} MiB / {$core} core".($th > 1 ? "/HT" : ""));
+					} else if ($type == 'pv' && isset($v['config']['vfbs']) && isset($v['config']['vfbs'][0]['vnc'])) {
+						$vnc = $v['config']['vfbs'][0]['vnc'];
+						$vncport = "unknown";
+						/*
+						if (isset($vnc['display'])) {
+							$vncdisplay = $vnc['display'];
+							$vncport = 5900 + $vncdisplay;
+						} else if (isset($vnc['findunused'])) {
+							$vncport = $vncport_unused;
+							$vncport_unused++;
+						}
+						*/
+						$console = get_xen_console($domid);
+						if (!empty($console) && isset($console['vnc-port'])) {
+							$vncport = $console['vnc-port']['value'];
+						}
+
+						echo " ";
+						echo htmlspecialchars("vnc://{$xen_ipaddr}:{$vncport}/");
+					} else if ($type == 'hvm' && isset($v['config']['b_info']['type.hvm']['vnc']['enable'])) {
+						$vnc = $v['config']['b_info']['type.hvm']['vnc'];
+						$vncport = "unknown";
+						/*
+						if (isset($vnc['display'])) {
+							$vncdisplay = $vnc['display'];
+							$vncport = 5900 + $vncdisplay;
+						} else if (isset($vnc['findunused'])) {
+							$vncport = $vncport_unused;
+							$vncport_unused++;
+						}
+						*/
+						$console = get_xen_console($domid);
+						if (!empty($console) && isset($console['vnc-port'])) {
+							$vncport = $console['vnc-port']['value'];
+						}
+
+						echo " ";
+						echo htmlspecialchars("vnc://{$xen_ipaddr}:{$vncport}/");
+					}
+					echo "</div></td></tr>\n";
+					if (++$index < count($vmlist3))
+						echo "<tr><td><hr size='1' /></td></tr>\n";
+				}
 			?>
 			</table></td>
 		</tr>
@@ -1065,18 +1179,20 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 <center>
 	<form action="index.php" method="post" name="iform" id="iform">
 		<br>
+<?php bindtextdomain("nas4free", "/usr/local/share/locale-egui"); ?>
 <?php if (isset($config['extended-gui']['buttons'])) { ?>
     <?php if (isset($config['extended-gui']['purge']['enable'])) { ?>
     		<input name="purge" type="submit" class="formbtn" onclick="spinner()" title="<?=gettext("Purge now all CIFS/SMB recycle bins!");?>" value="<?=gettext("Purge now");?>">
     <?php } ?>
 <?php } ?>
 <?php if (isset($config['extended-gui']['automount'])) { ?>
-    <input name="umount" type="submit" class="formbtn" onclick="spinner()" title="<?=gettext("Unmount all USB-Drives!");?>" value="<?=gettext("Un-mount USB-Drives");?>">
-    <input name="rmount" type="submit" class="formbtn" onclick="spinner()" title="<?=gettext("Remount all USB-Drives!");?>" value="<?=gettext("Re-mount USB-Drives");?>">
+    <input name="umount" type="submit" class="formbtn" onclick="spinner()" title="<?=gettext("Unmount all USB-Drives!");?>" value="<?=gettext("Unmount USB Drives");?>">
+    <input name="rmount" type="submit" class="formbtn" onclick="spinner()" title="<?=gettext("Remount all USB-Drives!");?>" value="<?=gettext("Mount USB Drives");?>">
 <?php } ?>
 <?php if (isset($config['extended-gui']['beep'])) { ?>
     <input name="clear_alarms" type="submit" class="formbtn" onclick="spinner()" title="<?=gettext("Clear all CPU and ZFS audible alarms!");?>" value="<?=gettext("Clear Alarms");?>">
 <?php } ?>
+<?php bindtextdomain("nas4free", "/usr/local/share/locale"); ?>
  		<?php include("formend.inc"); ?>
 	</form>
 	</td>

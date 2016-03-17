@@ -5,6 +5,9 @@
 # prereq.:		S.M.A.R.T. must be enabled and existing CONFIG2 file, which will be created at every eGUI startup
 # usage:		disk_check.sh
 # version:	date:		description:
+#   0.6.3   2016.03.13  C: SSD lifetime -> bold
+#   0.6.2   2015.12.11  N: SSD support
+#   0.6.1   2015.12.10  N: ZFS datasets & volumes
 #   0.6     2015.11.24  N: beep on ERROR
 #   0.5.2   2015.11.19  N: take care of CD/DVDs
 #   0.5.1   2015.11.16  C: more elaborate pool busy states in STATUS | SYSTEM (tooltip)
@@ -45,13 +48,30 @@ REPORT_DISK ()
 	fi
 }
 
+GET_DETAILS ()
+{
+    MSG_SSD=""; MSG_SSD_LT=""; MSG_SSD_LT_PCT="";
+    while [ "${1}" != "" ]; do
+        case $1 in
+            Model|Device|Rotation)      echo isSSD; MSG_SSD="SSD";; # is SSD?
+            177|202)                    echo isLT; MSG_SSD_LT=$((100-$2));; # lifetime parameter 177 Wear_Leveling_Count | 202 Percent Lifetime used
+            190|194)                    echo isTemp; MSG_TEMP=$2;;  # temperature parameter 190 or 194
+        esac
+        shift
+    done
+    if [ "${MSG_SSD}" != "" ]; then 
+        if [ "${MSG_SSD_LT}" != "" ]; then MSG_SSD_LT_PCT="<font color='blue'><b>${MSG_SSD_LT}%</b></font>"; fi
+        MSG="${MSG_SSD} ${MSG_SSD_LT_PCT}"; 
+    fi
+}
+
 GET_SMART_SUB ()
 {
-    SMART_OUTPUT=`smartctl -A "${1}"`;
-    MSG_TEMP=`echo -e "${SMART_OUTPUT}" | awk '/Temperature_/ {print $10; exit}'`;                    # check for SMART ID 190 or 194
-    if [ "${MSG_TEMP}" == "" ]; then 
-        MSG_TEMP=`echo -e "${SMART_OUTPUT}" | awk '/Current Drive Temperature/ {print $4; exit}'`;    # or alternative output
-    fi
+    SMART_OUTPUT=`smartctl -a "${1}"`;
+    MSG_TEMP=`echo -e "${SMART_OUTPUT}" | awk '/Current Drive Temperature/ {print $4; exit}'`;                                      # alternative temperature
+    MSG_ALL=`echo -e "${SMART_OUTPUT}" | awk '/Solid State/ || /SSD/ || /Wear_/ || /Lifetime/ || /Temperature_/ {print $1,$10}'`;   # check for different params
+    GET_DETAILS $MSG_ALL
+    
     if [ "${MSG_TEMP}" == "" ]; then MSG_TEMP="n/a"
     else
         if [ ${MSG_TEMP} -ge ${TEMP_SEVERE} ]; then MSG_TEMP="<font color='red'>${MSG_TEMP}&nbsp;&deg;C</font>"
@@ -67,6 +87,10 @@ GET_SMART ()
     MSG_TEMP="n/a"
     case $1 in
         xmd[0-9])   OUTPUT="${1}|<font color='black'>RAM-DRV</font>|n/a";
+                    break;;
+        ds*)    OUTPUT="${1}|<font color='black'>ZFS-DS</font>|n/a";
+                    break;;
+        zvol/*) OUTPUT="zvol|<font color='black'>ZFS-VOL</font>|n/a";
                     break;;
         cd[0-9])    OUTPUT="${1}|<font color='black'>CD/DVD</font>|n/a";
                     break;;
@@ -137,6 +161,7 @@ while [ "${!counter}" != "" ]; do                                       # run th
 #echo "INFO ${counter}: ${!counter}"                                    # for debugging
     OUTPUT=""
     while [ "${!dcounter}" != "" ]; do                                  # run through all disks of a mountpoint (RAID, ZFS POOL)
+    if [ ! -d `dirname ${PREFIX}${!counter}.smart` ]; then mkdir -p `dirname ${PREFIX}${!counter}.smart`; fi    # create zfs ds/vol directory
         GET_SMART ${!dcounter}                                          # retrive SMART values
         j=$((j+1)); dcounter=MOUNT${i}DISK${j};                         # increase disk counter j
     done

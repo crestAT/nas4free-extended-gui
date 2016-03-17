@@ -2,35 +2,40 @@
 /*
     extended-gui.php
 
-    based on silent_disk extension for NAS4Free created by Kruglov Alexey
-    extended by Andreas Schmidhuber
-
-    Copyright (c) 2014 - 2015 Andreas Schmidhuber
+    Copyright (c) 2014 - 2016 Andreas Schmidhuber
     All rights reserved.
 
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions are met:
+	Portions of NAS4Free (http://www.nas4free.org).
+	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
+	All rights reserved.
 
-    1. Redistributions of source code must retain the above copyright notice, this
-       list of conditions and the following disclaimer.
-    2. Redistributions in binary form must reproduce the above copyright notice,
-       this list of conditions and the following disclaimer in the documentation
-       and/or other materials provided with the distribution.
+	Portions of freenas (http://www.freenas.org).
+	Copyright (c) 2005-2011 by Olivier Cochard <olivier@freenas.org>.
+	All rights reserved.
 
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+	Redistribution and use in source and binary forms, with or without
+	modification, are permitted provided that the following conditions are met:
 
-    The views and conclusions contained in the software and documentation are those
-    of the authors and should not be interpreted as representing official policies,
-    either expressed or implied, of the FreeBSD Project.
+	1. Redistributions of source code must retain the above copyright notice, this
+	   list of conditions and the following disclaimer.
+	2. Redistributions in binary form must reproduce the above copyright notice,
+	   this list of conditions and the following disclaimer in the documentation
+	   and/or other materials provided with the distribution.
+
+	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+	DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+	LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+	ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+	The views and conclusions contained in the software and documentation are those
+	of the authors and should not be interpreted as representing official policies,
+	either expressed or implied, of the NAS4Free Project.
 */
 require("auth.inc");
 require("guiconfig.inc");
@@ -41,15 +46,23 @@ $pidfile = "/tmp/extended-gui_system_calls.sh.lock";
 $dummy = gettext("The changes have been applied successfully.");
 $dummy = gettext("The configuration has been changed.<br />You must apply the changes in order for them to take effect.");
 $dummy = gettext("The following input errors were detected");
+$dummy = gettext("Purge now all CIFS/SMB recycle bins!");
+$dummy = gettext("Purge now");
+$dummy = gettext("Unmount all USB-Drives!");
+$dummy = gettext("Unmount USB Drives");
+$dummy = gettext("Remount all USB-Drives!");
+$dummy = gettext("Mount USB Drives");
+$dummy = gettext("Clear all CPU and ZFS audible alarms!");
+$dummy = gettext("Clear Alarms");
 
+bindtextdomain("nas4free", "/usr/local/share/locale-egui");
 $pgtitle = array(gettext("Extensions"), "Extended GUI ".$config['extended-gui']['version']);
 
-if ( !isset( $config['extended-gui']['rootfolder']) && !is_dir( $config['extended-gui']['rootfolder'] )) {
-	$input_errors[] = "Extension installed with fault";
-} 
+if ( !isset( $config['extended-gui']['rootfolder']) && !is_dir( $config['extended-gui']['rootfolder'] )) $input_errors[] = gettext("Extension installed with fault");
 
 if ($_POST) {
 	if (isset($_POST['Submit']) && ($_POST['Submit'] === gettext("Save"))) { 
+        require_once("{$config['extended-gui']['rootfolder']}extended-gui-stop.php");
 		unset($input_errors);
         $config['extended-gui']['enable'] = isset($_POST['enable']) ? true : false;
         $config['extended-gui']['type'] = $_POST['type'];
@@ -62,6 +75,7 @@ if ($_POST) {
             $config['extended-gui']['boot'] = isset($_POST['boot']) ? true : false;
             $config['extended-gui']['varfs'] = isset($_POST['varfs']) ? true : false;
             $config['extended-gui']['usrfs'] = isset($_POST['usrfs']) ? true : false;
+            $config['extended-gui']['zfs'] = isset($_POST['zfs']) ? true : false;
             $config['extended-gui']['user'] = isset($_POST['user']) ? true : false;
             $config['extended-gui']['hosts'] = isset($_POST['hosts']) ? true : false;
             $config['extended-gui']['hosts_network'] = !empty($_POST['hosts_network']) ? $_POST['hosts_network'] : "192.168.1";
@@ -90,17 +104,13 @@ if ($_POST) {
 		}
         $savemsg = get_std_save_message(write_config());
     }
-    if ( isset( $config['extended-gui']['enable'] ) && ( $config['extended-gui']['type'] == "Extended" )) {
-        require_once("{$config['extended-gui']['rootfolder']}extended-gui-stop.php"); 
-        require_once("{$config['extended-gui']['rootfolder']}extended-gui-start.php"); 
-    }
-    else { require_once("{$config['extended-gui']['rootfolder']}extended-gui-stop.php"); }
+    if ( isset( $config['extended-gui']['enable'] ) && ( $config['extended-gui']['type'] == "Extended" )) require_once("{$config['extended-gui']['rootfolder']}extended-gui-start.php"); 
 }	
 
 function get_process_info() {
     global $pidfile;
-    if (exec("ps acx | grep -f $pidfile")) { $state = '<a style=" background-color: #00ff00; ">&nbsp;&nbsp;<b>running</b>&nbsp;&nbsp;</a>'; }
-    else { $state = '<a style=" background-color: #ff0000; ">&nbsp;&nbsp;<b>stopped</b>&nbsp;&nbsp;</a>'; }
+    if (exec("ps acx | grep -f $pidfile")) { $state = '<a style=" background-color: #00ff00; ">&nbsp;&nbsp;<b>'.gettext("running").'</b>&nbsp;&nbsp;</a>'; }
+    else { $state = '<a style=" background-color: #ff0000; ">&nbsp;&nbsp;<b>'.gettext("stopped").'</b>&nbsp;&nbsp;</a>'; }
 	return ($state);
 }
 
@@ -116,7 +126,10 @@ if (is_ajax()) {
 	render_ajax($procinfo);
 }
 
-include("fbegin.inc");?>  
+bindtextdomain("nas4free", "/usr/local/share/locale");
+include("fbegin.inc");
+bindtextdomain("nas4free", "/usr/local/share/locale-egui");
+?>
 <script type="text/javascript">//<![CDATA[
 $(document).ready(function(){
 	var gui = new GUI;
@@ -139,8 +152,9 @@ function enable_change(enable_change) {
 	document.iform.hide_cpu_graph.disabled = endis;
 	document.iform.hide_lan_graph.disabled = endis;
 	document.iform.boot.disabled = endis;
-	document.iform.varfs.disabled = endis;
 	document.iform.usrfs.disabled = endis;
+	document.iform.varfs.disabled = endis;
+	document.iform.zfs.disabled = endis;
 	document.iform.user.disabled = endis;
 	document.iform.hosts.disabled = endis;
 	document.iform.hosts_network.disabled = endis;
@@ -191,10 +205,10 @@ function enable_change_hosts() {
     <table width="100%" border="0" cellpadding="0" cellspacing="0">
     	<tr><td class="tabnavtbl">
     		<ul id="tabnav">
-    			<li class="tabact"><a href="extended-gui.php"><span><?=gettext("Configuration");?></span></a></li>
-<?php if (isset($config['extended-gui']['enable'])) { ?>
-    			<li class="tabinact"><a href="extended-gui_tools.php"><span><?=gettext("Tools");?></span></a></li>
-<?php } ?>
+            <li class="tabact"><a href="extended-gui.php"><span><?=gettext("Configuration");?></span></a></li>
+            <?php if (isset($config['extended-gui']['enable'])) { ?>
+                <li class="tabinact"><a href="extended-gui_tools.php"><span><?=gettext("Tools");?></span></a></li>
+            <?php } ?>
 			<li class="tabinact"><a href="extended-gui_update_extension.php"><span><?=gettext("Extension Maintenance");?></span></a></li>
      		</ul>
     	</td></tr>
@@ -204,7 +218,7 @@ function enable_change_hosts() {
             <table width="100%" border="0" cellpadding="6" cellspacing="0">
             	<?php html_titleline_checkbox("enable", gettext("Extended GUI"), isset($config['extended-gui']['enable']) ? true : false, gettext("Enable"), "enable_change(false)");?>
                 <?php html_text("installation_directory", gettext("Installation directory"), sprintf(gettext("The extension is installed in %s."), $config['extended-gui']['rootfolder']));?>
-            	<?php html_combobox("type", gettext("Type"), !empty($config['extended-gui']['type']) ? $config['extended-gui']['type'] : "Standard", array('Standard' =>'Standard','Extended'=> 'Extended'), "Choose view type", true, false, "enable_change(false)" );?>
+            	<?php html_combobox("type", gettext("Type"), !empty($config['extended-gui']['type']) ? $config['extended-gui']['type'] : "Standard", array('Standard' =>'Standard','Extended'=> 'Extended'), gettext("Choose view type"), true, false, "enable_change(false)" );?>
                 <tr>
                     <td class="vncellt"><?=gettext("System calls service status");?></td>
                     <td class="vtable"><span name="procinfo" id="procinfo"><?=get_process_info()?></span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PID:&nbsp;<span name="procinfo_pid" id="procinfo_pid"><?=get_process_pid()?></span></td>
@@ -219,6 +233,7 @@ function enable_change_hosts() {
                 <?php html_checkbox("boot", gettext("Operating system"), isset($config['extended-gui']['boot']) ? true : false, gettext("Enable display of Operating System partition (root filesystem named as A_OS)."), "", false);?>
                 <?php html_checkbox("usrfs", gettext("USR system"), isset($config['extended-gui']['usrfs']) ? true : false, gettext("Enable display of USR partition (/usr/local filesystem named as A_USR)."), "", false);?>
                 <?php html_checkbox("varfs", gettext("VAR system"), isset($config['extended-gui']['varfs']) ? true : false, gettext("Enable display of VAR partition (/var filesystem named as A_VAR)."), "", false);?>
+                <?php html_checkbox("zfs", gettext("ZFS datasets"), isset($config['extended-gui']['zfs']) ? true : false, gettext("Enable display of ZFS datasets."), "", false);?>
                 <?php html_checkbox("user", gettext("Users"), isset($config['extended-gui']['user']) ? true : false, gettext("Enable display of users logged in (CIFS/SMB, SSH, FTP)."), "", false);?>
                 <?php html_checkbox("hosts", gettext("Hosts"), isset($config['extended-gui']['hosts']) ? true : false, gettext("Enable display of hosts in network."), "", false, "enable_change_hosts()");?>
             	<?php html_inputbox("hosts_network", gettext("Hosts IP address network part"), !empty($config['extended-gui']['hosts_network']) ? $config['extended-gui']['hosts_network'] : "192.168.1", sprintf(gettext("Define the IP address network part (first 3 octets) for monitoring. Default is %s"), "192.168.1"), false, 10);?>
@@ -226,14 +241,14 @@ function enable_change_hosts() {
             	<?php html_inputbox("hosts_network_end", gettext("Hosts IP address host part end"), !empty($config['extended-gui']['hosts_network_end']) ? $config['extended-gui']['hosts_network_end'] : 254, sprintf(gettext("Define the IP address host part (last octet) range end address for monitoring. Default is %d"), 254), false, 5);?>
                 <?php html_checkbox("services", gettext("Services"), isset($config['extended-gui']['services']) ? true : false, gettext("Enable display of services row."), "", false);?>
                 <?php html_checkbox("buttons", gettext("Functions"), isset($config['extended-gui']['buttons']) ? true : false, gettext("Enable display of function buttons row."), "", false);?>
-                <?php html_checkbox("temp_always", gettext("Disk temperature (EXPERIMENTAL switch)"), isset($config['extended-gui']['temp_always']) ? true : false, gettext("Enable display of disk temperatures even if disks are in standby. If disks spin up all the time when STATUS | SYSTEM, STATUS | DISKS or DIAGNOSTICS | INFORMATION | DISKS are called or never spin down when they should if you stay at STATUS | SYSTEM disable this switch!"), "", false);?>
 			<?php html_separator();?>
 			<?php html_titleline(gettext("Status")." | ".gettext("Graph"));?>
             	<?php html_inputbox("graph_nb_plot", gettext("Graph show time"), !empty($config['extended-gui']['graph_nb_plot']) ? $config['extended-gui']['graph_nb_plot'] : 120, sprintf(gettext("Maximum duration for graphs show time in seconds. Default is %d seconds."), 120), true, 5);?>
             	<?php html_inputbox("graph_time_interval", gettext("Graph refresh time"), !empty($config['extended-gui']['graph_time_interval']) ? $config['extended-gui']['graph_time_interval'] : 1, sprintf(gettext("Refresh time for graphs in seconds. Default is %d second."), 1), true, 5);?>
 			<?php html_separator();?>
-			<?php html_titleline(gettext("Monitoring and alarming"));?>
+			<?php html_titleline(gettext("Monitoring and Alarming"));?>
                 <?php html_checkbox("beep", gettext("System Beep"), isset($config['extended-gui']['beep']) ? true : false, gettext("Enable audible alarms for Extended GUI."), "", false);?>
+                <?php html_checkbox("temp_always", gettext("Disk temperature"), isset($config['extended-gui']['temp_always']) ? true : false, gettext("Enable display of disk temperatures even if disks are in standby mode. If enabled it could happen that disks don't spin down depending on disk/controler combinations!"), "", false);?>
             	<?php html_inputbox("cpu_temp_warning", gettext("CPU temperature warning level"), !empty($config['extended-gui']['cpu_temp_warning']) ? $config['extended-gui']['cpu_temp_warning'] : 65, sprintf(gettext("Define the CPU temperature for warning indication in &deg;C. Default warning temperature is %d &deg;C."), 65), true, 5);?>
             	<?php html_inputbox("cpu_temp_severe", gettext("CPU temperature critical level"), !empty($config['extended-gui']['cpu_temp_severe']) ? $config['extended-gui']['cpu_temp_severe'] : 75, sprintf(gettext("Define the CPU temperature for error indication in &deg;C. Default critical temperature is %d &deg;C."), 75), true, 5);?>
             	<?php html_inputbox("cpu_temp_hysteresis", gettext("CPU temperature hysteresis"), !empty($config['extended-gui']['cpu_temp_hysteresis']) ? $config['extended-gui']['cpu_temp_hysteresis'] : 3, sprintf(gettext("Define the difference to the CPU warning temperature (for how much the CPU temperature must be lower) to clear the alarms in &deg;C. Default hysteresis temperature is %d &deg;C."), 3), true, 5);?>

@@ -2,16 +2,15 @@
 /*
 	status_graph.php
 
-	Part of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2015 The NAS4Free Project <info@nas4free.org>.
+    Copyright (c) 2014 - 2016 Andreas Schmidhuber
+    All rights reserved.
+
+	Portions of NAS4Free (http://www.nas4free.org).
+	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
 	All rights reserved.
 
 	Portions of freenas (http://www.freenas.org).
 	Copyright (c) 2005-2011 by Olivier Cochard <olivier@freenas.org>.
-	All rights reserved.
-
-	Portions of m0n0wall (http://m0n0.ch/wall).
-	Copyright (c) 2003-2006 Manuel Kasper <mk@neon1.net>.
 	All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without
@@ -41,7 +40,7 @@
 require("auth.inc");
 require("guiconfig.inc");
 
-$pgtitle = array(gettext("Status"), gettext("Graph"),gettext("System load"));
+$pgtitle = array(gettext("Status"), gettext("Graph"),gettext("System Load"));
 
 $curif = "lan";
 if (isset($_GET['if']) && $_GET['if'])
@@ -57,8 +56,8 @@ $graph_height = 220;
 		<td class="tabnavtbl">
 		<div align="center">
   		<ul id="tabnav">
-				<li class="tabact"><a href="status_graph.php" title="<?=gettext("Reload page");?>"><span><?=gettext("System load");?></span></a></li>
-				<li class="tabinact"><a href="status_graph_cpu.php"><span><?=gettext("CPU load");?></span></a></li>
+				<li class="tabact"><a href="status_graph.php" title="<?=gettext("Reload page");?>"><span><?=gettext("System Load");?></span></a></li>
+				<li class="tabinact"><a href="status_graph_cpu.php"><span><?=gettext("CPU Load");?></span></a></li>
   		</ul>
 		</div>
   	</td>

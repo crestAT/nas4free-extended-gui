@@ -2,34 +2,45 @@
 /*
     extended-gui_create_config2.inc
 
-    Copyright (c) 2014 - 2015 Andreas Schmidhuber
+    Copyright (c) 2014 - 2016 Andreas Schmidhuber
     All rights reserved.
 
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions are met:
+	Portions of NAS4Free (http://www.nas4free.org).
+	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
+	All rights reserved.
 
-    1. Redistributions of source code must retain the above copyright notice, this
-       list of conditions and the following disclaimer.
-    2. Redistributions in binary form must reproduce the above copyright notice,
-       this list of conditions and the following disclaimer in the documentation
-       and/or other materials provided with the distribution.
+	Portions of freenas (http://www.freenas.org).
+	Copyright (c) 2005-2011 by Olivier Cochard <olivier@freenas.org>.
+	All rights reserved.
 
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+	Redistribution and use in source and binary forms, with or without
+	modification, are permitted provided that the following conditions are met:
 
-    The views and conclusions contained in the software and documentation are those
-    of the authors and should not be interpreted as representing official policies,
-    either expressed or implied, of the FreeBSD Project.
+	1. Redistributions of source code must retain the above copyright notice, this
+	   list of conditions and the following disclaimer.
+	2. Redistributions in binary form must reproduce the above copyright notice,
+	   this list of conditions and the following disclaimer in the documentation
+	   and/or other materials provided with the distribution.
+
+	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+	DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+	LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+	ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+	The views and conclusions contained in the software and documentation are those
+	of the authors and should not be interpreted as representing official policies,
+	either expressed or implied, of the NAS4Free Project.
 */
-$raid_variants = array('gmirror', 'graid5', 'gconcat', 'gvinum', 'gstripe');
+
+if (is_array($config['extended-gui']['shares'])) unset($config['extended-gui']['shares']);              // reset shares array
+$config['extended-gui']['shares'] = array();
+$raid_variants = array('gmirror', 'graid5', 'gconcat', 'gvinum', 'gstripe');                            // set supported raid variants
 $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                                                       // create disk/share config file
     $clogdir = rc_getenv_ex("clog_logdir", $g['varlog_path']);                                          // get logdir from environment and
     fwrite($eguiconfig, "SYSTEM_LOG_DIR={$clogdir}"."\n");                                              // write it to CONFIG2
@@ -143,9 +154,28 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
                 }
             ++$i1;
         }
-    }
+        if (isset($config['extended-gui']['zfs'])) {                                                            // put zfs datasets and volumes
+            if (is_array($config['zfs']['datasets']) && is_array($config['zfs']['datasets']['dataset'])) {      // get datasets
+                for ($i = 0; $i < count($config['zfs']['datasets']['dataset']); ++$i) {
+                    $config['extended-gui']['shares'][$config['zfs']['datasets']['dataset'][$i]['name']] = "{$config['zfs']['datasets']['dataset'][$i]['pool'][0]}/{$config['zfs']['datasets']['dataset'][$i]['name']}";
+                    fwrite($eguiconfig, "MOUNT{$i1}={$config['zfs']['datasets']['dataset'][$i]['pool'][0]}/{$config['zfs']['datasets']['dataset'][$i]['name']}"."\n");    // get dataset name
+                    fwrite($eguiconfig, "MOUNT{$i1}DISK0=ds{$i}"."\n");                                         // set dummy disk
+                    ++$i1;
+                }
+            }   // get datasets
+            if (is_array($config['zfs']['volumes']) && is_array($config['zfs']['volumes']['volume'])) {         // get volumes
+                for ($i = 0; $i < count($config['zfs']['volumes']['volume']); ++$i) {
+                    $config['extended-gui']['shares'][$config['zfs']['volumes']['volume'][$i]['name']] = "{$config['zfs']['volumes']['volume'][$i]['pool'][0]}/{$config['zfs']['volumes']['volume'][$i]['name']}";
+                    fwrite($eguiconfig, "MOUNT{$i1}={$config['zfs']['volumes']['volume'][$i]['pool'][0]}/{$config['zfs']['volumes']['volume'][$i]['name']}"."\n");    // get volume name
+                    fwrite($eguiconfig, "MOUNT{$i1}DISK0=vol{$i}"."\n");                                        // set dummy disk
+                    ++$i1;
+                }
+            }   // get volumes
+        }   // get datasets & volumes
+    }   // get pools
     $i = $i1;
     if (isset($config['extended-gui']['boot'])) {
+        $config['extended-gui']['shares']['A_OS'] = 'A_OS';
         $mount_device = str_replace("/dev/", "", exec("df | awk '$6 ~ /\/$/ {print $1}'"));
         if (!empty($mount_device)) {
             foreach($rawdatageom as $key) {                                                         // get disks on GPT
@@ -172,6 +202,7 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
         }
     }
     if (isset($config['extended-gui']['varfs'])) {
+        $config['extended-gui']['shares']['A_VAR'] = 'A_VAR';
         $mount_device = str_replace("/dev/", "", exec("df | awk '$6 ~ /\/var$/ {print $1}'"));
         if (!empty($mount_device)) {
             fwrite($eguiconfig, "MOUNT{$i}=A_VAR"."\n");
@@ -180,6 +211,7 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
         }
     }
     if (isset($config['extended-gui']['usrfs'])) {
+        $config['extended-gui']['shares']['A_USR'] = 'A_USR';
         $mount_device = str_replace("/dev/", "", exec("df | awk '$6 ~ /\/usr\/local$/ {print $1}'"));
         if (!empty($mount_device)) {
             fwrite($eguiconfig, "MOUNT{$i}=A_USR"."\n");
@@ -191,6 +223,6 @@ fclose($eguiconfig);
 $nextMP = fopen("/var/scripts/nextMP", "w");                                                       // for USB mountpoints
 fwrite($nextMP, "NEXT_MP={$i}"."\n");
 fclose($nextMP);
-
+write_config();
 //mwexec("logger extended-gui: CONFIG2 created");
 ?>

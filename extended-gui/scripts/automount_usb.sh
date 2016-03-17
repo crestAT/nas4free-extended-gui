@@ -13,6 +13,7 @@
 #                   and restart the server to use NTFS drives
 #
 # version:	date:		description:
+#	5.8		2016.03.13	N: create index.refresh ctrl file -> force refresh of index.php to display newly mounted devices
 #	5.7		2015.11.23	C: set FIRST_DEVICE regarding to the used system (full or embedded)
 #	5.6		2015.11.21	C: ext2fs handling
 #                       N: take care of CD/DVDs
@@ -51,6 +52,7 @@ CREATE_DISPLAY ()
     echo "MOUNT${NEXT_MP}DISK0=${DEVICE_NAME}" >> USBMP
     NEXT_MP=$((NEXT_MP+1))
     echo "NEXT_MP=${NEXT_MP}" > nextUSBMP
+    /usr/bin/touch ${PREFIX}index.refresh
 }
 
 FAILED ()

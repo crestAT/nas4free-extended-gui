@@ -2,35 +2,58 @@
 /* 
     extended-gui-install.php
     
-    based on silent_disk extension for NAS4Free created by Kruglov Alexey
-    extended by Andreas Schmidhuber
-    
-    Copyright (c) 2014 - 2015 Andreas Schmidhuber
+    Copyright (c) 2014 - 2016 Andreas Schmidhuber
     All rights reserved.
-    
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions are met:
-    
-    1. Redistributions of source code must retain the above copyright notice, this
-       list of conditions and the following disclaimer.
-    2. Redistributions in binary form must reproduce the above copyright notice,
-       this list of conditions and the following disclaimer in the documentation
-       and/or other materials provided with the distribution.
-    
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-    
-    The views and conclusions contained in the software and documentation are those
-    of the authors and should not be interpreted as representing official policies,
-    either expressed or implied, of the FreeBSD Project.
+
+	Portions of NAS4Free (http://www.nas4free.org).
+	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
+	All rights reserved.
+
+	Portions of freenas (http://www.freenas.org).
+	Copyright (c) 2005-2011 by Olivier Cochard <olivier@freenas.org>.
+	All rights reserved.
+
+	Redistribution and use in source and binary forms, with or without
+	modification, are permitted provided that the following conditions are met:
+
+	1. Redistributions of source code must retain the above copyright notice, this
+	   list of conditions and the following disclaimer.
+	2. Redistributions in binary form must reproduce the above copyright notice,
+	   this list of conditions and the following disclaimer in the documentation
+	   and/or other materials provided with the distribution.
+
+	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+	DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+	LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+	ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+	The views and conclusions contained in the software and documentation are those
+	of the authors and should not be interpreted as representing official policies,
+	either expressed or implied, of the NAS4Free Project.
+*/
+/*
+Version Date        Description
+0.5.2   2016.03.17  C: index.php: Page base: 2407
+                    C: USB Automount - further improvements
+                    N: STATUS | SYSTEM - USB Automount refreshes index.php to display newly mounted devices
+                    N: STATUS | SYSTEM - display SSDs with lifetime values (percents)
+                    N: STATUS | SYSTEM - display ZFS datasets
+                    N: introduced language support
+                    N: Dutch translation
+                    N: French translation
+                    N: German translation
+                    N: Greek translation
+                    N: Italian translation
+                    N: Romanian translation
+                    N: Russian translation
+                    N: Spanish translation
+                    F: index.php -> Fatal error: Cannot redeclare get_disk_usage() - due to changes in system code of r2332
 */
 // v0.5.1.2     2015.12.02  C: index.php: Page base: 2118
 //                          C: index.php: added function html_textinfo and class HTMLTextInfo for compatibility reasons (9.3 and older 10.x releases)
@@ -128,7 +151,7 @@
 //                          N: UPS view on/off if UPS is enabled/disabled 
 // 2014.04.15   v0.4.3      first public release
 
-$v = "v0.5.1.2";            // extension version
+$v = "v0.5.2";            // extension version
 $appname = "Extended GUI";
 
 require_once("config.inc");
@@ -143,6 +166,8 @@ global $input_errors;
 global $savemsg;
 
 $install_dir = dirname(__FILE__)."/";                           // get directory where the installer script resides
+if (!is_dir("{$install_dir}backup")) { mkdir("{$install_dir}backup", 0775, true); }
+if (!is_dir("{$install_dir}log")) { mkdir("{$install_dir}log", 0775, true); }
 
 // check FreeBSD release for fetch options >= 9.3
 $release = explode("-", exec("uname -r"));
