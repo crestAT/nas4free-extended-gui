@@ -39,6 +39,10 @@
 */
 /*
 Version Date        Description
+0.5.2.1 2016.03.31  C: index.php: Page base: 2451
+                    C: index.php: new image path, compatible with releases < 2451 
+                    C: updated Greek translation
+                    C: updated Russian translation
 0.5.2   2016.03.17  C: index.php: Page base: 2407
                     C: USB Automount - further improvements
                     N: STATUS | SYSTEM - USB Automount refreshes index.php to display newly mounted devices
@@ -151,7 +155,7 @@ Version Date        Description
 //                          N: UPS view on/off if UPS is enabled/disabled 
 // 2014.04.15   v0.4.3      first public release
 
-$v = "v0.5.2";            // extension version
+$v = "v0.5.2.1";            // extension version
 $appname = "Extended GUI";
 
 require_once("config.inc");

@@ -3,6 +3,11 @@
 *** WARNING: version 0.5.2 shall only be used with N4F r2407 and newer due to massive changes in system code of r2332 ***
 ***          and r2407, older N4F releases must stay on Extended GUI v0.5.1.2, sorry for this inconvenience !         ***
 *************************************************************************************************************************
+0.5.2.1 2016.03.31  C: index.php: Page base: 2451
+                    C: index.php: new image path, compatible with releases < 2451
+                    C: updated Greek translation
+                    C: updated Russian translation
+
 0.5.2   2016.03.17  C: index.php: Page base: 2407
                     C: USB Automount - further improvements
                     N: STATUS | SYSTEM - USB Automount refreshes index.php to display newly mounted devices
