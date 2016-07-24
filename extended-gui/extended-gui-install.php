@@ -39,6 +39,9 @@
 */
 /*
 Version Date        Description
+0.5.3   2016.03.31  C: index.php: Page base: 2898
+                    F: index.php: not updating on 10.3.0.3.2853 and higher 
+                    N: index.php: support for second UPS
 0.5.2.1 2016.03.31  C: index.php: Page base: 2451
                     C: index.php: new image path, compatible with releases < 2451 
                     C: updated Greek translation
@@ -155,14 +158,15 @@ Version Date        Description
 //                          N: UPS view on/off if UPS is enabled/disabled 
 // 2014.04.15   v0.4.3      first public release
 
-$v = "v0.5.2.1";            // extension version
+$v = "v0.5.3";              // extension version
 $appname = "Extended GUI";
+$min_release = "10.3";      // minimal OS release
 
 require_once("config.inc");
 
 $arch = $g['arch'];
 $platform = $g['platform'];
-if (($arch != "i386" && $arch != "amd64") && ($arch != "x86" && $arch != "x64" && $arch != "rpi")) { echo "\f{$arch} is an unsupported architecture!\n"; exit(1);  }
+if (($arch != "i386" && $arch != "amd64") && ($arch != "x86" && $arch != "x64" && $arch != "rpi" && $arch != "rpi2" && $arch != "bpi")) { echo "\f{$arch} is an unsupported architecture!\n"; exit(1);  }
 if ($platform != "embedded" && $platform != "full" && $platform != "livecd" && $platform != "liveusb") { echo "\funsupported platform!\n";  exit(1); }
 
 // install extension
@@ -177,6 +181,11 @@ if (!is_dir("{$install_dir}log")) { mkdir("{$install_dir}log", 0775, true); }
 $release = explode("-", exec("uname -r"));
 if ($release[0] >= 9.3) $verify_hostname = "--no-verify-hostname";
 else $verify_hostname = "";
+if ($release[0] < $min_release) {
+    $input_errors[] = sprintf(gettext("This version of %s needs NAS4Free release %s or higher, installation aborted!"), $appname, $min_release);
+    return;
+}
+
 // create stripped version name
 $vs = str_replace(".", "", $v);
 // fetch release archive

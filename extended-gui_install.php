@@ -6,6 +6,10 @@ require_once("config.inc");
 $release = explode("-", exec("uname -r"));
 if ($release[0] >= 9.3) $verify_hostname = "--no-verify-hostname";
 else $verify_hostname = "";
+if ($release[0] < 10.3) {
+    echo "\nThis version of Extended GUI needs NAS4Free release 10.3 or higher, installation aborted!\n\n";
+    exit;
+}
 
 $dirname = dirname(__FILE__);
 if (!is_dir("{$dirname}/extended-gui/backup")) { mkdir("{$dirname}/extended-gui/backup", 0775, true); }

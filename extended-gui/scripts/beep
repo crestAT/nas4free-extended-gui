@@ -22,7 +22,7 @@ CTRL_FILE_ZFS="${PREFIX}zfs.alarm"
 CPU_ERROR ()
 {
     touch $CTRL_FILE_CPU
-    while [ -e $CTRL_FILE_CPU ]; do echo L8cPL8c > $SPEAKER; sleep 5; done
+    while [ -e $CTRL_FILE_CPU ]; do echo L8cPL8cL8cPL8cL8cPL8cL8cPL8cL8cPL8c > $SPEAKER; sleep 2; done
 }
 
 ZFS_ERROR ()

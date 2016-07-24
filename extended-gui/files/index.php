@@ -37,7 +37,7 @@
 	of the authors and should not be interpreted as representing official policies,
 	either expressed or implied, of the NAS4Free Project.
 */
-// Page base: r2407 => r2451
+// Page base: r2433 => r2898
 if (is_file("/usr/local/www/bar_left.gif")) $image_path = '';
 else $image_path = 'images/';
  
@@ -133,7 +133,7 @@ function get_upsinfo() {
 		$ups[$line[0]] = trim($line[1]);
 	}
 	$disp_status = get_ups_disp_status($ups['ups.status']);
-	$ups['disp_status'] = !empty($disp_status) ? $disp_status : "<font color=red><b>".gettext("Data stale!")."&nbsp;&nbsp;</b></font>"; 
+	$ups['disp_status'] = !empty($disp_status) ? "<font color=green><b>".$disp_status."&nbsp;&nbsp;</b></font>" : "<font color=red><b>".gettext("Data stale!")."&nbsp;&nbsp;</b></font>"; 
 	$value = !empty($ups['ups.load']) ? $ups['ups.load'] : 0;
 	$ups['load'] = array(
 		"percentage" => $value,
@@ -146,7 +146,40 @@ function get_upsinfo() {
 		"percentage" => $value,
 		"used" => sprintf("%.1f", $value),
 		"tooltip_used" => sprintf("%s%%", $value),
-		"tooltip_available" => sprintf(gettext("%s%% available"), 100 - $value),
+		"tooltip_available" => sprintf(gtext("%s%% available"), 100 - $value),
+		"runtime" => convert_seconds($ups['battery.runtime']),
+	);
+	return $ups;
+}
+
+function get_upsinfo2() {
+	global $config;
+
+	if (!isset($config['ups']['enable']) || !isset($config['ups']['ups2']))
+		return NULL;
+	$ups = array();
+	$cmd = "/usr/local/bin/upsc {$config['ups']['ups2_upsname']}@{$config['ups']['ip']}";
+	exec($cmd,$rawdata);
+	foreach($rawdata as $line) {
+		$line = explode(':', $line);
+		$ups[$line[0]] = trim($line[1]);
+	}
+	$disp_status = get_ups_disp_status($ups['ups.status']);
+	$ups['disp_status'] = $disp_status;
+	$ups['disp_status'] = !empty($disp_status) ? "<font color=green><b>".$disp_status."&nbsp;&nbsp;</b></font>" : "<font color=red><b>".gettext("Data stale!")."&nbsp;&nbsp;</b></font>";
+	$value = !empty($ups['ups.load']) ? $ups['ups.load'] : 0;
+	$ups['load'] = array(
+		"percentage" => $value,
+		"used" => sprintf("%.1f", $value),
+		"tooltip_used" => sprintf("%s%%", $value),
+		"tooltip_available" => sprintf(gtext("%s%% available"), 100 - $value),
+	);
+	$value = !empty($ups['battery.charge']) ? $ups['battery.charge'] : 0;
+	$ups['battery'] = array(
+		"percentage" => $value,
+		"used" => sprintf("%.1f", $value),
+		"tooltip_used" => sprintf("%s%%", $value),
+		"tooltip_available" => sprintf(gtext("%s%% available"), 100 - $value),
 		"runtime" => convert_seconds($ups['battery.runtime']),
 	);
 	return $ups;
@@ -316,7 +349,9 @@ if (is_ajax()) {
 	$vipstatus = get_vip_status();
 	$sysinfo['vipstatus'] = $vipstatus;
 	$upsinfo = get_upsinfo();
+	$upsinfo2 = get_upsinfo2();
 	$sysinfo['upsinfo'] = $upsinfo;
+	$sysinfo['upsinfo2'] = $upsinfo2;
 	$sysinfo['indexrefresh'] = get_indexrefresh();
 	$sysinfo['userinfo'] = get_userinfo();
 	$sysinfo['hostsinfo'] = get_hostsinfo();
@@ -447,36 +482,36 @@ $(document).ready(function(){
 	gui.recall(5000, 5000, 'index.php', null, function(data) {
 		if (data.indexrefresh == 'automount') location.assign("index.php");
 //        location.reload();
-		if ($('#userinfo').size() > 0) $('#userinfo').html(data.userinfo);
-		if ($('#hostsinfo').size() > 0)$('#hostsinfo').html(data.hostsinfo);
+		if ($('#userinfo').length > 0) $('#userinfo').html(data.userinfo);
+		if ($('#hostsinfo').length > 0)$('#hostsinfo').html(data.hostsinfo);
 
-		if ($('#vipstatus').size() > 0)
+		if ($('#vipstatus').length > 0)
 			$('#vipstatus').text(data.vipstatus);
-		if ($('#system_uptime').size() > 0)
+		if ($('#system_uptime').length > 0)
 			$('#system_uptime').text(data.uptime);
-		if ($('#system_datetime').size() > 0)
+		if ($('#system_datetime').length > 0)
 			$('#system_datetime').text(data.date);
-		if ($('#memusage').size() > 0) {
+		if ($('#memusage').length > 0) {
 			$('#memusage').val(data.memusage.caption);
 			$('#memusageu').attr('width', data.memusage.percentage + 'px');
 			$('#memusagef').attr('width', (100 - data.memusage.percentage) + 'px');
 		}
-		if ($('#loadaverage').size() > 0)
+		if ($('#loadaverage').length > 0)
 			$('#loadaverage').val(data.loadaverage);
 		if (typeof(data.cputemp) != 'undefined')
-			if ($('#cputemp').size() > 0)
+			if ($('#cputemp').length > 0)
 				$('#cputemp').val(data.cputemp);
 		if (typeof(data.cputemp2) != 'undefined') {
 			for (var idx = 0; idx < data.cputemp2.length; idx++) {
-				if ($('#cputemp'+idx).size() > 0)
+				if ($('#cputemp'+idx).length > 0)
 					$('#cputemp'+idx).val(data.cputemp2[idx]);
 			}
 		}
 		if (typeof(data.cpufreq) != 'undefined')
-			if ($('#cpufreq').size() > 0)
+			if ($('#cpufreq').length > 0)
 				$('#cpufreq').val(data.cpufreq + 'MHz');
 		if (typeof(data.cpuusage) != 'undefined') {
-			if ($('#cpuusage').size() > 0) {
+			if ($('#cpuusage').length > 0) {
 				$('#cpuusage').val(data.cpuusage + '%');
 				$('#cpuusageu').attr('width', data.cpuusage + 'px');
 				$('#cpuusagef').attr('width', (100 - data.cpuusage) + 'px');
@@ -484,7 +519,7 @@ $(document).ready(function(){
 		}
 		if (typeof(data.cpuusage2) != 'undefined') {
 			for (var idx = 0; idx < data.cpuusage2.length; idx++) {
-				if ($('#cpuusage'+idx).size() > 0) {
+				if ($('#cpuusage'+idx).length > 0) {
 					$('#cpuusage'+idx).val(data.cpuusage2[idx] + '%');
 					$('#cpuusageu'+idx).attr('width', data.cpuusage2[idx] + 'px');
 					$('#cpuusagef'+idx).attr('width', (100 - data.cpuusage2[idx]) + 'px');
@@ -496,7 +531,7 @@ $(document).ready(function(){
 			for (var idx = 0; idx < data.diskusage.length; idx++) {
 				var du = data.diskusage[idx];
 //a1    don't use '/' in javascript 'id'
-				if ($('#diskusage_'+du.id+'_bar_used').size() > 0) {
+				if ($('#diskusage_'+du.id+'_bar_used').length > 0) {
 					$('#diskusage_'+du.id+'_name').text(du.name);
 					$('#diskusage_'+du.id+'_bar_used').attr('width', du.percentage + 'px');
 					$('#diskusage_'+du.id+'_bar_used').attr('title', du['tooltip'].used);
@@ -520,7 +555,7 @@ $(document).ready(function(){
 		if (typeof(data.poolusage) != 'undefined') {
 			for (var idx = 0; idx < data.poolusage.length; idx++) {
 				var pu = data.poolusage[idx];
-				if ($('#poolusage_'+pu.id+'_bar_used').size() > 0) {
+				if ($('#poolusage_'+pu.id+'_bar_used').length > 0) {
 					$('#poolusage_'+pu.id+'_name').text(pu.name);
 					$('#poolusage_'+pu.id+'_bar_used').attr('width', pu.percentage + 'px');
 					$('#poolusage_'+pu.id+'_bar_used').attr('title', pu['tooltip'].used);
@@ -545,7 +580,7 @@ $(document).ready(function(){
 		if (typeof(data.swapusage) != 'undefined') {
 			for (var idx = 0; idx < data.swapusage.length; idx++) {
 				var su = data.swapusage[idx];
-				if ($('#swapusage_'+su.id+'_bar_used').size() > 0) {
+				if ($('#swapusage_'+su.id+'_bar_used').length > 0) {
 //					$('#swapusage_'+su.id+'_name').text(su.name);
 					$('#swapusage_'+su.id+'_bar_used').attr('width', su.percentage + 'px');
 					$('#swapusage_'+su.id+'_bar_used').attr('title', su['tooltip'].used);
@@ -560,11 +595,11 @@ $(document).ready(function(){
 			}
 		}
 		if (typeof(data.upsinfo) != 'undefined' && data.upsinfo !== null) {
-			if ($('#ups_status_disp_status').size() > 0)
-				$('#ups_status_disp_status').text(data.upsinfo.disp_status);
+			if ($('#ups_status_disp_status').length > 0)
+				$('#ups_status_disp_status').html(data.upsinfo.disp_status);    //@AFS 'html' to display colored output
 			var ups_id = "load";
 			var ui = data.upsinfo[ups_id];
-			if ($('#ups_status_'+ups_id+'_bar_used').size() > 0) {
+			if ($('#ups_status_'+ups_id+'_bar_used').length > 0) {
 				$('#ups_status_'+ups_id+'_bar_used').attr('width', ui.percentage + 'px');
 				$('#ups_status_'+ups_id+'_bar_used').attr('title', ui.tooltip_used);
 				$('#ups_status_'+ups_id+'_bar_free').attr('width', (100 - ui.percentage) + 'px');
@@ -573,7 +608,30 @@ $(document).ready(function(){
 			}
 			var ups_id = "battery";
 			var ui = data.upsinfo[ups_id];
-			if ($('#ups_status_'+ups_id+'_bar_used').size() > 0) {
+			if ($('#ups_status_'+ups_id+'_bar_used').length > 0) {
+				$('#ups_status_'+ups_id+'_bar_used').attr('width', ui.percentage + 'px');
+				$('#ups_status_'+ups_id+'_bar_used').attr('title', ui.tooltip_used);
+				$('#ups_status_'+ups_id+'_bar_free').attr('width', (100 - ui.percentage) + 'px');
+				$('#ups_status_'+ups_id+'_bar_free').attr('title', ui.tooltip_available);
+				$('#ups_status_'+ups_id+'_used').text(ui.used);
+				$('#ups_status_'+ups_id+'_runtime').text(ui.runtime);
+			}
+		}
+		if (typeof(data.upsinfo2) != 'undefined' && data.upsinfo2 !== null) {
+			if ($('#ups_status_disp_status2').length > 0)
+				$('#ups_status_disp_status2').html(data.upsinfo2.disp_status);    //@AFS 'html' to display colored output
+			var ups_id = "load2";
+			var ui = data.upsinfo2["load"];
+			if ($('#ups_status_'+ups_id+'_bar_used').length > 0) {
+				$('#ups_status_'+ups_id+'_bar_used').attr('width', ui.percentage + 'px');
+				$('#ups_status_'+ups_id+'_bar_used').attr('title', ui.tooltip_used);
+				$('#ups_status_'+ups_id+'_bar_free').attr('width', (100 - ui.percentage) + 'px');
+				$('#ups_status_'+ups_id+'_bar_free').attr('title', ui.tooltip_available);
+				$('#ups_status_'+ups_id+'_used').text(ui.used);
+			}
+			var ups_id = "battery2";
+			var ui = data.upsinfo2["battery"];
+			if ($('#ups_status_'+ups_id+'_bar_used').length > 0) {
 				$('#ups_status_'+ups_id+'_bar_used').attr('width', ui.percentage + 'px');
 				$('#ups_status_'+ups_id+'_bar_used').attr('title', ui.tooltip_used);
 				$('#ups_status_'+ups_id+'_bar_free').attr('width', (100 - ui.percentage) + 'px');
@@ -708,10 +766,9 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 	<?php html_textinfo("version", gettext("Version"), sprintf("<strong>%s %s</strong> (%s %s)", get_product_version(), get_product_versionname(), gettext("revision"), get_product_revision()));?>
 	<?php html_textinfo("builddate", gettext("Compiled"), htmlspecialchars(get_datetime_locale(get_product_buildtimestamp())));?>
 	<?php
-		exec("/sbin/sysctl -n kern.osrevision", $osrevision);
 		exec("/sbin/sysctl -n kern.version", $osversion);
 	?>
-	<?php html_textinfo("platform_os", gettext("Platform OS"), sprintf("FreeBSD Revision: %s<br/>%s",  $osrevision[0], $osversion[0]));?>
+    <?php html_textinfo("platform_os", gtext("Platform OS"), sprintf("%s", $osversion[0]));?>
 	<?php html_textinfo("platform", gettext("Platform"), sprintf(gettext("%s on %s"), $g['fullplatform'], $cpuinfo['model']));?>
 	<?php
 		if (!empty($smbios['planar'])) {
@@ -743,7 +800,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 				<?php elseif (!empty($cpuinfo['temperature'])):?>
 				<tr>
 					<td width="25%" class="vncellt"><?=gettext("CPU temperature");?></td>
-					<td class="listr">
+					<td class="listr">    
 						<input style="padding: 0; border: 0;" size="30" name="cputemp" id="cputemp" value="<?=htmlspecialchars($cpuinfo['temperature']);?>" />
 					</td>
 				</tr>
@@ -963,7 +1020,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 		</tr>
 <?php if (isset($config['ups']['enable'])) { ?>
 		<tr>
-			<td width="25%" class="vncellt"><?=gettext("UPS Status");?></td>
+			<td width="25%" class="vncellt"><?=gtext("UPS Status")." ".$config["ups"]["upsname"];?></td>
 			<td class="listr" colspan="2">
             <table border="0" cellspacing="0" cellpadding="2">
 			<?php if (!isset($config['ups']['enable'])):?>
@@ -988,6 +1045,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 						$ups[$line[0]] = trim($line[1]);
 					}
 					$disp_status = get_ups_disp_status($ups['ups.status']);
+                    $disp_status = !empty($disp_status) ? "<font color=green><b>".$disp_status."&nbsp;&nbsp;</b></font>" : "<font color=red><b>".gettext("Data stale!")."&nbsp;&nbsp;</b></font>";
                     echo "<tr>";
     				tblrowbar("battery", gettext('Battery Level'), sprintf("%.1f", $ups['battery.charge']), '%', '0-29' ,'30-79', '80-100');
     				tblrow(gettext('Status'), '<span id="ups_status_disp_status">'.$disp_status."</span>". "  <small>[<a href='diag_infos_ups.php'>" . gettext("Show ups information")."</a></small>]");
@@ -1010,6 +1068,47 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 		</tr>
 <?php } ?>
 
+		<?php
+        	if (isset($config['ups']['enable']) && isset($config['ups']['ups2'])) { ?>
+			<td width="25%" class="vncellt"><?=gtext("UPS Status")." ".$config["ups"]["ups2_upsname"];?></td>
+			<td class="listr" colspan="2">
+            <table border="0" cellspacing="0" cellpadding="2">
+		    <?php
+                $cmd = "/usr/local/bin/upsc {$config['ups']['ups2_upsname']}@{$config['ups']['ip']}";
+                $handle = popen($cmd, 'r');
+                
+                if ($handle) {
+                	$read = fread($handle, 4096);
+                	pclose($handle);
+                
+                	$lines = explode("\n", $read);
+                	$ups = array();
+                	foreach($lines as $line) {
+                		$line = explode(':', $line);
+                		$ups[$line[0]] = trim($line[1]);
+                	}
+					$disp_status = get_ups_disp_status($ups['ups.status']);
+                    $disp_status = !empty($disp_status) ? "<font color=green><b>".$disp_status."&nbsp;&nbsp;</b></font>" : "<font color=red><b>".gettext("Data stale!")."&nbsp;&nbsp;</b></font>";
+                    echo "<tr>";
+    				tblrowbar("battery2", gettext('Battery Level'), sprintf("%.1f", $ups['battery.charge']), '%', '0-29' ,'30-79', '80-100');
+    				tblrow(gettext('Status'), '<span id="ups_status_disp_status2">'.$disp_status."</span>". "  <small>[<a href='diag_infos_ups.php'>" . gettext("Show ups information")."</a></small>]");
+                    echo "</tr><tr>";
+					tblrowbar("load2", gettext('Load'), sprintf("%.1f", $ups['ups.load']), '%', '100-80', '79-60', '59-0');
+                    tblrow(gettext('Remaining battery runtime'), '<span id="ups_status_battery_runtime">'.convert_seconds($ups['battery.runtime']).'</span>');
+                    echo "</tr>";
+                }
+                
+                unset($handle);
+                unset($read);
+                unset($lines);
+                unset($status);
+                unset($disp_status);
+                unset($ups);
+                unset($cmd);
+                echo('</table></td>');
+	            echo('</tr>');
+            }
+        ?>
 		<?php
 			unset($vmlist);
 			mwexec2("/usr/bin/find /dev/vmm -type c", $vmlist);
