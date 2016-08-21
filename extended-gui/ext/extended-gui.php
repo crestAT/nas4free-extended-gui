@@ -201,7 +201,7 @@ function enable_change_hosts() {
 }
 //-->
 </script>
-<form action="extended-gui.php" method="post" name="iform" id="iform">
+<form action="extended-gui.php" method="post" name="iform" id="iform" onsubmit="spinner()">
     <table width="100%" border="0" cellpadding="0" cellspacing="0">
     	<tr><td class="tabnavtbl">
     		<ul id="tabnav">

@@ -37,7 +37,6 @@
 	of the authors and should not be interpreted as representing official policies,
 	either expressed or implied, of the NAS4Free Project.
 */
-
 if (is_array($config['extended-gui']['shares'])) unset($config['extended-gui']['shares']);              // reset shares array
 $config['extended-gui']['shares'] = array();
 $raid_variants = array('gmirror', 'graid5', 'gconcat', 'gvinum', 'gstripe');                            // set supported raid variants
@@ -156,23 +155,24 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
         }
         if (isset($config['extended-gui']['zfs'])) {                                                            // put zfs datasets and volumes
             if (is_array($config['zfs']['datasets']) && is_array($config['zfs']['datasets']['dataset'])) {      // get datasets
-                for ($i = 0; $i < count($config['zfs']['datasets']['dataset']); ++$i) {
-                    $config['extended-gui']['shares'][$config['zfs']['datasets']['dataset'][$i]['name']] = "{$config['zfs']['datasets']['dataset'][$i]['pool'][0]}/{$config['zfs']['datasets']['dataset'][$i]['name']}";
-                    fwrite($eguiconfig, "MOUNT{$i1}={$config['zfs']['datasets']['dataset'][$i]['pool'][0]}/{$config['zfs']['datasets']['dataset'][$i]['name']}"."\n");    // get dataset name
-                    fwrite($eguiconfig, "MOUNT{$i1}DISK0=ds{$i}"."\n");                                         // set dummy disk
+                for ($share_counter = 0; $share_counter < count($config['zfs']['datasets']['dataset']); ++$share_counter) {
+                    $config['extended-gui']['shares']["share{$share_counter}"] = "{$config['zfs']['datasets']['dataset'][$share_counter]['pool'][0]}/{$config['zfs']['datasets']['dataset'][$share_counter]['name']}";
+                    fwrite($eguiconfig, "MOUNT{$i1}={$config['extended-gui']['shares']["share{$share_counter}"]}"."\n");    // get dataset name
+                    fwrite($eguiconfig, "MOUNT{$i1}DISK0=ds{$share_counter}"."\n");                                         // set dummy disk
                     ++$i1;
                 }
-            }   // get datasets
+            }   // Eo-get datasets
             if (is_array($config['zfs']['volumes']) && is_array($config['zfs']['volumes']['volume'])) {         // get volumes
                 for ($i = 0; $i < count($config['zfs']['volumes']['volume']); ++$i) {
-                    $config['extended-gui']['shares'][$config['zfs']['volumes']['volume'][$i]['name']] = "{$config['zfs']['volumes']['volume'][$i]['pool'][0]}/{$config['zfs']['volumes']['volume'][$i]['name']}";
-                    fwrite($eguiconfig, "MOUNT{$i1}={$config['zfs']['volumes']['volume'][$i]['pool'][0]}/{$config['zfs']['volumes']['volume'][$i]['name']}"."\n");    // get volume name
-                    fwrite($eguiconfig, "MOUNT{$i1}DISK0=vol{$i}"."\n");                                        // set dummy disk
+                    $config['extended-gui']['shares']["share{$share_counter}"] = "{$config['zfs']['volumes']['volume'][$i]['pool'][0]}/{$config['zfs']['volumes']['volume'][$i]['name']}";
+                    fwrite($eguiconfig, "MOUNT{$i1}={$config['extended-gui']['shares']["share{$share_counter}"]}"."\n");    // get volume name
+                    fwrite($eguiconfig, "MOUNT{$i1}DISK0=vol{$i}"."\n");                                                    // set dummy disk
+                    ++$share_counter;
                     ++$i1;
                 }
-            }   // get volumes
-        }   // get datasets & volumes
-    }   // get pools
+            }   // Eo-get volumes
+        }   // Eo-get datasets & volumes
+    }   // Eo-get pools
     $i = $i1;
     if (isset($config['extended-gui']['boot'])) {
         $config['extended-gui']['shares']['A_OS'] = 'A_OS';

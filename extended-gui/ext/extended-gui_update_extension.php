@@ -95,7 +95,8 @@ if (isset($_POST['ext_remove']) && $_POST['ext_remove']) {
     	$file = str_replace("{$config['extended-gui']['rootfolder']}ext/", "/usr/local/www/", $file);      // trailing backslash !!!
     	if ( is_link( $file ) ) { unlink( $file ); } else {} 
     }
-	mwexec ("rm -rf /usr/local/www/ext/extended-gui");
+	mwexec("rm -rf /usr/local/www/ext/extended-gui");
+	mwexec("rmdir -p /usr/local/www/ext");    // to prevent empty extensions menu entry in top GUI menu if there are no other extensions installed
 	}
 // remove cronjobs
 	if (is_array($config['cron']['job'])) {                                                                // check if cron jobs exists !!!
@@ -140,31 +141,6 @@ bindtextdomain("nas4free", "/usr/local/share/locale");
 include("fbegin.inc");
 bindtextdomain("nas4free", "/usr/local/share/locale-egui");
 ?>
-
-<script type="text/javascript">
-function spinner() {
-        var opts = {
-            lines: 10, // The number of lines to draw
-            length: 7, // The length of each line
-            width: 4, // The line thickness
-            radius: 10, // The radius of the inner circle
-            corners: 1, // Corner roundness (0..1)
-            rotate: 0, // The rotation offset
-            color: '#000', // #rgb or #rrggbb
-            speed: 1, // Rounds per second
-            trail: 60, // Afterglow percentage
-            shadow: false, // Whether to render a shadow
-            hwaccel: false, // Whether to use hardware acceleration
-            className: 'spinner', // The CSS class to assign to the spinner
-            zIndex: 2e9, // The z-index (defaults to 2000000000)
-        };
-        var target = document.getElementById('foo');
-        var spinner = new Spinner(opts).spin(target);
-}
-</script>
-<div id="foo">
-<script src="ext/extended-gui/spin.min.js"></script>
-
 <form action="extended-gui_update_extension.php" method="post" name="iform" id="iform" onsubmit="spinner()">
 <table width="100%" border="0" cellpadding="0" cellspacing="0">
 	<tr><td class="tabnavtbl">
@@ -206,4 +182,3 @@ function spinner() {
 </table>
 </form>
 <?php include("fend.inc");?>
-</div>  <!-- foo -->

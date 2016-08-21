@@ -265,7 +265,7 @@ function egui_get_mount_usage() {
 
 	$result = array();
 	exec("/bin/df -h", $rawdata);
-    exec("df -h | awk '/\/dev\// && /\/mnt\// {print $6}'| cut -d/ -f3", $sharenames);
+    exec("df -h | awk '/^\/dev\// && /\/mnt\// {print $6}'| cut -d/ -f3", $sharenames);
     if (!empty($config['extended-gui']['shares'])) foreach($config['extended-gui']['shares'] as $a_share) $sharenames[] = $a_share; // put file systems and datasets in sharenames
 	foreach ($rawdata as $line) {
 		if (0 == preg_match("/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+%)\s+(.+)/", $line, $aline)) continue;
@@ -644,31 +644,6 @@ $(document).ready(function(){
 });
 //]]>
 </script>
-<script type="text/javascript">
-function spinner() {
-        var opts = {
-            lines: 10, // The number of lines to draw
-            length: 7, // The length of each line
-            width: 4, // The line thickness
-            radius: 10, // The radius of the inner circle
-            corners: 1, // Corner roundness (0..1)
-            rotate: 0, // The rotation offset
-            color: '#000', // #rgb or #rrggbb
-            speed: 1, // Rounds per second
-            trail: 60, // Afterglow percentage
-            shadow: false, // Whether to render a shadow
-            hwaccel: false, // Whether to use hardware acceleration
-            className: 'spinner', // The CSS class to assign to the spinner
-            zIndex: 2e9, // The z-index (defaults to 2000000000)
-//            top: 25, // Top position relative to parent in px
-//            left: 25 // Left position relative to parent in px
-        };
-        var target = document.getElementById('foo');
-        var spinner = new Spinner(opts).spin(target);    
-}
-</script>
-<div id="foo">
-<script src="ext/extended-gui/spin.min.js"></script>
 <table width="100%" border="0" cellspacing="0" cellpadding="0">
 <td>&nbsp;</td>
 </table>
@@ -791,6 +766,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 					echo "<table width='100%' border='0' cellspacing='0' cellpadding='0'><tr><td>\n";
 					$cpus = system_get_cpus();
 					for ($idx = 0; $idx < $cpus; $idx++) {
+                        if (empty($cpuinfo['temperature2'][$idx])) continue;
 						echo "<input style='padding: 0; border: 0;' size='2' name='cputemp${idx}' id='cputemp${idx}' value='".htmlspecialchars($cpuinfo['temperature2'][$idx])."' />";
     					echo $idx['temperature2']."&deg;C &nbsp;&nbsp;";
 					}
@@ -1280,20 +1256,20 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 </table>
 <?php if (Session::isAdmin()):?>
 <center>
-	<form action="index.php" method="post" name="iform" id="iform">
+	<form action="index.php" method="post" name="iform" id="iform" onsubmit="spinner()">
 		<br>
 <?php bindtextdomain("nas4free", "/usr/local/share/locale-egui"); ?>
 <?php if (isset($config['extended-gui']['buttons'])) { ?>
     <?php if (isset($config['extended-gui']['purge']['enable'])) { ?>
-    		<input name="purge" type="submit" class="formbtn" onclick="spinner()" title="<?=gettext("Purge now all CIFS/SMB recycle bins!");?>" value="<?=gettext("Purge now");?>">
+    		<input name="purge" type="submit" class="formbtn" title="<?=gettext("Purge now all CIFS/SMB recycle bins!");?>" value="<?=gettext("Purge now");?>">
     <?php } ?>
 <?php } ?>
 <?php if (isset($config['extended-gui']['automount'])) { ?>
-    <input name="umount" type="submit" class="formbtn" onclick="spinner()" title="<?=gettext("Unmount all USB-Drives!");?>" value="<?=gettext("Unmount USB Drives");?>">
-    <input name="rmount" type="submit" class="formbtn" onclick="spinner()" title="<?=gettext("Remount all USB-Drives!");?>" value="<?=gettext("Mount USB Drives");?>">
+    <input name="umount" type="submit" class="formbtn" title="<?=gettext("Unmount all USB-Drives!");?>" value="<?=gettext("Unmount USB Drives");?>">
+    <input name="rmount" type="submit" class="formbtn" title="<?=gettext("Remount all USB-Drives!");?>" value="<?=gettext("Mount USB Drives");?>">
 <?php } ?>
 <?php if (isset($config['extended-gui']['beep'])) { ?>
-    <input name="clear_alarms" type="submit" class="formbtn" onclick="spinner()" title="<?=gettext("Clear all CPU and ZFS audible alarms!");?>" value="<?=gettext("Clear Alarms");?>">
+    <input name="clear_alarms" type="submit" class="formbtn" title="<?=gettext("Clear all CPU and ZFS audible alarms!");?>" value="<?=gettext("Clear Alarms");?>">
 <?php } ?>
 <?php bindtextdomain("nas4free", "/usr/local/share/locale"); ?>
  		<?php include("formend.inc"); ?>
@@ -1302,4 +1278,3 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 </center>
 <?php endif;?>
 <?php include("fend.inc");?>
-</div>  <!-- foo -->

@@ -4,6 +4,7 @@
 # purpose:		retrive CPU temperature infos for eGUI in file: cpu_check.log
 # usage:		cpu_check.sh
 # version:	date:		description:
+#   0.3     2016.08.21  F: if [ "${TEMPERATURE}" != "" ]; then => avoid false alarms on rpi
 #   0.2     2015.11.24  N: beep on ERROR
 #   0.1     2015.11.23  initial version for Extended GUI 
 #------------- initialize variables ------------
@@ -45,30 +46,32 @@ GET_TEMPERATURE ()
 	while [ $x -lt $CPU_NUMBER ]
 	do
         TEMPERATURE=`sysctl -q -n dev.cpu.${x}.temperature | awk '{gsub("C", ""); print}'`
-#echo 1 "CPU${x} actual temp ${TEMPERATURE}, warning temp ${CPU_TEMP_WARNING} minus $HYSTERESIS = `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`"
-        COMPARE ${TEMPERATURE} ${CPU_TEMP_SEVERE}                               # test if temperature is >= CPU_TEMP_SEVERE
-        if [ $? -ge 1 ]; then 
-            MSG_TEMP="<font color='red'>${TEMPERATURE}&nbsp;&deg;C</font>"
-            REPORT ERROR "CPU ${x} reached critical temperature threshold ${CPU_TEMP_SEVERE} degree C, temperature is ${TEMPERATURE} degree C."
-#echo 2 "$TEMPERATURE ${TEMPERATURE}"
-        else 
-            COMPARE ${TEMPERATURE} ${CPU_TEMP_WARNING}                          # test if temperature is >= CPU_TEMP_WARNING
+        if [ "${TEMPERATURE}" != "" ]; then
+    #echo 1 "CPU${x} actual temp ${TEMPERATURE}, warning temp ${CPU_TEMP_WARNING} minus $HYSTERESIS = `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`"
+            COMPARE ${TEMPERATURE} ${CPU_TEMP_SEVERE}                               # test if temperature is >= CPU_TEMP_SEVERE
             if [ $? -ge 1 ]; then 
-                MSG_TEMP="<font color='orange'>${TEMPERATURE}&nbsp;&deg;C</font>"
-                REPORT WARNING "CPU ${x} reached warning temperature threshold ${CPU_TEMP_WARNING} degree C, temperature is ${TEMPERATURE} degree C."
-#echo 3 "$TEMPERATURE ${TEMPERATURE}"
+                MSG_TEMP="<font color='red'>${TEMPERATURE}&nbsp;&deg;C</font>"
+                REPORT ERROR "CPU ${x} reached critical temperature threshold ${CPU_TEMP_SEVERE} degree C, temperature is ${TEMPERATURE} degree C."
+    #echo 2 "$TEMPERATURE ${TEMPERATURE}"
             else 
-                COMPARE ${TEMPERATURE} `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`    # test if temperature is < CPU_TEMP_WARNING - $HYSTERESIS °C !
-                if [ $? -eq 0 ]; then 
-                    if [ -e "${CTRL_FILE}_ERROR.lock" ]; then rm "${CTRL_FILE}_ERROR.lock"; fi
-                    if [ -e "${CTRL_FILE}_WARNING.lock" ]; then rm "${CTRL_FILE}_WARNING.lock"; fi
-#echo 9 "actual temp ${TEMPERATURE}, warning temp ${CPU_TEMP_WARNING} minus $HYSTERESIS = `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`, files will be deleted"                
+                COMPARE ${TEMPERATURE} ${CPU_TEMP_WARNING}                          # test if temperature is >= CPU_TEMP_WARNING
+                if [ $? -ge 1 ]; then 
+                    MSG_TEMP="<font color='orange'>${TEMPERATURE}&nbsp;&deg;C</font>"
+                    REPORT WARNING "CPU ${x} reached warning temperature threshold ${CPU_TEMP_WARNING} degree C, temperature is ${TEMPERATURE} degree C."
+    #echo 3 "$TEMPERATURE ${TEMPERATURE}"
+                else 
+                    COMPARE ${TEMPERATURE} `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`    # test if temperature is < CPU_TEMP_WARNING - $HYSTERESIS °C !
+                    if [ $? -eq 0 ]; then 
+                        if [ -e "${CTRL_FILE}_ERROR.lock" ]; then rm "${CTRL_FILE}_ERROR.lock"; fi
+                        if [ -e "${CTRL_FILE}_WARNING.lock" ]; then rm "${CTRL_FILE}_WARNING.lock"; fi
+    #echo 9 "actual temp ${TEMPERATURE}, warning temp ${CPU_TEMP_WARNING} minus $HYSTERESIS = `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`, files will be deleted"                
+                    fi
+                    MSG_TEMP="<font color='blue'>${TEMPERATURE}&nbsp;&deg;C</font>"
                 fi
-                MSG_TEMP="<font color='blue'>${TEMPERATURE}&nbsp;&deg;C</font>"
             fi
+            if [ "$OUTPUT" == "" ]; then OUTPUT="${MSG_TEMP}";
+            else OUTPUT="${OUTPUT}&nbsp;&nbsp;${MSG_TEMP}"; fi
         fi
-        if [ "$OUTPUT" == "" ]; then OUTPUT="${MSG_TEMP}";
-        else OUTPUT="${OUTPUT}&nbsp;&nbsp;${MSG_TEMP}"; fi
 		x=$((x+1));
 	done
 }

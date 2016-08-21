@@ -6,8 +6,13 @@ require_once("config.inc");
 $release = explode("-", exec("uname -r"));
 if ($release[0] >= 9.3) $verify_hostname = "--no-verify-hostname";
 else $verify_hostname = "";
-if ($release[0] < 10.3) {
-    echo "\nThis version of Extended GUI needs NAS4Free release 10.3 or higher, installation aborted!\n\n";
+
+$min_release = 10.3032853;
+// create FreeBSD $current_release for min_release check
+$product_version = explode(".", get_product_version());                 // p.version = 10.3.0.3, p.revision = 2853
+$current_release = $product_version[0].".".$product_version[1].$product_version[2].$product_version[3].get_product_revision();
+if ($current_release < floatval($min_release)) {                        // release not supported
+    echo "\nThis version of Extended GUI needs NAS4Free release {$min_release} or higher, installation aborted!\n\n";
     exit;
 }
 

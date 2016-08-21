@@ -37,137 +37,17 @@
 	of the authors and should not be interpreted as representing official policies,
 	either expressed or implied, of the NAS4Free Project.
 */
-/*
-Version Date        Description
-0.5.3   2016.03.31  C: index.php: Page base: 2898
-                    F: index.php: not updating on 10.3.0.3.2853 and higher 
-                    N: index.php: support for second UPS
-0.5.2.1 2016.03.31  C: index.php: Page base: 2451
-                    C: index.php: new image path, compatible with releases < 2451 
-                    C: updated Greek translation
-                    C: updated Russian translation
-0.5.2   2016.03.17  C: index.php: Page base: 2407
-                    C: USB Automount - further improvements
-                    N: STATUS | SYSTEM - USB Automount refreshes index.php to display newly mounted devices
-                    N: STATUS | SYSTEM - display SSDs with lifetime values (percents)
-                    N: STATUS | SYSTEM - display ZFS datasets
-                    N: introduced language support
-                    N: Dutch translation
-                    N: French translation
-                    N: German translation
-                    N: Greek translation
-                    N: Italian translation
-                    N: Romanian translation
-                    N: Russian translation
-                    N: Spanish translation
-                    F: index.php -> Fatal error: Cannot redeclare get_disk_usage() - due to changes in system code of r2332
-*/
-// v0.5.1.2     2015.12.02  C: index.php: Page base: 2118
-//                          C: index.php: added function html_textinfo and class HTMLTextInfo for compatibility reasons (9.3 and older 10.x releases)
-//                          F: avoid multiple SSH entries if CIFS/SMB is disabled
-// 2015.11.29   v0.5.1.1    C: updated index.php to Page base: 2115
-//                          C: USB Automount - further improvements
-//                          C: USB Automount - description and prerequisite:
-//                              loader.conf: fuse_load       YES 
-//                              rc.conf:     fusefs_enable   YES  
-//                          F: USB Automount - activation in WebGUI must recreate CONFIG2
-//                          F: USB devices and root, var and usr filesystems were not displayed on systems only with ZFS
-//                          F: save new command script path for updates with backuped config.xml
-// 2015.11.26   v0.5.1      release
-// 2015.11.24   v0.5.1b6    N: Web installer
-// 2015.11.24   v0.5.1b5    N: CPU temperature monitoring and reporting - monitor CPU temps and optional email reporting like degraded pools etc.
-//                          N: buzzer for degraded pools, CPU temperatures
-// 2015.11.20   v0.5.1b4    C: updated diag_log.inc & index.php to Page base: r2067
-//                          C: STATUS | SYSTEM - correct display of disk columns
-//                          N: introduce spinner for USB Automount and CIFS/SMB purge 
-//                          N: USB Automount - take care of CD/DVDs
-//                          C: USB Automount - allow disks without 'YourMountpointName.mounted' file, but stays though optional
-//                          C: STATUS | SYSTEM - display USB mounted devices
-// 2015.11.10   v0.5.1b31   F: degraded pool reporting
-//                          N: pool busy states (scrub, resilver)
-// 2015.11.08   v0.5.1b3    C: updated index.php to Page base: r1962 = r2003
-//                          F: display pool values live again
-// 2015.11.07   v0.5.1b2b1  C: amendments to purge v03
-//                          N: STATUS | SYSTEM - display /usr/local filesystem (as A_USR) 
-// 2015.10.24   v0.5.1b2    N: added Raspberry Pi to supported architecture
-//                          N: USB Automount: sysid 255 - exFAT
-//                          C: STATUS | SYSTEM - display Operating System (root filesystem as A_OS)
-//                          C: STATUS | SYSTEM - display /var filesystem (as A_VAR)
-//                          C: STATUS | SYSTEM - display temporarely mounted USB devics -> USB Automount
-// 2015.10.16   v0.5.1b1    C: updated index.php to Page base: r1906 (includes BHyVe, VBox, UPS live view and code cleanup)
-// 2015.10.08   v0.5.0.1    F: (some) disk SMART values were not shown correctly in rare/special cases
-// 2015.10.04   v0.5        N: combined Install / Update option
-//                          N: check if SMB / FTP are enabled to prevent error messages and lags
-//                          N: autodetect config.xml change
-//                          N: USB Automount: new sysid 6
-//                          N: disk_check.sh includes SMART, SPACE and degraded POOLS checks
-//                          N: STATUS | SYSTEM - support for all RAID variants
-//                          C: installer: always take the current installation directory as rootfolder -> for restored config.xml
-//                          C: take care of systems without ZFS pools
-//                          C: clogdir for CONFIG, notifications.log etc
-//                          C: live view of smart values
-//                          C: extension start/stop procedure
-//                          C: system.inc -> swapdevice, removed /dev/
-//                          C: changed exec -> mwexec in extended-gui_start.php for debuging
-//                          C: removed system.inc -> ZFS pool health status -> replaced in r1395
-//                          C: removed guiconfig.inc because of:
-//                              - F: r1349 incompatibility -> new function verify_xz_file
-//                              - new releases now contains the changes for function print_config_change_box,
-//                                no longer needed -> replaced in r1349
-//                          C: removed disks_zfs_dataset.php and disks_zfs_volume.php replaced in r1349 
-//                              - includes fixes for error traps, no longer needed
-//                          C: removed access_users.php replaced in r1349 - includes fix for user groups,
-//                                no longer needed
-//                          C: removed status_disks.php due to amendments in r1349
-//                          F: if there is more than one vdevice per pool
-//                          F: pools on GPT
-//                          F: chmod for /var/scripts to be sure that scripts are executable
-//                          F: STATUS | GRAPH - take care about installed RRDGraphs extension
-//                          F: Purge - change file find from mtime (modification time) to atime (access time)
-// 2015.01.06   v0.4.4.4    C: STATUS | SYSTEM - UPS display for UPS slave
-//                          C: STATUS | SYSTEM - CPU temperatures in one row 
-//                          F: STATUS | SYSTEM - support .eli encrypted devices
-// 2014.07.16   v0.4.4.3    C: STATUS | SYSTEM - UPS display
-// 2014.07.11   v0.4.4.2    F: USB Automount: drives with more than one partition
-// 2014.06.16   v0.4.4.1    N: USB Automount: new sysid 12
-//                          C: STATUS | SYSTEM - Users monitor, display user names in color
-//                          C: STATUS | SYSTEM - Network hosts monitor, display host names in color
-//                          F: STATUS | SYSTEM - Network hosts monitor, search for whole IP@ for correct display
-// 2014.06.06   v0.4.4      N: TOOLS section in EXTENSIONS | EXTENDED GUI for Purge and USB Automount
-//                          N: Purge: clean recycle bins of CIFS/SMB shares (.recycle directories) from deleted files 
-//                          N: USB Automount: for USB disks and Flash drives 
-//                          N: STATUS | SYSTEM - Function buttons
-//                              - Purge 1 day
-//                              - unmount/remount USB disks
-//                          N: STATUS | SYSTEM - display Operating System (root filesystem as A_OS)
-//                          N: STATUS | SYSTEM - display /var filesystem (as A_VAR)
-//                          N: STATUS | SYSTEM - enable/disable LAN graph
-//                          N: STATUS | SYSTEM - show disk temperatures even if disks are in standby (enable/disable experimental switch in configuration)
-//                          C: STATUS | SYSTEM - Network hosts monitor, display IP@s AND host names (as defined in /etc/hosts) but not the own automatically generated hostname
-//                          F: STATUS | SYSTEM - support ZFS .nop devices
-//                          F: check for special case -> zvol from jail
-// 2014.05.06   v0.4.3.3    N: ZFS degraded warning email
-//                          N: STATUS | SYSTEM - Network hosts monitor
-//                          N: EXTENSIONS | EXTENDED GUI - system calls service status
-//                          N: save/restore autoshutdown/notification log for embedded systems
-//                          C: STATUS | SYSTEM - disk space warning logic now based on used size AND used percent
-//                          F: DIAGNOSTICS | INFORMATION | DISKS: temperature shows allways n/a (started with 9.2.0.1-943)
-//                          F: STATUS | SYSTEM - rowspan calculation for CPU temperature
-//                          F: STATUS | SYSTEM - support now ZFS pools on gpt partitions and device labels
-// 2014.04.17   v0.4.3.1    F: disks view temperature, temperature typo
-//                          N: UPS view on/off if UPS is enabled/disabled 
-// 2014.04.15   v0.4.3      first public release
-
-$v = "v0.5.3";              // extension version
+$v = "v0.6-b1";              // extension version
 $appname = "Extended GUI";
-$min_release = "10.3";      // minimal OS release
+$min_release = 10.3032853;  // minimal OS release
 
 require_once("config.inc");
 
 $arch = $g['arch'];
 $platform = $g['platform'];
-if (($arch != "i386" && $arch != "amd64") && ($arch != "x86" && $arch != "x64" && $arch != "rpi" && $arch != "rpi2" && $arch != "bpi")) { echo "\f{$arch} is an unsupported architecture!\n"; exit(1);  }
-if ($platform != "embedded" && $platform != "full" && $platform != "livecd" && $platform != "liveusb") { echo "\funsupported platform!\n";  exit(1); }
+// no check necessary since the extension is for all archictectures/platforms
+//if ($arch != "i386" && $arch != "amd64" && $arch != "x86" && $arch != "x64" && $arch != "rpi" && $arch != "rpi2" && $arch != "rpi3" && $arch != "bpi") { echo "\f{$arch} is an unsupported architecture!\n"; exit(1);  }
+//if ($platform != "embedded" && $platform != "full" && $platform != "livecd" && $platform != "liveusb") { echo "\funsupported platform!\n";  exit(1); }
 
 // install extension
 global $input_errors;
@@ -181,7 +61,11 @@ if (!is_dir("{$install_dir}log")) { mkdir("{$install_dir}log", 0775, true); }
 $release = explode("-", exec("uname -r"));
 if ($release[0] >= 9.3) $verify_hostname = "--no-verify-hostname";
 else $verify_hostname = "";
-if ($release[0] < $min_release) {
+
+// create FreeBSD $current_release for min_release check
+$product_version = explode(".", get_product_version());                 // p.version = 10.3.0.3, p.revision = 2853
+$current_release = $product_version[0].".".$product_version[1].$product_version[2].$product_version[3].get_product_revision();
+if ($current_release < floatval($min_release)) {                        // release not supported
     $input_errors[] = sprintf(gettext("This version of %s needs NAS4Free release %s or higher, installation aborted!"), $appname, $min_release);
     return;
 }
