@@ -5,6 +5,7 @@
 # prereq.:		S.M.A.R.T. must be enabled and existing CONFIG2 file, which will be created at every eGUI startup
 # usage:		disk_check.sh
 # version:	date:		description:
+#   0.6.4   2016.09.18  C: check _DEVICETYPEARG for SMART support
 #   0.6.3   2016.03.13  C: SSD lifetime -> bold
 #   0.6.2   2015.12.11  N: SSD support
 #   0.6.1   2015.12.10  N: ZFS datasets & volumes
@@ -53,9 +54,9 @@ GET_DETAILS ()
     MSG_SSD=""; MSG_SSD_LT=""; MSG_SSD_LT_PCT="";
     while [ "${1}" != "" ]; do
         case $1 in
-            Model|Device|Rotation)      echo isSSD; MSG_SSD="SSD";; # is SSD?
-            177|202)                    echo isLT; MSG_SSD_LT=$((100-$2));; # lifetime parameter 177 Wear_Leveling_Count | 202 Percent Lifetime used
-            190|194)                    echo isTemp; MSG_TEMP=$2;;  # temperature parameter 190 or 194
+            Model|Device|Rotation)      MSG_SSD="SSD";;             # is SSD
+            177|202)                    MSG_SSD_LT=$((100-$2));;    # lifetime parameter 177 Wear_Leveling_Count | 202 Percent Lifetime used
+            190|194)                    MSG_TEMP=$2;;               # temperature parameter 190 or 194
         esac
         shift
     done
@@ -67,7 +68,8 @@ GET_DETAILS ()
 
 GET_SMART_SUB ()
 {
-    SMART_OUTPUT=`smartctl -a "${1}"`;
+echo "INFO3 $1 $2"                                    # for debugging
+    SMART_OUTPUT=`smartctl -a $1 $2`;
     MSG_TEMP=`echo -e "${SMART_OUTPUT}" | awk '/Current Drive Temperature/ {print $4; exit}'`;                                      # alternative temperature
     MSG_ALL=`echo -e "${SMART_OUTPUT}" | awk '/Solid State/ || /SSD/ || /Wear_/ || /Lifetime/ || /Temperature_/ {print $1,$10}'`;   # check for different params
     GET_DETAILS $MSG_ALL
@@ -84,29 +86,38 @@ GET_SMART_SUB ()
 
 GET_SMART ()
 {
+#echo "INFO2a ${dcounter}: ${1}"                                    # for debugging
+#echo "INFO2b ${dcounter}_DEVICETYPEARG: ${!2}"                     # for debugging
     MSG_TEMP="n/a"
-    case $1 in
-        xmd[0-9])   OUTPUT="${1}|<font color='black'>RAM-DRV</font>|n/a";
-                    break;;
-        ds*)    OUTPUT="${1}|<font color='black'>ZFS-DS</font>|n/a";
-                    break;;
-        zvol/*) OUTPUT="zvol|<font color='black'>ZFS-VOL</font>|n/a";
-                    break;;
-        cd[0-9])    OUTPUT="${1}|<font color='black'>CD/DVD</font>|n/a";
-                    break;;
+    case $1 in                                                                          # check for special cases
+        xmd[0-9])   OUTPUT="${1}|<font color='black'>RAM-DRV</font>|n/a";   break;;
+        ds*)        OUTPUT="${1}|<font color='black'>ZFS-DS</font>|n/a";    break;;
+        zvol/*)     OUTPUT="zvol|<font color='black'>ZFS-VOL</font>|n/a";   break;;
+        cd[0-9])    OUTPUT="${1}|<font color='black'>CD/DVD</font>|n/a";    break;;
         *)      ;;
     esac
-	if [ $TEMP_ALWAYS -eq 0 ]; then SMART_STANDBY="-n standby"; else SMART_STANDBY=""; fi
-    smartctl -n standby -q silent -A "/dev/${1}"
+
+    if [ ! ${!2} ] || [ ${!2} == "UNAVAILABLE" ]; then                                  # check if SMART is available
+        OUTPUT="${1}|<font color='black'>SMART&nbsp;n/a</font>|n/a";
+        break
+    fi
+
+    if [ "${!2}" == "AUTOMOUNT_USB" ]; then DEVICETYPEARG="";                           # we don't know the USB device type
+    else DEVICETYPEARG="-d ${!2}";
+    fi
+	
+    if [ $TEMP_ALWAYS -eq 0 ]; then SMART_STANDBY="-n standby"; else SMART_STANDBY=""; fi
+    smartctl $SMART_STANDBY -q silent -A /dev/$1 $DEVICETYPEARG
     case $? in 
         4) MSG="<font color='black'>SMART&nbsp;n/a</font>";;
-        2) MSG="<font color='green'>Standby</font>"; if [ "${TEMP_ALWAYS}" == "1" ]; then GET_SMART_SUB "/dev/${1}"; fi;;
+        2) MSG="<font color='green'>Standby</font>"; if [ "${TEMP_ALWAYS}" == "1" ]; then GET_SMART_SUB "/dev/${1}" "${DEVICETYPEARG}"; fi;;
         1) MSG="<font color='orange'>Unknown</font>";;
-        0) MSG="<font color='red'>Spinning</font>"; GET_SMART_SUB "/dev/${1}";;
+        0) MSG="<font color='red'>Spinning</font>"; GET_SMART_SUB "/dev/${1}" "${DEVICETYPEARG}";;
         *) MSG="<font color='red'>exit: ${?}</font>";;       
     esac;
     if [ "$OUTPUT" == "" ]; then OUTPUT="${1}|${MSG}|${MSG_TEMP}";
     else OUTPUT="${OUTPUT}#${1}|${MSG}|${MSG_TEMP}"; fi
+
 }
 
 GET_SPACE ()
@@ -162,7 +173,8 @@ while [ "${!counter}" != "" ]; do                                       # run th
     OUTPUT=""
     while [ "${!dcounter}" != "" ]; do                                  # run through all disks of a mountpoint (RAID, ZFS POOL)
     if [ ! -d `dirname ${PREFIX}${!counter}.smart` ]; then mkdir -p `dirname ${PREFIX}${!counter}.smart`; fi    # create zfs ds/vol directory
-        GET_SMART ${!dcounter}                                          # retrive SMART values
+#echo "INFO ${!dcounter}"                                               # for debugging
+        GET_SMART ${!dcounter} ${dcounter}_DEVICETYPEARG                                         # retrive SMART values
         j=$((j+1)); dcounter=MOUNT${i}DISK${j};                         # increase disk counter j
     done
     GET_SPACE ${!counter}

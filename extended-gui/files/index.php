@@ -920,11 +920,11 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
     						"<span name='diskusage_{$ctrlid}_used' id='diskusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$diskusagev['used']}</span>",
     						"<span name='diskusage_{$ctrlid}_avail' id='diskusage_{$ctrlid}_avail' class='avail' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$diskusagev['avail']}</span>");
     					echo " ||";
-                        echo "</td><td><table style='width:200px'>";
+                        echo "</td><td><table style='width:210px'>";
                         foreach($diskusagev['devs'] as $idx => $devs) {
                             echo "<tr><td style='white-space:nowrap; width:34px;'>";
     						echo " <span name='diskusage_{$ctrlid}_{$idx}_device' id='diskusage_{$ctrlid}_{$idx}_device' class='device'>{$devs['device']}</span>";
-    						echo "</td><td style='white-space:nowrap; width:70px;'>-> <span name='diskusage_{$ctrlid}_{$idx}_smart_state' id='diskusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
+    						echo "</td><td style='white-space:nowrap; width:80px;'>-> <span name='diskusage_{$ctrlid}_{$idx}_smart_state' id='diskusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
     						echo "</td><td style='white-space:nowrap;'> | Temp: <span name='diskusage_{$ctrlid}_{$idx}_temp' id='diskusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
                             echo "</td></tr>";
                         }
@@ -968,11 +968,11 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 							"<span name='poolusage_{$ctrlid}_used' id='poolusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$poolv['used']}</span>",
 							"<span name='poolusage_{$ctrlid}_avail' id='poolusage_{$ctrlid}_avail' class='avail' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$poolv['avail']}</span>");
 						echo " ||";
-                        echo "</td><td><table style='width:200px'>";
+                        echo "</td><td><table style='width:210px'>";
                         foreach($poolv['devs'] as $idx => $devs) {
                             echo "<tr><td style='white-space:nowrap; width:34px;'>";
 							echo " <span name='poolusage_{$ctrlid}_{$idx}_device' id='poolusage_{$ctrlid}_{$idx}_device' class='device'>{$devs['device']}</span>";
-							echo "</td><td style='white-space:nowrap; width:70px;'>-> <span name='poolusage_{$ctrlid}_{$idx}_smart_state' id='poolusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
+							echo "</td><td style='white-space:nowrap; width:80px;'>-> <span name='poolusage_{$ctrlid}_{$idx}_smart_state' id='poolusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
 							echo "</td><td style='white-space:nowrap;'> | Temp: <span name='poolusage_{$ctrlid}_{$idx}_temp' id='poolusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
                             echo "</td></tr>";
                         }

@@ -105,6 +105,18 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
                             $is_raid = 1;
                             for ($l = 0; $l < count($config[$rv]['vdisk'][$k]['device']); ++$l) {
                                 $device_raw = explode(".", str_replace("/dev/", "", $config[$rv]['vdisk'][$k]['device'][$l]));    // get rid of .eli .nop etc and /dev/
+if (is_array($config['disks']) && is_array($config['disks']['disk'])) {
+    foreach($config['disks']['disk'] as $key) {
+        if ($key['devicespecialfile'] == "/dev/{$device_raw[0]}") {
+            $dev_temp = $key['controller'].$key['controller_id'];
+            if (($key['smart']['devicefilepath'] != "") && ($key['smart']['devicetypearg'] != "")) {
+                $device_raw[0] = str_replace("/dev/", "", $key['smart']['devicefilepath']);
+                fwrite($eguiconfig, "MOUNT{$i}DISK{$l}_DEVICETYPEARG={$key['smart']['devicetypearg']}"."\n");     // get SMART device type
+            } else fwrite($eguiconfig, "MOUNT{$i}DISK{$l}_DEVICETYPEARG=UNAVAILABLE"."\n");             // SMART not supported 
+            break;
+        }
+    }
+}
                                 fwrite($eguiconfig, "MOUNT{$i}DISK{$l}={$device_raw[0]}"."\n");         // get vdevice disks
                             }
                         }
@@ -113,6 +125,18 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
             }
             if ($is_raid == 0) {
                 $device_raw = explode(".", str_replace("/dev/", "", $config['mounts']['mount'][$i]['mdisk']));    // get rid of .eli .nop etc and /dev/
+if (is_array($config['disks']) && is_array($config['disks']['disk'])) {
+    foreach($config['disks']['disk'] as $key) {
+        if ($key['devicespecialfile'] == "/dev/{$device_raw[0]}") {
+            $dev_temp = $key['controller'].$key['controller_id'];
+            if (($key['smart']['devicefilepath'] != "") && ($key['smart']['devicetypearg'] != "")) {
+                $device_raw[0] = str_replace("/dev/", "", $key['smart']['devicefilepath']);
+                fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICETYPEARG={$key['smart']['devicetypearg']}"."\n");     // get SMART device type
+            } else fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICETYPEARG=UNAVAILABLE"."\n");             // SMART not supported
+            break;
+        }
+    }
+}
                 fwrite($eguiconfig, "MOUNT{$i}DISK0={$device_raw[0]}"."\n");            // set disk to mdisk if there is no raid
             }
         }
@@ -144,6 +168,20 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
                                         if (strcmp($dev, $device[0]) == 0) { $dev = $device[2];
                                         }
                                     }
+
+if (is_array($config['disks']) && is_array($config['disks']['disk'])) {
+    foreach($config['disks']['disk'] as $key) {
+        if ($key['devicespecialfile'] == "/dev/{$dev}") {
+            $dev_temp = $key['controller'].$key['controller_id'];
+            if (($key['smart']['devicefilepath'] != "") && ($key['smart']['devicetypearg'] != "")) {
+                $dev = str_replace("/dev/", "", $key['smart']['devicefilepath']);
+                fwrite($eguiconfig, "MOUNT{$i1}DISK{$disk_count}_DEVICETYPEARG={$key['smart']['devicetypearg']}"."\n");     // get SMART device type
+            } else fwrite($eguiconfig, "MOUNT{$i1}DISK{$disk_count}_DEVICETYPEARG=UNAVAILABLE"."\n");             // SMART not supported
+            break;
+        }        
+    }
+}
+
                                     fwrite($eguiconfig, "MOUNT{$i1}DISK{$disk_count}={$dev}"."\n");                         // get vdevice disks
                                     ++$disk_count;
                                 }
@@ -158,6 +196,7 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
                 for ($share_counter = 0; $share_counter < count($config['zfs']['datasets']['dataset']); ++$share_counter) {
                     $config['extended-gui']['shares']["share{$share_counter}"] = "{$config['zfs']['datasets']['dataset'][$share_counter]['pool'][0]}/{$config['zfs']['datasets']['dataset'][$share_counter]['name']}";
                     fwrite($eguiconfig, "MOUNT{$i1}={$config['extended-gui']['shares']["share{$share_counter}"]}"."\n");    // get dataset name
+                    fwrite($eguiconfig, "MOUNT{$i1}DISK0_DEVICETYPEARG=UNAVAILABLE"."\n");                                  // SMART not supported
                     fwrite($eguiconfig, "MOUNT{$i1}DISK0=ds{$share_counter}"."\n");                                         // set dummy disk
                     ++$i1;
                 }
@@ -166,6 +205,7 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
                 for ($i = 0; $i < count($config['zfs']['volumes']['volume']); ++$i) {
                     $config['extended-gui']['shares']["share{$share_counter}"] = "{$config['zfs']['volumes']['volume'][$i]['pool'][0]}/{$config['zfs']['volumes']['volume'][$i]['name']}";
                     fwrite($eguiconfig, "MOUNT{$i1}={$config['extended-gui']['shares']["share{$share_counter}"]}"."\n");    // get volume name
+                    fwrite($eguiconfig, "MOUNT{$i1}DISK0_DEVICETYPEARG=UNAVAILABLE"."\n");                                  // SMART not supported
                     fwrite($eguiconfig, "MOUNT{$i1}DISK0=vol{$i}"."\n");                                                    // set dummy disk
                     ++$share_counter;
                     ++$i1;
@@ -196,6 +236,18 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
                 if (strcmp($mount_device, $device[0]) == 0) { $mount_device = $device[2];
                 }
             }
+if (is_array($config['disks']) && is_array($config['disks']['disk'])) {
+    foreach($config['disks']['disk'] as $key) {
+        if ($key['devicespecialfile'] == "/dev/{$mount_device}") {
+            $dev_temp = $key['controller'].$key['controller_id'];
+            if (($key['smart']['devicefilepath'] != "") && ($key['smart']['devicetypearg'] != "")) {
+                $mount_device = str_replace("/dev/", "", $key['smart']['devicefilepath']);
+                fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICETYPEARG={$key['smart']['devicetypearg']}"."\n");     // get SMART device type
+            } else fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICETYPEARG=UNAVAILABLE"."\n");             // SMART not supported
+            break;
+        }
+    }
+}
             fwrite($eguiconfig, "MOUNT{$i}=A_OS"."\n");
             fwrite($eguiconfig, "MOUNT{$i}DISK0={$mount_device}"."\n");
             ++$i;
@@ -206,6 +258,7 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
         $mount_device = str_replace("/dev/", "", exec("df | awk '$6 ~ /\/var$/ {print $1}'"));
         if (!empty($mount_device)) {
             fwrite($eguiconfig, "MOUNT{$i}=A_VAR"."\n");
+            fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICETYPEARG=UNAVAILABLE"."\n");                                  // SMART not supported
             fwrite($eguiconfig, "MOUNT{$i}DISK0={$mount_device}"."\n");
             ++$i;
         }
@@ -215,6 +268,7 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
         $mount_device = str_replace("/dev/", "", exec("df | awk '$6 ~ /\/usr\/local$/ {print $1}'"));
         if (!empty($mount_device)) {
             fwrite($eguiconfig, "MOUNT{$i}=A_USR"."\n");
+            fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICETYPEARG=UNAVAILABLE"."\n");                                  // SMART not supported
             fwrite($eguiconfig, "MOUNT{$i}DISK0={$mount_device}"."\n");
             ++$i;
         }
