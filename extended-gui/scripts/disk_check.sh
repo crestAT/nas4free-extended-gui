@@ -5,6 +5,7 @@
 # prereq.:		S.M.A.R.T. must be enabled and existing CONFIG2 file, which will be created at every eGUI startup
 # usage:		disk_check.sh
 # version:	date:		description:
+#   0.6.5   2016.09.19  N: _DEVICE for nice SMART output
 #   0.6.4   2016.09.18  C: check _DEVICETYPEARG for SMART support
 #   0.6.3   2016.03.13  C: SSD lifetime -> bold
 #   0.6.2   2015.12.11  N: SSD support
@@ -68,7 +69,7 @@ GET_DETAILS ()
 
 GET_SMART_SUB ()
 {
-echo "INFO3 $1 $2"                                    # for debugging
+#echo "INFO3 $1 $2"                                    # for debugging
     SMART_OUTPUT=`smartctl -a $1 $2`;
     MSG_TEMP=`echo -e "${SMART_OUTPUT}" | awk '/Current Drive Temperature/ {print $4; exit}'`;                                      # alternative temperature
     MSG_ALL=`echo -e "${SMART_OUTPUT}" | awk '/Solid State/ || /SSD/ || /Wear_/ || /Lifetime/ || /Temperature_/ {print $1,$10}'`;   # check for different params
@@ -86,8 +87,8 @@ echo "INFO3 $1 $2"                                    # for debugging
 
 GET_SMART ()
 {
-#echo "INFO2a ${dcounter}: ${1}"                                    # for debugging
-#echo "INFO2b ${dcounter}_DEVICETYPEARG: ${!2}"                     # for debugging
+# Parameter 1: device_special_file 2: smart_device_type_arg 3: smart_device
+#echo "INFO2 ${1} ${dcounter}_DEVICETYPEARG: ${!2} ${dcounter}_DEVICE ${!3}"    # for debugging
     MSG_TEMP="n/a"
     case $1 in                                                                          # check for special cases
         xmd[0-9])   OUTPUT="${1}|<font color='black'>RAM-DRV</font>|n/a";   break;;
@@ -107,12 +108,14 @@ GET_SMART ()
     fi
 	
     if [ $TEMP_ALWAYS -eq 0 ]; then SMART_STANDBY="-n standby"; else SMART_STANDBY=""; fi
-    smartctl $SMART_STANDBY -q silent -A /dev/$1 $DEVICETYPEARG
-    case $? in 
+    smartctl $SMART_STANDBY -q silent -A /dev/${!3} $DEVICETYPEARG
+EXIT_VAL=`echo $?`;
+#echo INFO2a exit_value: $EXIT_VAL;                                                  # for debugging
+    case $EXIT_VAL in 
         4) MSG="<font color='black'>SMART&nbsp;n/a</font>";;
-        2) MSG="<font color='green'>Standby</font>"; if [ "${TEMP_ALWAYS}" == "1" ]; then GET_SMART_SUB "/dev/${1}" "${DEVICETYPEARG}"; fi;;
+        2) MSG="<font color='green'>Standby</font>"; if [ "${TEMP_ALWAYS}" == "1" ]; then GET_SMART_SUB "/dev/${!3}" "${DEVICETYPEARG}" ; fi;;
         1) MSG="<font color='orange'>Unknown</font>";;
-        0) MSG="<font color='red'>Spinning</font>"; GET_SMART_SUB "/dev/${1}" "${DEVICETYPEARG}";;
+        0) MSG="<font color='red'>Spinning</font>"; GET_SMART_SUB "/dev/${!3}" "${DEVICETYPEARG}";;
         *) MSG="<font color='red'>exit: ${?}</font>";;       
     esac;
     if [ "$OUTPUT" == "" ]; then OUTPUT="${1}|${MSG}|${MSG_TEMP}";
@@ -173,8 +176,8 @@ while [ "${!counter}" != "" ]; do                                       # run th
     OUTPUT=""
     while [ "${!dcounter}" != "" ]; do                                  # run through all disks of a mountpoint (RAID, ZFS POOL)
     if [ ! -d `dirname ${PREFIX}${!counter}.smart` ]; then mkdir -p `dirname ${PREFIX}${!counter}.smart`; fi    # create zfs ds/vol directory
-#echo "INFO ${!dcounter}"                                               # for debugging
-        GET_SMART ${!dcounter} ${dcounter}_DEVICETYPEARG                                         # retrive SMART values
+#echo "INFO ${!dcounter} ${dcounter}_DEVICETYPEARG ${dcounter}_DEVICE"  # for debugging
+        GET_SMART ${!dcounter} ${dcounter}_DEVICETYPEARG ${dcounter}_DEVICE     # retrive SMART values
         j=$((j+1)); dcounter=MOUNT${i}DISK${j};                         # increase disk counter j
     done
     GET_SPACE ${!counter}

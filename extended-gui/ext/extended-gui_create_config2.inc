@@ -105,13 +105,14 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
                             $is_raid = 1;
                             for ($l = 0; $l < count($config[$rv]['vdisk'][$k]['device']); ++$l) {
                                 $device_raw = explode(".", str_replace("/dev/", "", $config[$rv]['vdisk'][$k]['device'][$l]));    // get rid of .eli .nop etc and /dev/
+
 if (is_array($config['disks']) && is_array($config['disks']['disk'])) {
     foreach($config['disks']['disk'] as $key) {
         if ($key['devicespecialfile'] == "/dev/{$device_raw[0]}") {
-            $dev_temp = $key['controller'].$key['controller_id'];
             if (($key['smart']['devicefilepath'] != "") && ($key['smart']['devicetypearg'] != "")) {
-                $device_raw[0] = str_replace("/dev/", "", $key['smart']['devicefilepath']);
-                fwrite($eguiconfig, "MOUNT{$i}DISK{$l}_DEVICETYPEARG={$key['smart']['devicetypearg']}"."\n");     // get SMART device type
+                $dev_temp = str_replace("/dev/", "", $key['smart']['devicefilepath']);
+                fwrite($eguiconfig, "MOUNT{$i}DISK{$l}_DEVICE={$dev_temp}"."\n");                               // get SMART device name
+                fwrite($eguiconfig, "MOUNT{$i}DISK{$l}_DEVICETYPEARG={$key['smart']['devicetypearg']}"."\n");   // get SMART device type
             } else fwrite($eguiconfig, "MOUNT{$i}DISK{$l}_DEVICETYPEARG=UNAVAILABLE"."\n");             // SMART not supported 
             break;
         }
@@ -125,13 +126,14 @@ if (is_array($config['disks']) && is_array($config['disks']['disk'])) {
             }
             if ($is_raid == 0) {
                 $device_raw = explode(".", str_replace("/dev/", "", $config['mounts']['mount'][$i]['mdisk']));    // get rid of .eli .nop etc and /dev/
+
 if (is_array($config['disks']) && is_array($config['disks']['disk'])) {
     foreach($config['disks']['disk'] as $key) {
         if ($key['devicespecialfile'] == "/dev/{$device_raw[0]}") {
-            $dev_temp = $key['controller'].$key['controller_id'];
             if (($key['smart']['devicefilepath'] != "") && ($key['smart']['devicetypearg'] != "")) {
-                $device_raw[0] = str_replace("/dev/", "", $key['smart']['devicefilepath']);
-                fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICETYPEARG={$key['smart']['devicetypearg']}"."\n");     // get SMART device type
+                $dev_temp = str_replace("/dev/", "", $key['smart']['devicefilepath']);
+                fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICE={$dev_temp}"."\n");                              // get SMART device name
+                fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICETYPEARG={$key['smart']['devicetypearg']}"."\n");  // get SMART device type
             } else fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICETYPEARG=UNAVAILABLE"."\n");             // SMART not supported
             break;
         }
@@ -172,10 +174,10 @@ if (is_array($config['disks']) && is_array($config['disks']['disk'])) {
 if (is_array($config['disks']) && is_array($config['disks']['disk'])) {
     foreach($config['disks']['disk'] as $key) {
         if ($key['devicespecialfile'] == "/dev/{$dev}") {
-            $dev_temp = $key['controller'].$key['controller_id'];
             if (($key['smart']['devicefilepath'] != "") && ($key['smart']['devicetypearg'] != "")) {
-                $dev = str_replace("/dev/", "", $key['smart']['devicefilepath']);
-                fwrite($eguiconfig, "MOUNT{$i1}DISK{$disk_count}_DEVICETYPEARG={$key['smart']['devicetypearg']}"."\n");     // get SMART device type
+                $dev_temp = str_replace("/dev/", "", $key['smart']['devicefilepath']);
+                fwrite($eguiconfig, "MOUNT{$i1}DISK{$disk_count}_DEVICE={$dev_temp}"."\n");                               // get SMART device name
+                fwrite($eguiconfig, "MOUNT{$i1}DISK{$disk_count}_DEVICETYPEARG={$key['smart']['devicetypearg']}"."\n");   // get SMART device type
             } else fwrite($eguiconfig, "MOUNT{$i1}DISK{$disk_count}_DEVICETYPEARG=UNAVAILABLE"."\n");             // SMART not supported
             break;
         }        
@@ -236,13 +238,14 @@ if (is_array($config['disks']) && is_array($config['disks']['disk'])) {
                 if (strcmp($mount_device, $device[0]) == 0) { $mount_device = $device[2];
                 }
             }
+
 if (is_array($config['disks']) && is_array($config['disks']['disk'])) {
     foreach($config['disks']['disk'] as $key) {
         if ($key['devicespecialfile'] == "/dev/{$mount_device}") {
-            $dev_temp = $key['controller'].$key['controller_id'];
             if (($key['smart']['devicefilepath'] != "") && ($key['smart']['devicetypearg'] != "")) {
-                $mount_device = str_replace("/dev/", "", $key['smart']['devicefilepath']);
-                fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICETYPEARG={$key['smart']['devicetypearg']}"."\n");     // get SMART device type
+                $dev_temp = str_replace("/dev/", "", $key['smart']['devicefilepath']);
+                fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICE={$dev_temp}"."\n");                              // get SMART device name
+                fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICETYPEARG={$key['smart']['devicetypearg']}"."\n");  // get SMART device type
             } else fwrite($eguiconfig, "MOUNT{$i}DISK0_DEVICETYPEARG=UNAVAILABLE"."\n");             // SMART not supported
             break;
         }
