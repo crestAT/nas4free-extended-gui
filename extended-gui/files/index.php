@@ -9,38 +9,38 @@
 	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
 	All rights reserved.
 
-	Portions of freenas (http://www.freenas.org).
-	Copyright (c) 2005-2011 by Olivier Cochard <olivier@freenas.org>.
-	All rights reserved.
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
 
-	Redistribution and use in source and binary forms, with or without
-	modification, are permitted provided that the following conditions are met:
+    1. Redistributions of source code must retain the above copyright notice, this
+       list of conditions and the following disclaimer.
+    2. Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
+       and/or other materials provided with the distribution.
 
-	1. Redistributions of source code must retain the above copyright notice, this
-	   list of conditions and the following disclaimer.
-	2. Redistributions in binary form must reproduce the above copyright notice,
-	   this list of conditions and the following disclaimer in the documentation
-	   and/or other materials provided with the distribution.
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-	DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-	LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-	ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	The views and conclusions contained in the software and documentation are those
-	of the authors and should not be interpreted as representing official policies,
-	either expressed or implied, of the NAS4Free Project.
+    The views and conclusions contained in the software and documentation are those
+    of the authors and should not be interpreted as representing official policies,
+    either expressed or implied, of the FreeBSD Project.
 */
 // Page base: r2433 => r2898
-if (is_file("/usr/local/www/bar_left.gif")) $image_path = '';
-else $image_path = 'images/';
- 
+if (is_file("/usr/local/www/bar_left.gif")) $image_path = "";
+else $image_path = "images/";
+$EGUI_PREFIX = "/tmp/extended-gui_"; 
+$config_file = "ext/extended-gui/extended-gui.conf";
+require_once("ext/extended-gui/json.inc");
+if (($configuration = load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
+
 // Configure page permission
 $pgperm['allowuser'] = TRUE;
 
@@ -73,23 +73,29 @@ function get_vip_status() {
 }
 
 function get_ups_disp_status($ups_status) {
-	if (empty($ups_status))
+	if (empty($ups_status)) {
+        report_ups(gettext("Data stale!"));
 		return "";
+    }
 	$status = explode(' ', $ups_status);
 	foreach ($status as $condition) {
 		if ($disp_status) $disp_status .= ', ';
 		switch ($condition) {
 		case 'WAIT':
 			$disp_status .= gettext('UPS Waiting');
+            report_ups($disp_status);
 			break;
 		case 'OFF':
 			$disp_status .= gettext('UPS Off Line');
+            report_ups($disp_status);
 			break;
 		case 'OL':
 			$disp_status .= gettext('UPS On Line');
+            report_ups($disp_status);
 			break;
 		case 'OB':
 			$disp_status .= gettext('UPS On Battery');
+            report_ups($disp_status);
 			break;
 		case 'TRIM':
 			$disp_status .= gettext('SmartTrim');
@@ -99,12 +105,15 @@ function get_ups_disp_status($ups_status) {
 			break;
 		case 'OVER':
 			$disp_status .= gettext('Overload');
+            report_ups($disp_status);
 			break;
 		case 'LB':
 			$disp_status .= gettext('Battery Low');
+            report_ups($disp_status);
 			break;
 		case 'RB':
 			$disp_status .= gettext('Replace Battery UPS');
+            report_ups($disp_status);
 			break;
 		case 'CAL':
 			$disp_status .= gettext('Calibration Battery');
@@ -235,38 +244,66 @@ function get_xen_console($domid) {
 
 /* 
 function get_cputemp() {
-    $userinfo = exec("cat /tmp/extended-gui_cpu_check.log");
+    global $EGUI_PREFIX;
+    $userinfo = exec("cat {$EGUI_PREFIX}cpu_check.log");
     return $userinfo;
 }
  */
  
-function get_indexrefresh() {
-    if (is_file("/tmp/extended-gui_index.refresh")) {
-        unlink("/tmp/extended-gui_index.refresh");
-        write_log("extended-gui: autmount refresh");
-        $indexrefresh = "automount";
+function report_ups($disp_status) {
+    global $EGUI_PREFIX;
+     if (($disp_status != gettext('UPS On Line')) && !is_file("{$EGUI_PREFIX}UPS_error.lock")) {
+        $now = str_replace("\n", "", shell_exec('date "+%Y.%m.%d %H:%M:%S"'));
+        file_put_contents("{$EGUI_PREFIX}system_error.msg", "{$now} ERROR UPS {$disp_status}\n", FILE_APPEND );    # create system error message
+        touch("{$EGUI_PREFIX}UPS_error.lock");
     }
-    else $indexrefresh = "";
+    else if (is_file("{$EGUI_PREFIX}UPS_error.lock") && ($disp_status == gettext('UPS On Line'))) {
+        unlink("{$EGUI_PREFIX}UPS_error.lock");   # to reset UPS error display lock
+    }
+}
+
+function get_indexrefresh() {
+    global $EGUI_PREFIX, $config, $configuration;
+    $indexrefresh['reason'] = "";
+    $indexrefresh['message'] = "";
+    if (is_file("{$EGUI_PREFIX}index.refresh")) {
+        unlink("{$EGUI_PREFIX}index.refresh");
+        write_log("extended-gui: autmount refresh");
+        $indexrefresh['reason'] = "automount";
+        $indexrefresh['message'] = "USB auto-mounted";
+    }
+    if ($configuration['system_warnings']) {
+        if (is_file("{$EGUI_PREFIX}system_error.msg")) {
+            $indexrefresh['reason'] = "system_error";
+            $indexrefresh['message'] = str_replace("degreeC", " C ", shell_exec("cat {$EGUI_PREFIX}system_error.msg"));
+            $a_search = array("\n", " C ");
+            $a_replace = array("<br />", "&deg;C");
+            file_put_contents("{$EGUI_PREFIX}system_error.msg.locked", str_replace($a_search, $a_replace, $indexrefresh['message']), FILE_APPEND );
+            unlink("{$EGUI_PREFIX}system_error.msg");
+        }
+    }
     return $indexrefresh;
 }
 
 function get_userinfo() {
-    $userinfo = exec("cat /tmp/extended-gui_user_online.log");
+    global $EGUI_PREFIX;
+    $userinfo = exec("cat {$EGUI_PREFIX}user_online.log");
     return $userinfo;
 }
 
 function get_hostsinfo() {
-    $hostsinfo = exec("cat /tmp/extended-gui_hosts_online.log");
+    global $EGUI_PREFIX;
+    $hostsinfo = exec("cat {$EGUI_PREFIX}hosts_online.log");
     return $hostsinfo;
 }
 
 function egui_get_mount_usage() {
-	global $config, $g;
+	global $config, $g, $configuration;
 
 	$result = array();
 	exec("/bin/df -h", $rawdata);
     exec("df -h | awk '/^\/dev\// && /\/mnt\// {print $6}'| cut -d/ -f3", $sharenames);
-    if (!empty($config['extended-gui']['shares'])) foreach($config['extended-gui']['shares'] as $a_share) $sharenames[] = $a_share; // put file systems and datasets in sharenames
+    if (isset($configuration['shares'])) foreach($configuration['shares'] as $a_share) $sharenames[] = $a_share; // put file systems and datasets in sharenames
 	foreach ($rawdata as $line) {
 		if (0 == preg_match("/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+%)\s+(.+)/", $line, $aline)) continue;
 		$filesystem = chop($aline[1]);
@@ -277,9 +314,9 @@ function egui_get_mount_usage() {
 		$mountpoint = chop($aline[6]);
 //systems only with zfs 		if (is_array($config['mounts']) && is_array($config['mounts']['mount'])) {
 			foreach ($sharenames as $mountcfg) {
-                if (isset($config['extended-gui']['boot']) && ($mountpoint == "/")) { $mountpoint = "/mnt/A_OS"; }
-                if (isset($config['extended-gui']['varfs']) && ($mountpoint == "/var")) { $mountpoint = "/mnt/A_VAR"; }
-                if (isset($config['extended-gui']['usrfs']) && ($mountpoint == "/usr/local")) { $mountpoint = "/mnt/A_USR"; }
+                if ($configuration['boot'] && ($mountpoint == "/")) { $mountpoint = "/mnt/A_OS"; }
+                if ($configuration['varfs'] && ($mountpoint == "/var")) { $mountpoint = "/mnt/A_VAR"; }
+                if ($configuration['usrfs'] && ($mountpoint == "/usr/local")) { $mountpoint = "/mnt/A_USR"; }
 				if (0 == strcmp($mountpoint, "{$g['media_path']}/{$mountcfg}")) {
 					$result[$mountpoint] = array();
                     $result[$mountpoint]['id'] = str_replace('/', '', $mountcfg);;  // derived from get_disk_usage
@@ -313,37 +350,6 @@ function egui_get_disk_usage() {
 	return $value;
 }
 
-// needed for compatibility reasons for 9.3 (up to 9.3.0.2.1955) and 10.1 releases
-if (!function_exists('html_textinfo')) {
-    // derived from: /etc/inc/wui.inc
-    class HTMLTextInfo extends HTMLBaseControl {
-    	function __construct($ctrlname, $title, $text) {
-    		$this->SetCtrlName($ctrlname);
-    		$this->SetTitle($title);
-    		$this->SetValue($text);
-    	}
-    
-    	function Render() {
-    		$ctrlname = $this->GetCtrlName();
-    		$title = $this->GetTitle();
-    		$class1 = "vncellt";
-    		$class2 = "listr";
-    		$text = $this->GetValue();
-    
-    		echo "<tr id='{$ctrlname}_tr'>\n";
-    		echo "	<td width='22%' class='{$class1}'>{$title}</td>\n";
-    		echo "	<td width='78%' class='{$class2}'><span id='{$ctrlname}'>{$text}</span></td>\n";
-    		echo "</tr>\n";
-    	}
-    }
-    
-    // derived from: /usr/local/www/guiconfig.inc
-    function html_textinfo($ctrlname, $title, $text) {
-    	$ctrl = new HTMLTextInfo($ctrlname, $title, $text);
-    	$ctrl->Render();
-    }
-} 
-
 if (is_ajax()) {
 	$sysinfo = system_get_sysinfo();
 	$vipstatus = get_vip_status();
@@ -358,7 +364,7 @@ if (is_ajax()) {
     $sysinfo['diskusage'] = egui_get_disk_usage();
     if (is_array($sysinfo['diskusage'])) {
         for ($i = 0; $i < count($sysinfo['diskusage']); ++$i) {
-            $mountpoint_details = explode('##', exec("cat /tmp/extended-gui_{$sysinfo['diskusage'][$i]['name']}.smart"));
+            $mountpoint_details = explode('##', exec("cat {$EGUI_PREFIX}{$sysinfo['diskusage'][$i]['name']}.smart"));
             $sysinfo['diskusage'][$i]['space'] = $mountpoint_details[1];
             $pool_details = explode('#', $mountpoint_details[0]);
             foreach($pool_details as $a_pool) {
@@ -372,7 +378,7 @@ if (is_ajax()) {
     }
     if (is_array($sysinfo['poolusage'])) {
          for ($i = 0; $i < count($sysinfo['poolusage']); ++$i) {
-            $mountpoint_details = explode('##', exec("cat /tmp/extended-gui_{$sysinfo['poolusage'][$i]['name']}.smart"));
+            $mountpoint_details = explode('##', exec("cat {$EGUI_PREFIX}{$sysinfo['poolusage'][$i]['name']}.smart"));
             $sysinfo['poolusage'][$i]['space'] = $mountpoint_details[1];
             $pool_details = explode('#', $mountpoint_details[0]);
             foreach($pool_details as $a_pool) {
@@ -454,11 +460,18 @@ if(function_exists("date_default_timezone_set") and function_exists("date_defaul
      @date_default_timezone_set(@date_default_timezone_get());
 
 if ($_POST['clear_alarms']) {
-    if (file_exists('/tmp/extended-gui_cpu.alarm')) { unlink('/tmp/extended-gui_cpu.alarm'); }
-    if (file_exists('/tmp/extended_gui_zfs.alarm')) { unlink('/tmp/extended_gui_zfs.alarm'); }
+    if (file_exists("{$EGUI_PREFIX}cpu.alarm")) { unlink("{$EGUI_PREFIX}cpu.alarm"); }
+    if (file_exists("{$EGUI_PREFIX}zfs.alarm")) { unlink("{$EGUI_PREFIX}zfs.alarm"); }
     $errormsg .= gettext("Audible alarms for CPU and ZFS errors cleared!");
 	$errormsg .= "<br />\n";
 }
+
+if ($_POST['clear_history']) {
+    if (is_file("{$EGUI_PREFIX}system_error.msg.locked")) unlink("{$EGUI_PREFIX}system_error.msg.locked");
+    $errormsg .= gettext("Alarm message history cleared!");
+	$errormsg .= "<br />\n";
+}
+
 if ($_POST['umount']) {
     $retval = mwexec("/var/scripts/automount_usb.sh umount", true);
     if ($retval <> 0) {
@@ -474,14 +487,34 @@ if ($_POST['rmount']) {
     }
 }    
 if ($_POST['purge']) { exec("/var/scripts/purge.sh 0"); }
+
+if ($configuration['system_warnings'] && is_file("{$EGUI_PREFIX}system_error.msg.locked")) { 
+    $errormsg .= shell_exec("cat {$EGUI_PREFIX}system_error.msg.locked");
+}
+
+if (isset($_GET['standby_drive'])) {
+    $retval = mwexec("camcontrol standby {$_GET['standby_drive']} && /var/scripts/disk_check.sh", true);        
+    if ($retval <> 0) {
+        $errormsg .= sprintf(gettext("Cannot set drive %s to standby!"), $_GET['standby_drive']);
+    	$errormsg .= "<br />\n";
+    }
+}
+
 ?>
 <?php include("fbegin.inc");?>
 <script type="text/javascript">//<![CDATA[
+function set_standby(drive) {
+    location.href = "index.php?standby_drive="+drive;
+}
+
 $(document).ready(function(){
 	var gui = new GUI;
 	gui.recall(5000, 5000, 'index.php', null, function(data) {
-		if (data.indexrefresh == 'automount') location.assign("index.php");
-//        location.reload();
+		if (data.indexrefresh.reason == 'automount') location.assign("index.php");
+		if (data.indexrefresh.reason == 'system_error') {
+            alert(data.indexrefresh.message);
+            location.assign("index.php");
+        }
 		if ($('#userinfo').length > 0) $('#userinfo').html(data.userinfo);
 		if ($('#hostsinfo').length > 0)$('#hostsinfo').html(data.hostsinfo);
 
@@ -678,7 +711,7 @@ if (!empty($cpuinfo['temperature']) || !empty($cpuinfo['temperature2'])) { ++$ro
 if (!empty($cpuinfo['freq'])) { ++$rowcounter; } 
 $swapinfo = system_get_swap_info(); 
 if (!empty($swapinfo)) { ++$rowcounter; }	
-if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }	 
+if ($configuration['hide_cpu']) { --$rowcounter; }	 
 ?>
 <table width="100%" border="0" cellpadding="0" cellspacing="0">
   <tr>
@@ -688,24 +721,24 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
         <td colspan="3" class="listtopic"><?=gettext("System Information");?></td>
     </tr>
     <tr>
-        <?php if (isset($config['extended-gui']['hide_cpu_graph']) && isset($config['extended-gui']['hide_lan_graph'])) :?>
+        <?php if ($configuration['hide_cpu_graph'] && $configuration['hide_lan_graph']) :?>
             <td width="25%" class="vncellt"><?=gettext("Hostname");?></td>
         <?php else :?>
             <td width="35%" class="vncellt"><?=gettext("Hostname");?></td>
         <?php endif;?>
         <td class="listr"><?=system_get_hostname();?></td>
         <?php if (Session::isAdmin()):?>
-            <?php if (!isset($config['extended-gui']['hide_cpu_graph']) || !isset($config['extended-gui']['hide_lan_graph'])) { ?>
+            <?php if (!$configuration['hide_cpu_graph'] || !$configuration['hide_lan_graph']) { ?>
                 <td height="100%" align="center" rowspan="<?=$rowcounter;?>" class="listr">
                     <table width="100%" border="0" cellpadding="0" cellspacing="0">
-                    <?php if (!isset($config['extended-gui']['hide_cpu_graph'])) { ?>
+                    <?php if (!$configuration['hide_cpu_graph']) { ?>
                         <tr><td style="text-center; vertical-align: middle; height: 200px" align="center">
                             <object id="graph" data="graph_index_cpu.php" type="image/svg+xml" width="300" height="150">
                                 <param name="src" value="index.php" />
                             </object>
                         </td></tr>
                     <?php } ?>
-                    <?php if (!isset($config['extended-gui']['hide_lan_graph'])) { ?>
+                    <?php if (!$configuration['hide_lan_graph']) { ?>
                         <tr><td style="text-center; vertical-align: middle; height: 200px" align="center">
                             <form name="form2" action="index.php" method="get">
                             <select name="if" class="formfld" onchange="submit()">
@@ -789,7 +822,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 				</td>
 			</tr>
 		<?php endif;?>
-<?php if (!isset($config['extended-gui']['hide_cpu'])) { ?>
+<?php if (!$configuration['hide_cpu']) { ?>
 		<tr>
 			<td width="25%" class="vncellt"><?=gettext("CPU usage");?></td>
 			<td width="75%" class="listr">
@@ -804,7 +837,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 				<input style="padding: 0; border: 0; background-color:#FCFCFC;" size="30" name="cpuusage" id="cpuusage" value="<?=gettext("Updating in 5 seconds.");?>" />
 			</td></tr>
 			<?php
-            if (!isset($config['extended-gui']['hide_cpu_usage'])) {
+            if (!$configuration['hide_cpu_usage']) {
 				$cpus = system_get_cpus();
 				if ($cpus > 1) {
 					echo "<tr><td><hr size='1' /></td></tr>";
@@ -894,7 +927,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
     		      	$index = 0;
     				foreach ($a_diskusage as $diskusagek => $diskusagev) {
 			            $ctrlid = str_replace('/', '', $diskusagev['name']);     // remove '/' to get javascript running
-                        $mountpoint_details = explode('##', exec("cat /tmp/extended-gui_{$diskusagev['name']}.smart"));
+                        $mountpoint_details = explode('##', exec("cat {$EGUI_PREFIX}{$diskusagev['name']}.smart"));
                         $diskusagev['space'] = $mountpoint_details[1];
                         $pool_details = explode('#', $mountpoint_details[0]);
                         foreach($pool_details as $a_pool) {
@@ -920,12 +953,12 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
     						"<span name='diskusage_{$ctrlid}_used' id='diskusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$diskusagev['used']}</span>",
     						"<span name='diskusage_{$ctrlid}_avail' id='diskusage_{$ctrlid}_avail' class='avail' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$diskusagev['avail']}</span>");
     					echo " ||";
-                        echo "</td><td><table style='width:210px'>";
+                        echo "</td><td><table style='width:230px'>";
                         foreach($diskusagev['devs'] as $idx => $devs) {
-                            echo "<tr><td style='white-space:nowrap; width:34px;'>";
+                            echo "<tr><td style='white-space:nowrap; width:60px;'>";
     						echo " <span name='diskusage_{$ctrlid}_{$idx}_device' id='diskusage_{$ctrlid}_{$idx}_device' class='device'>{$devs['device']}</span>";
-    						echo "</td><td style='white-space:nowrap; width:80px;'>-> <span name='diskusage_{$ctrlid}_{$idx}_smart_state' id='diskusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
-    						echo "</td><td style='white-space:nowrap;'> | Temp: <span name='diskusage_{$ctrlid}_{$idx}_temp' id='diskusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
+    						echo "</td><td style='white-space:nowrap; width:80px;'>= <span name='diskusage_{$ctrlid}_{$idx}_smart_state' id='diskusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
+    						echo "</td><td style='white-space:nowrap; width:80px;'> | Temp: <span name='diskusage_{$ctrlid}_{$idx}_temp' id='diskusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
                             echo "</td></tr>";
                         }
                         echo "</table>";
@@ -942,7 +975,7 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 					foreach ($zfspools as $poolk => $poolv) {
 						$ctrlid = $poolv['name'];
 						$ctrlid = preg_replace('/[-\.: ]/', '_', $ctrlid);
-                        $mountpoint_details = explode('##', exec("cat /tmp/extended-gui_{$poolv['name']}.smart"));
+                        $mountpoint_details = explode('##', exec("cat {$EGUI_PREFIX}{$poolv['name']}.smart"));
                         $poolv['space'] = $mountpoint_details[1];
                         $pool_details = explode('#', $mountpoint_details[0]);
                         foreach($pool_details as $a_pool) {
@@ -968,12 +1001,12 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 							"<span name='poolusage_{$ctrlid}_used' id='poolusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$poolv['used']}</span>",
 							"<span name='poolusage_{$ctrlid}_avail' id='poolusage_{$ctrlid}_avail' class='avail' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$poolv['avail']}</span>");
 						echo " ||";
-                        echo "</td><td><table style='width:210px'>";
+                        echo "</td><td><table style='width:230px'>";
                         foreach($poolv['devs'] as $idx => $devs) {
-                            echo "<tr><td style='white-space:nowrap; width:34px;'>";
+                            echo "<tr><td style='white-space:nowrap; width:60px;'>";
 							echo " <span name='poolusage_{$ctrlid}_{$idx}_device' id='poolusage_{$ctrlid}_{$idx}_device' class='device'>{$devs['device']}</span>";
-							echo "</td><td style='white-space:nowrap; width:80px;'>-> <span name='poolusage_{$ctrlid}_{$idx}_smart_state' id='poolusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
-							echo "</td><td style='white-space:nowrap;'> | Temp: <span name='poolusage_{$ctrlid}_{$idx}_temp' id='poolusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
+							echo "</td><td style='white-space:nowrap; width:80px;'>= <span name='poolusage_{$ctrlid}_{$idx}_smart_state' id='poolusage_{$ctrlid}_{$idx}_smart_state' class='state'>{$devs['smart_state']}</span>";
+							echo "</td><td style='white-space:nowrap; width:80px;'> | Temp: <span name='poolusage_{$ctrlid}_{$idx}_temp' id='poolusage_{$ctrlid}_{$idx}_temp' class='temp' style='font-weight:bold'>{$devs['temp']}</span>";
                             echo "</td></tr>";
                         }
                         echo "</table>";
@@ -1228,19 +1261,19 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 			</table></td>
 		</tr>
 		<?php endif;?>
-<?php if (isset($config['extended-gui']['user'])) { ?>
+<?php if ($configuration['user']) { ?>
 			  <tr>
 			    <td width="25%" valign="top" class="vncellt"><?=gettext("Users");?></td>
 			    <td class="listr" colspan="2"><span name="userinfo" id="userinfo"><?php echo get_userinfo(); ?></span></td>
 			  </tr>
 <?php } ?>
-<?php if (isset($config['extended-gui']['hosts'])) { ?>
+<?php if ($configuration['hosts']) { ?>
 			  <tr>
 			    <td width="25%" valign="top" class="vncellt"><?=gettext("Hosts");?></td>
 			    <td class="listr" colspan="2"><span name="hostsinfo" id="hostsinfo"><?php echo get_hostsinfo(); ?></span></td>
 			  </tr>
 <?php } ?>
-<?php if (isset($config['extended-gui']['services'])) { ?>
+<?php if ($configuration['services']) { ?>
 			  <tr>
 			    <td width="25%" valign="top" class="vncellt"><?=gettext("Services");?></td>
 			    <td class="listr" colspan="2">
@@ -1259,17 +1292,21 @@ if (isset($config['extended-gui']['hide_cpu'])) { --$rowcounter; }
 	<form action="index.php" method="post" name="iform" id="iform" onsubmit="spinner()">
 		<br>
 <?php bindtextdomain("nas4free", "/usr/local/share/locale-egui"); ?>
-<?php if (isset($config['extended-gui']['buttons'])) { ?>
-    <?php if (isset($config['extended-gui']['purge']['enable'])) { ?>
-    		<input name="purge" type="submit" class="formbtn" title="<?=gettext("Purge now all CIFS/SMB recycle bins!");?>" value="<?=gettext("Purge now");?>">
-    <?php } ?>
-<?php } ?>
-<?php if (isset($config['extended-gui']['automount'])) { ?>
+<?php if ($configuration['automount']) { ?>
     <input name="umount" type="submit" class="formbtn" title="<?=gettext("Unmount all USB-Drives!");?>" value="<?=gettext("Unmount USB Drives");?>">
     <input name="rmount" type="submit" class="formbtn" title="<?=gettext("Remount all USB-Drives!");?>" value="<?=gettext("Mount USB Drives");?>">
 <?php } ?>
-<?php if (isset($config['extended-gui']['beep'])) { ?>
+<?php if ($configuration['beep']) { ?>
     <input name="clear_alarms" type="submit" class="formbtn" title="<?=gettext("Clear all CPU and ZFS audible alarms!");?>" value="<?=gettext("Clear Alarms");?>">
+<?php } ?>
+<?php if ($configuration['system_warnings']) { ?>
+    <input name="clear_history" type="submit" class="formbtn" title="<?=gettext("Clear alarm history!");?>" value="<?=gettext("Clear History");?>">
+<?php } ?>
+<?php if ($configuration['buttons']) { ?>
+    <?php if ($configuration['purge']['enable']) { ?>
+    		<input name="purge" type="submit" class="formbtn" title="<?=gettext("Purge now all CIFS/SMB recycle bins!");?>" value="<?=gettext("Purge now");?>">
+    <?php } ?>
+    <?php if (is_file("{$configuration['rootfolder']}/buttons.inc")) include_once("{$configuration['rootfolder']}/buttons.inc"); ?>
 <?php } ?>
 <?php bindtextdomain("nas4free", "/usr/local/share/locale"); ?>
  		<?php include("formend.inc"); ?>

@@ -9,39 +9,41 @@
 	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
 	All rights reserved.
 
-	Portions of freenas (http://www.freenas.org).
-	Copyright (c) 2005-2011 by Olivier Cochard <olivier@freenas.org>.
-	All rights reserved.
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
 
-	Redistribution and use in source and binary forms, with or without
-	modification, are permitted provided that the following conditions are met:
+    1. Redistributions of source code must retain the above copyright notice, this
+       list of conditions and the following disclaimer.
+    2. Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
+       and/or other materials provided with the distribution.
 
-	1. Redistributions of source code must retain the above copyright notice, this
-	   list of conditions and the following disclaimer.
-	2. Redistributions in binary form must reproduce the above copyright notice,
-	   this list of conditions and the following disclaimer in the documentation
-	   and/or other materials provided with the distribution.
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-	DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-	LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-	ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	The views and conclusions contained in the software and documentation are those
-	of the authors and should not be interpreted as representing official policies,
-	either expressed or implied, of the NAS4Free Project.
+    The views and conclusions contained in the software and documentation are those
+    of the authors and should not be interpreted as representing official policies,
+    either expressed or implied, of the FreeBSD Project.
 */
-$v = "v0.6-b3";              // extension version
-$appname = "Extended GUI";
+$version = "v0.6-b7";              // extension version
+$appname = "Extended-GUI";
 $min_release = 10.3032853;  // minimal OS release
 
 require_once("config.inc");
+
+$install_dir = dirname(__FILE__)."/";                           // get directory where the installer script resides
+if (!is_dir("{$install_dir}backup")) { mkdir("{$install_dir}backup", 0775, true); }
+if (!is_dir("{$install_dir}log")) { mkdir("{$install_dir}log", 0775, true); }
+$config_name = strtolower($appname);
+$version_striped = str_replace(".", "", $version);
 
 $arch = $g['arch'];
 $platform = $g['platform'];
@@ -52,10 +54,6 @@ $platform = $g['platform'];
 // install extension
 global $input_errors;
 global $savemsg;
-
-$install_dir = dirname(__FILE__)."/";                           // get directory where the installer script resides
-if (!is_dir("{$install_dir}backup")) { mkdir("{$install_dir}backup", 0775, true); }
-if (!is_dir("{$install_dir}log")) { mkdir("{$install_dir}log", 0775, true); }
 
 // check FreeBSD release for fetch options >= 9.3
 $release = explode("-", exec("uname -r"));
@@ -70,15 +68,15 @@ if ($current_release < floatval($min_release)) {                        // relea
     return;
 }
 
-// create stripped version name
-$vs = str_replace(".", "", $v);
 // fetch release archive
-$return_val = mwexec("fetch {$verify_hostname} -vo {$install_dir}master.zip 'https://github.com/crestAT/nas4free-extended-gui/releases/download/{$v}/extended-gui-{$vs}.zip'", true);
+$return_val = mwexec("fetch {$verify_hostname} -vo {$install_dir}master.zip 'https://github.com/crestAT/nas4free-extended-gui/releases/download/{$version}/extended-gui-{$version_striped}.zip'", true);
 if ($return_val == 0) {
     $return_val = mwexec("tar -xf {$install_dir}master.zip -C {$install_dir} --exclude='.git*' --strip-components 2", true);
     if ($return_val == 0) {
         exec("rm {$install_dir}master.zip");
         exec("chmod -R 775 {$install_dir}");
+        require_once("{$install_dir}ext/json.inc");
+        $config_file = "{$install_dir}ext/{$config_name}.conf";
         if (is_file("{$install_dir}version.txt")) { $file_version = exec("cat {$install_dir}version.txt"); }
         else { $file_version = "n/a"; }
         $savemsg = sprintf(gettext("Update to version %s completed!"), $file_version);
@@ -94,49 +92,33 @@ else {
 }
 
 // install / update application on NAS4Free
-if ( !isset($config['extended-gui']) || !is_array($config['extended-gui'])) { 
-// new installation
-    $config['extended-gui'] = array();      
-    $config['extended-gui']['appname'] = $appname;
-    $config['extended-gui']['version'] = exec("cat {$install_dir}version.txt");
-    $config['extended-gui']['product_version'] = "-----";
-    $config['extended-gui']['rootfolder'] = $install_dir;
-    $i = 0;
-    if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
-        for ($i; $i < count($config['rc']['postinit']['cmd']);) {
-            if (preg_match('/extended-gui/', $config['rc']['postinit']['cmd'][$i])) break; ++$i; }
+if (($configuration = load_config($config_file)) === false) {
+    $configuration = array();             // new installation or first time with json config
+    if (isset($config['extended-gui']) && is_array($config['extended-gui'])) {
+        $configuration = $config['extended-gui'];                       // load old config
+        unset($config['extended-gui']);                                 // remove old config 
     }
-    $config['rc']['postinit']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_start.php";
-    $i =0;
-    if ( is_array($config['rc']['shutdown'] ) && is_array( $config['rc']['shutdown']['cmd'] ) ) {
-        for ($i; $i < count($config['rc']['shutdown']['cmd']); ) {
-            if (preg_match('/extended-gui/', $config['rc']['shutdown']['cmd'][$i])) break; ++$i; }
-    }
-    $config['rc']['shutdown']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_stop.php";
-    write_config();
-    require_once("{$config['extended-gui']['rootfolder']}extended-gui-start.php");
-    echo "\n".$appname." Version ".$config['extended-gui']['version']." installed";
-    echo "\n\nInstallation completed, use WebGUI | Extensions | ".$appname." to configure \nthe application (don't forget to refresh the WebGUI before use)!\n";
+    else $new_installation = true;
 }
-else {
-// update release
-    $config['extended-gui']['version'] = exec("cat {$install_dir}version.txt");
-    $config['extended-gui']['product_version'] = "-----";
-    $config['extended-gui']['rootfolder'] = $install_dir;
-    $i = 0;
-    if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
-        for ($i; $i < count($config['rc']['postinit']['cmd']);) {
-            if (preg_match('/extended-gui/', $config['rc']['postinit']['cmd'][$i])) break; ++$i; }
-    }
-    $config['rc']['postinit']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_start.php";
-    $i =0;
-    if ( is_array($config['rc']['shutdown'] ) && is_array( $config['rc']['shutdown']['cmd'] ) ) {
-        for ($i; $i < count($config['rc']['shutdown']['cmd']); ) {
-            if (preg_match('/extended-gui/', $config['rc']['shutdown']['cmd'][$i])) break; ++$i; }
-    }
-    $config['rc']['shutdown']['cmd'][$i] = $config['extended-gui']['rootfolder']."extended-gui_stop.php";
-    write_config();
-    require_once("{$config['extended-gui']['rootfolder']}extended-gui-stop.php");
-    require_once("{$config['extended-gui']['rootfolder']}extended-gui-start.php");
+$configuration['appname'] = $appname;
+$configuration['version'] = exec("cat {$install_dir}version.txt");
+$configuration['product_version'] = "-----";
+$configuration['rootfolder'] = $install_dir;
+$configuration['postinit'] = "/usr/local/bin/php-cgi -f {$install_dir}{$config_name}-start.php";
+$configuration['shutdown'] = "/usr/local/bin/php-cgi -f {$install_dir}{$config_name}-stop.php";
+if (is_array($config['rc']['postinit'] ) && is_array($config['rc']['postinit']['cmd'] ) ) {
+    for ($i = 0; $i < count($config['rc']['postinit']['cmd']); $i++) {
+        if (preg_match("/{$config_name}/", $config['rc']['postinit']['cmd'][$i])) break; }
 }
+$config['rc']['postinit']['cmd'][$i] = $configuration['postinit'];
+if (is_array($config['rc']['shutdown'] ) && is_array($config['rc']['shutdown']['cmd'] ) ) {
+    for ($i = 0; $i < count($config['rc']['shutdown']['cmd']); $i++) {
+        if (preg_match("/{$config_name}/", $config['rc']['shutdown']['cmd'][$i])) break; }
+}
+$config['rc']['shutdown']['cmd'][$i] = $configuration['shutdown'];
+save_config($config_file, $configuration);
+write_config();                                                         // write old config - never do this again :)
+if ($new_installation) echo "\nInstallation completed, use WebGUI | Extensions | ".$appname." to configure the application!\n";
+else require_once("{$install_dir}{$config_name}-stop.php");
+require_once("{$install_dir}{$config_name}-start.php");
 ?>

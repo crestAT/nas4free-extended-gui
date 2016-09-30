@@ -4,6 +4,7 @@
 # purpose:		retrive CPU temperature infos for eGUI in file: cpu_check.log
 # usage:		cpu_check.sh
 # version:	date:		description:
+#   0.4     2016.09.25  N: create messages for index.php
 #   0.3     2016.08.21  F: if [ "${TEMPERATURE}" != "" ]; then => avoid false alarms on rpi
 #   0.2     2015.11.24  N: beep on ERROR
 #   0.1     2015.11.23  initial version for Extended GUI 
@@ -27,12 +28,14 @@ SUB ()
 REPORT ()
 {
 	if [ ! -e ${CTRL_FILE}_${1}.lock ]; then 
+        CONVERSION=`echo -e "${@}" | awk '{gsub("°C", "degreeC"); print}'`	   
+        echo `date +"$DT_STR"` "${CONVERSION}" >> ${PREFIX}system_error.msg    # create system error message for index.php
         NOTIFY $@
 		echo "Host: $HOST" > ${CTRL_FILE}_${1}.lock
 		echo "\n$2" >> ${CTRL_FILE}_${1}.lock
         if [ $EMAIL_CPU_TEMP_ENABLED -gt 0 ] && [ -e ${CTRL_FILE}_ERROR.lock ]; then 
             $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-CPU" ${CTRL_FILE}_ERROR.lock; 
-            if [ $RUN_BEEP -gt 0 ]; then                                        # call beep when enabled and ERROR condition set
+            if [ $RUN_BEEP -gt 0 ]; then                                # call beep when enabled and ERROR condition set
                 $SYSTEM_SCRIPT_DIR/beep CPU_ERROR &
             fi
         fi
@@ -47,24 +50,24 @@ GET_TEMPERATURE ()
 	do
         TEMPERATURE=`sysctl -q -n dev.cpu.${x}.temperature | awk '{gsub("C", ""); print}'`
         if [ "${TEMPERATURE}" != "" ]; then
-    #echo 1 "CPU${x} actual temp ${TEMPERATURE}, warning temp ${CPU_TEMP_WARNING} minus $HYSTERESIS = `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`"
+#echo 1 "CPU${x} actual temp ${TEMPERATURE}, warning temp ${CPU_TEMP_WARNING} minus $HYSTERESIS = `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`"
             COMPARE ${TEMPERATURE} ${CPU_TEMP_SEVERE}                               # test if temperature is >= CPU_TEMP_SEVERE
             if [ $? -ge 1 ]; then 
                 MSG_TEMP="<font color='red'>${TEMPERATURE}&nbsp;&deg;C</font>"
-                REPORT ERROR "CPU ${x} reached critical temperature threshold ${CPU_TEMP_SEVERE} degree C, temperature is ${TEMPERATURE} degree C."
-    #echo 2 "$TEMPERATURE ${TEMPERATURE}"
+                REPORT ERROR "CPU ${x} reached critical temperature threshold ${CPU_TEMP_SEVERE} °C, temperature is ${TEMPERATURE} °C!"
+#echo 2 "$TEMPERATURE ${TEMPERATURE}"
             else 
                 COMPARE ${TEMPERATURE} ${CPU_TEMP_WARNING}                          # test if temperature is >= CPU_TEMP_WARNING
                 if [ $? -ge 1 ]; then 
                     MSG_TEMP="<font color='orange'>${TEMPERATURE}&nbsp;&deg;C</font>"
-                    REPORT WARNING "CPU ${x} reached warning temperature threshold ${CPU_TEMP_WARNING} degree C, temperature is ${TEMPERATURE} degree C."
-    #echo 3 "$TEMPERATURE ${TEMPERATURE}"
+                    REPORT WARNING "CPU ${x} reached warning temperature threshold ${CPU_TEMP_WARNING} °C, temperature is ${TEMPERATURE} °C!"
+#echo 3 "$TEMPERATURE ${TEMPERATURE}"
                 else 
-                    COMPARE ${TEMPERATURE} `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`    # test if temperature is < CPU_TEMP_WARNING - $HYSTERESIS °C !
+                    COMPARE ${TEMPERATURE} `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`    # test if temperature is < CPU_TEMP_WARNING - $HYSTERESIS ° C !
                     if [ $? -eq 0 ]; then 
                         if [ -e "${CTRL_FILE}_ERROR.lock" ]; then rm "${CTRL_FILE}_ERROR.lock"; fi
                         if [ -e "${CTRL_FILE}_WARNING.lock" ]; then rm "${CTRL_FILE}_WARNING.lock"; fi
-    #echo 9 "actual temp ${TEMPERATURE}, warning temp ${CPU_TEMP_WARNING} minus $HYSTERESIS = `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`, files will be deleted"                
+#echo 9 "actual temp ${TEMPERATURE}, warning temp ${CPU_TEMP_WARNING} minus $HYSTERESIS = `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`, files will be deleted"                
                     fi
                     MSG_TEMP="<font color='blue'>${TEMPERATURE}&nbsp;&deg;C</font>"
                 fi

@@ -5,6 +5,7 @@
 # prereq.:		S.M.A.R.T. must be enabled and existing CONFIG2 file, which will be created at every eGUI startup
 # usage:		disk_check.sh
 # version:	date:		description:
+#   0.6.6   2016.09.24  N: create messages for index.php
 #   0.6.5   2016.09.19  N: _DEVICE for nice SMART output
 #   0.6.4   2016.09.18  C: check _DEVICETYPEARG for SMART support
 #   0.6.3   2016.03.13  C: SSD lifetime -> bold
@@ -33,16 +34,18 @@ fi
 
 REPORT_DISK ()
 {
+#echo $1 $2 $3 $4 $5 $6 $7 $8 $CTRL_FILE"_"$2".lock"                                          # for debugging
 	if [ ! -e $CTRL_FILE"_"$2".lock" ]; then 
-		NOTIFY "$3 $4 $5 $6 $7 $8"                                          # extended up to 8 for degraded pool msg
+        echo -e "`date +"$DT_STR"` ${3} $4 $5 $6 $7 $8" >> ${PREFIX}system_error.msg      # create system error message for index.php
+        if [ $RUN_BEEP -gt 0 ]; then                                # call beep when enabled and ERROR condition set
+            $SYSTEM_SCRIPT_DIR/beep ZFS_ERROR &
+        fi
+		NOTIFY "$3 $4 $5 $6 $7 $8"                                      # extended up to 8 for degraded pool msg
 		echo "Host: $HOST" > $CTRL_FILE"_"$2.lock
 		echo "\n${4}\n" >> $CTRL_FILE"_"$2.lock
 		if [ "$2" == "degraded" ]; then 
-			zpool status -v $1 >> $CTRL_FILE"_"$2.lock
+            zpool status -v $1 >> $CTRL_FILE"_"$2.lock
 			if [ $EMAIL_DEGRADED_ENABLED -gt 0 ]; then $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-DISK $2" $CTRL_FILE"_"$2.lock; fi
-            if [ $RUN_BEEP -gt 0 ]; then                                    # call beep when enabled and ERROR condition set
-                $SYSTEM_SCRIPT_DIR/beep ZFS_ERROR &
-            fi
 		else 
 			df -h /mnt/$1 >> $CTRL_FILE"_"$2.lock
 			if [ $EMAIL_SPACE_ENABLED -gt 0 ]; then $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-DISK $2" $CTRL_FILE"_"$2.lock; fi
@@ -55,9 +58,9 @@ GET_DETAILS ()
     MSG_SSD=""; MSG_SSD_LT=""; MSG_SSD_LT_PCT="";
     while [ "${1}" != "" ]; do
         case $1 in
-            Model|Device|Rotation)      MSG_SSD="SSD";;             # is SSD
-            177|202)                    MSG_SSD_LT=$((100-$2));;    # lifetime parameter 177 Wear_Leveling_Count | 202 Percent Lifetime used
-            190|194)                    MSG_TEMP=$2;;               # temperature parameter 190 or 194
+            Model|Device|Rotation)      MSG_SSD="SSD";;                 # is SSD
+            177|202)                    MSG_SSD_LT=$((100-$2));;        # lifetime parameter 177 Wear_Leveling_Count | 202 Percent Lifetime used
+            190|194)                    MSG_TEMP=$2;;                   # temperature parameter 190 or 194
         esac
         shift
     done
@@ -74,15 +77,22 @@ GET_SMART_SUB ()
     MSG_TEMP=`echo -e "${SMART_OUTPUT}" | awk '/Current Drive Temperature/ {print $4; exit}'`;                                      # alternative temperature
     MSG_ALL=`echo -e "${SMART_OUTPUT}" | awk '/Solid State/ || /SSD/ || /Wear_/ || /Lifetime/ || /Temperature_/ {print $1,$10}'`;   # check for different params
     GET_DETAILS $MSG_ALL
-    
+    CNAME=`echo -e ${1} | awk '{gsub("/dev/", ""); print}'`;            # remove the path from the device name
+    CTRL_FILE_ORG=$CTRL_FILE;                                           # preserve CTR_FILE
+    CTRL_FILE=${PREFIX}${CNAME};
     if [ "${MSG_TEMP}" == "" ]; then MSG_TEMP="n/a"
     else
-        if [ ${MSG_TEMP} -ge ${TEMP_SEVERE} ]; then MSG_TEMP="<font color='red'>${MSG_TEMP}&nbsp;&deg;C</font>"
-        else if [ ${MSG_TEMP} -ge ${TEMP_WARNING} ]; then MSG_TEMP="<font color='orange'>${MSG_TEMP}&nbsp;&deg;C</font>"
+        if [ ${MSG_TEMP} -ge ${TEMP_SEVERE} ]; then 
+            REPORT_DISK ${CNAME} critical ERROR "Disk ${CNAME}: temperature ${MSG_TEMP}  C  reached/exceeded the disk temperature critical level ${TEMP_SEVERE}  C !"
+            MSG_TEMP="<font color='red'>${MSG_TEMP}&nbsp;&deg;C</font>"
+        else if [ ${MSG_TEMP} -ge ${TEMP_WARNING} ]; then 
+                MSG_TEMP="<font color='orange'>${MSG_TEMP}&nbsp;&deg;C</font>"
             else MSG_TEMP="<font color='blue'>${MSG_TEMP}&nbsp;&deg;C</font>"
             fi
+            if [ -e $CTRL_FILE"_critical.lock" ]; then rm $CTRL_FILE"_critical.lock"; fi    # no longer necessary, we can delete the file
         fi
     fi
+    CTRL_FILE=${CTRL_FILE_ORG};                                         # recover CTRL_FILE
 }
 
 GET_SMART ()
@@ -109,7 +119,7 @@ GET_SMART ()
 	
     if [ $TEMP_ALWAYS -eq 0 ]; then SMART_STANDBY="-n standby"; else SMART_STANDBY=""; fi
     smartctl $SMART_STANDBY -q silent -A /dev/${!3} $DEVICETYPEARG
-EXIT_VAL=`echo $?`;
+    EXIT_VAL=`echo $?`;
 #echo INFO2a exit_value: $EXIT_VAL;                                                  # for debugging
     case $EXIT_VAL in 
         4) MSG="<font color='black'>SMART&nbsp;n/a</font>";;
@@ -118,9 +128,13 @@ EXIT_VAL=`echo $?`;
         0) MSG="<font color='red'>Spinning</font>"; GET_SMART_SUB "/dev/${!3}" "${DEVICETYPEARG}";;
         *) MSG="<font color='red'>exit: ${?}</font>";;       
     esac;
-    if [ "$OUTPUT" == "" ]; then OUTPUT="${1}|${MSG}|${MSG_TEMP}";
-    else OUTPUT="${OUTPUT}#${1}|${MSG}|${MSG_TEMP}"; fi
-
+    if [ $FORCE_STANDBY -gt 0 ]; then                                # call beep when enabled and ERROR condition set
+        if [ "$OUTPUT" == "" ]; then OUTPUT="<input name='standby' type='submit' class='formbtn' style='width:45px;' title='Force drive standby' onclick='set_standby(\"${1}\")' value='${1}'>|${MSG}|${MSG_TEMP}";
+        else OUTPUT="${OUTPUT}#<input name='standby' type='submit' class='formbtn' style='width:45px;' title='Force drive standby' onclick='set_standby(\"${1}\")' value='${1}'>|${MSG}|${MSG_TEMP}"; fi
+    else
+        if [ "$OUTPUT" == "" ]; then OUTPUT="${1}|${MSG}|${MSG_TEMP}";
+        else OUTPUT="${OUTPUT}#${1}|${MSG}|${MSG_TEMP}"; fi
+    fi    
 }
 
 GET_SPACE ()
@@ -187,7 +201,8 @@ done
 
 # check for degraded pools
 if [ "$POOL_STATUS" != "" ]; then
-    POOL_MSG=`echo -e "$POOL_STATUS" | awk '!/ONLINE/ {print "REPORT_DISK "$1" degraded ERROR ZFS pool "$1" is DEGRADED"}'`
+#echo "INFO1 $POOL_STATUS"                                    # for debugging
+    POOL_MSG=`echo -e "$POOL_STATUS" | awk '!/ONLINE/ {print "REPORT_DISK "$1" degraded ERROR ZFS Pool "$1" is "$9}'`
     if [ "${POOL_MSG}" == "" ]; then if [ -e ${PREFIX}*"_degraded.lock" ]; then rm ${PREFIX}*"_degraded.lock"; fi
     else 
         CTRL_FILE=${PREFIX}`echo -e ${POOL_MSG} | awk '{ print $2 }'`   # create CTRL_FILE name for pool xxx

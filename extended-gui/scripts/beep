@@ -28,7 +28,7 @@ CPU_ERROR ()
 ZFS_ERROR ()
 {
     touch $CTRL_FILE_ZFS
-    while [ -e $CTRL_FILE_ZFS ]; do echo L8aPL8a > $SPEAKER; sleep 5; done
+    while [ -e $CTRL_FILE_ZFS ]; do echo L8aPL8aL8aPL8aL8aPL8aL8aPL8aL8aPL8a > $SPEAKER; sleep 5; done
 }
 
 NW_FAILED ()
