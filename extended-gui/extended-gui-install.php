@@ -79,7 +79,6 @@ if ($return_val == 0) {
         $config_file = "{$install_dir}ext/{$config_name}.conf";
         if (is_file("{$install_dir}version.txt")) { $file_version = exec("cat {$install_dir}version.txt"); }
         else { $file_version = "n/a"; }
-        $savemsg = sprintf(gettext("Update to version %s completed!"), $file_version);
     }
     else { 
         $input_errors[] = sprintf(gettext("Archive file %s not found, installation aborted!"), "master.zip corrupt /"); 
@@ -94,12 +93,16 @@ else {
 // install / update application on NAS4Free
 if (($configuration = load_config($config_file)) === false) {
     $configuration = array();             // new installation or first time with json config
-    if (isset($config['extended-gui']) && is_array($config['extended-gui'])) {
-        $configuration = $config['extended-gui'];                       // load old config
-        unset($config['extended-gui']);                                 // remove old config 
-    }
-    else $new_installation = true;
+    $new_installation = true;
 }
+else $new_installation = false;
+
+// check for $config['extended-gui'] entry in config.xml, convert it to new config file and remove it 
+if (isset($config['extended-gui']) && is_array($config['extended-gui'])) {
+    $configuration = $config['extended-gui'];                           // load config
+    unset($config['extended-gui']);                                     // remove old config
+}
+
 $configuration['appname'] = $appname;
 $configuration['version'] = exec("cat {$install_dir}version.txt");
 $configuration['product_version'] = "-----";
@@ -116,9 +119,12 @@ if (is_array($config['rc']['shutdown'] ) && is_array($config['rc']['shutdown']['
         if (preg_match("/{$config_name}/", $config['rc']['shutdown']['cmd'][$i])) break; }
 }
 $config['rc']['shutdown']['cmd'][$i] = $configuration['shutdown'];
+write_config();
 save_config($config_file, $configuration);
-write_config();                                                         // write old config - never do this again :)
 if ($new_installation) echo "\nInstallation completed, use WebGUI | Extensions | ".$appname." to configure the application!\n";
-else require_once("{$install_dir}{$config_name}-stop.php");
+else {
+    $savemsg = sprintf(gettext("Update to version %s completed!"), $file_version);
+    require_once("{$install_dir}{$config_name}-stop.php");
+}
 require_once("{$install_dir}{$config_name}-start.php");
 ?>
