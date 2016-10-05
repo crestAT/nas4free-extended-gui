@@ -70,7 +70,6 @@ else {
     
 if ($_POST) {
 	if (isset($_POST['Submit']) && ($_POST['Submit'] === gettext("Save"))) { 
-        require_once("{$configuration['rootfolder']}extended-gui-stop.php");
 		unset($input_errors);
         $configuration['enable'] = isset($_POST['enable']);
         $configuration['type'] = $_POST['type'];
@@ -114,7 +113,9 @@ if ($_POST) {
 		}
         $savemsg = get_std_save_message(save_config($config_file, $configuration));
     }
-    if ( isset( $configuration['enable'] ) && ( $configuration['type'] == "Extended" )) require_once("{$configuration['rootfolder']}extended-gui-start.php"); 
+    if ( isset( $configuration['enable'] ) && ( $configuration['type'] == "Extended" )) require_once("{$configuration['rootfolder']}extended-gui-start.php");
+    else require_once("{$configuration['rootfolder']}extended-gui-stop.php");
+ 
 }	
 
 function get_process_info() {

@@ -33,7 +33,7 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
-$version = "v0.6-b7";              // extension version
+$version = "v0.6-b8";              // extension version
 $appname = "Extended-GUI";
 $min_release = 10.3032853;  // minimal OS release
 

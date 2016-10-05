@@ -29,8 +29,8 @@ REPORT ()
 {
 	if [ ! -e ${CTRL_FILE}_${1}.lock ]; then 
         CONVERSION=`echo -e "${@}" | awk '{gsub("°C", "degreeC"); print}'`	   
+        NOTIFY "${CONVERSION}"
         echo `date +"$DT_STR"` "${CONVERSION}" >> ${PREFIX}system_error.msg    # create system error message for index.php
-        NOTIFY $@
 		echo "Host: $HOST" > ${CTRL_FILE}_${1}.lock
 		echo "\n$2" >> ${CTRL_FILE}_${1}.lock
         if [ $EMAIL_CPU_TEMP_ENABLED -gt 0 ] && [ -e ${CTRL_FILE}_ERROR.lock ]; then 

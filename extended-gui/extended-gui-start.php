@@ -45,31 +45,31 @@ if (($configuration = load_config($config_file)) === false) {
     exec("logger extended-gui: configuration file {$config_file} not found, startup aborted!");
     exit;    
 } 
+
 require_once("{$configuration['rootfolder']}ext/extended-gui_fcopy.inc");
-
-$extension_dir = "/usr/local/www/ext/extended-gui"; 
-$saved = $configuration['product_version'];
-$current = get_product_version().'-'.get_product_revision(); 
-if ($saved != $current) {
-    mwexec("rm {$backup_path}*"); 
-    exec ("logger extended-gui: Saved Release: $saved New Release: $current - new backup of standard GUI files!"); 
-    copy_origin2backup($files, $backup_path, $extend_path);
- 	$configuration['product_version'] = $current;
-} 
-else exec ("logger extended-gui: saved and current GUI files are identical - OK"); 
-
+$extension_dir = "/usr/local/www/ext/extended-gui";
 if ( !is_dir($extension_dir)) { mwexec("mkdir -p {$extension_dir}", true); }
 mwexec("cp {$configuration['rootfolder']}ext/* {$extension_dir}/", true);
 mwexec("cp -R {$configuration['rootfolder']}locale-egui /usr/local/share/", true);
 // restore logs for embedded systems
 mwexec("cp {$configuration['rootfolder']}log/* /var/log/ >/dev/null 2>/dev/null", false);
 mwexec("cp -R {$configuration['rootfolder']}scripts /var/", true);
-mwexec("chmod -R 770 /var/scripts", true);                           // to be sure that scripts are executable   
+mwexec("chmod -R 770 /var/scripts", true);                           // to be sure that scripts are executable
 if ( !is_link("/usr/local/www/extended-gui.php")) { mwexec("ln -s {$extension_dir}/extended-gui.php /usr/local/www/extended-gui.php", true); }
 if ( !is_link("/usr/local/www/extended-gui_tools.php")) { mwexec("ln -s {$extension_dir}/extended-gui_tools.php /usr/local/www/extended-gui_tools.php", true); }
 if ( !is_link("/usr/local/www/extended-gui_update_extension.php")) { mwexec("ln -s {$extension_dir}/extended-gui_update_extension.php /usr/local/www/extended-gui_update_extension.php", true); }
 
-if ( isset( $configuration['enable'] )) {
+if ($configuration['enable']) {
+    $saved = $configuration['product_version'];
+    $current = get_product_version().'-'.get_product_revision(); 
+    if ($saved != $current) {
+        mwexec("rm {$backup_path}*"); 
+        exec ("logger extended-gui: Saved Release: $saved New Release: $current - new backup of standard GUI files!"); 
+        copy_origin2backup($files, $backup_path, $extend_path);
+     	$configuration['product_version'] = $current;
+    } 
+    else exec ("logger extended-gui: saved and current GUI files are identical - OK"); 
+    
 	if ($configuration['type'] == "Standard" ) { 
         copy_backup2origin ($files, $backup_path, $extend_path); 
         killbypid("/tmp/extended-gui_system_calls.sh.lock");
@@ -78,6 +78,7 @@ if ( isset( $configuration['enable'] )) {
         exec("logger extended-gui: enabled, starting ...");
         copy_extended2origin ($files, $backup_path, $extend_path);
         require_once("{$extension_dir}/extended-gui_create_config2.inc"); 
+        killbypid("/tmp/extended-gui_system_calls.sh.lock");
         exec("/var/scripts/extended-gui_system_calls.sh >/dev/null 2>/dev/null &");
     }
 }

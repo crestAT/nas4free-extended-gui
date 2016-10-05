@@ -462,14 +462,14 @@ if(function_exists("date_default_timezone_set") and function_exists("date_defaul
 if ($_POST['clear_alarms']) {
     if (file_exists("{$EGUI_PREFIX}cpu.alarm")) { unlink("{$EGUI_PREFIX}cpu.alarm"); }
     if (file_exists("{$EGUI_PREFIX}zfs.alarm")) { unlink("{$EGUI_PREFIX}zfs.alarm"); }
-    $errormsg .= gettext("Audible alarms for CPU and ZFS errors cleared!");
-	$errormsg .= "<br />\n";
+//    $errormsg .= gettext("Audible alarms for CPU and ZFS errors cleared!");
+//	$errormsg .= "<br />\n";
 }
 
 if ($_POST['clear_history']) {
     if (is_file("{$EGUI_PREFIX}system_error.msg.locked")) unlink("{$EGUI_PREFIX}system_error.msg.locked");
-    $errormsg .= gettext("Alarm message history cleared!");
-	$errormsg .= "<br />\n";
+//    $errormsg .= gettext("Alarm message history cleared!");
+//	$errormsg .= "<br />\n";
 }
 
 if ($_POST['umount']) {
