@@ -5,6 +5,7 @@
 # prereq.:		S.M.A.R.T. must be enabled and existing CONFIG2 file, which will be created at every eGUI startup
 # usage:		disk_check.sh
 # version:	date:		description:
+#   0.6.7   2016.10.08  F: new bash 4.4 errors -> 'break' in case & if ... statements
 #   0.6.6   2016.09.24  N: create messages for index.php
 #   0.6.5   2016.09.19  N: _DEVICE for nice SMART output
 #   0.6.4   2016.09.18  C: check _DEVICETYPEARG for SMART support
@@ -101,16 +102,17 @@ GET_SMART ()
 #echo "INFO2 ${1} ${dcounter}_DEVICETYPEARG: ${!2} ${dcounter}_DEVICE ${!3}"    # for debugging
     MSG_TEMP="n/a"
     case $1 in                                                                          # check for special cases
-        xmd[0-9])   OUTPUT="${1}|<font color='black'>RAM-DRV</font>|n/a";   break;;
-        ds*)        OUTPUT="${1}|<font color='black'>ZFS-DS</font>|n/a";    break;;
-        zvol/*)     OUTPUT="zvol|<font color='black'>ZFS-VOL</font>|n/a";   break;;
-        cd[0-9])    OUTPUT="${1}|<font color='black'>CD/DVD</font>|n/a";    break;;
+        xmd[0-9])   OUTPUT="${1}|<font color='black'>RAM-DRV</font>|n/a"; return;;
+        ds*)        OUTPUT="${1}|<font color='black'>ZFS-DS</font>|n/a"; return;;
+        vol*)       OUTPUT="${1}|<font color='black'>ZFS-VOL</font>|n/a"; return;;
+        zvol/*)     OUTPUT="zvol|<font color='black'>ZFS-VOL</font>|n/a"; return;;
+        cd[0-9])    OUTPUT="${1}|<font color='black'>CD/DVD</font>|n/a"; return;;
         *)      ;;
     esac
 
     if [ ! ${!2} ] || [ ${!2} == "UNAVAILABLE" ]; then                                  # check if SMART is available
         OUTPUT="${1}|<font color='black'>SMART&nbsp;n/a</font>|n/a";
-        break
+        return
     fi
 
     if [ "${!2}" == "AUTOMOUNT_USB" ]; then DEVICETYPEARG="";                           # we don't know the USB device type
