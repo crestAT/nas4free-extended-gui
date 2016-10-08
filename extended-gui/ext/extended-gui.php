@@ -113,7 +113,10 @@ if ($_POST) {
 		}
         $savemsg = get_std_save_message(save_config($config_file, $configuration));
     }
-    if ( isset( $configuration['enable'] ) && ( $configuration['type'] == "Extended" )) require_once("{$configuration['rootfolder']}extended-gui-start.php");
+    if (isset($configuration['enable']) && ($configuration['type'] == "Extended")) {
+        require_once("{$configuration['rootfolder']}extended-gui-stop.php");
+        require_once("{$configuration['rootfolder']}extended-gui-start.php");
+    }
     else require_once("{$configuration['rootfolder']}extended-gui-stop.php");
  
 }	

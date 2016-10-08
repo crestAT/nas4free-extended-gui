@@ -84,4 +84,5 @@ if ($configuration['enable']) {
 }
 else { copy_backup2origin ($files, $backup_path, $extend_path); }   // case extension not enabled at start
 save_config($config_file, $configuration);
+mwexec("cp {$config_file} {$extension_dir}/", true);
 ?>
