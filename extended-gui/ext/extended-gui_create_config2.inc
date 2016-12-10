@@ -2,7 +2,7 @@
 /*
     extended-gui_create_config2.inc
 
-    Copyright (c) 2014 - 2016 Andreas Schmidhuber
+    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).

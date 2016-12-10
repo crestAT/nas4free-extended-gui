@@ -37,8 +37,8 @@ require_once("globals.inc");
 require_once("rc.inc");
 
 $config_file = "ext/extended-gui/extended-gui.conf";
-require_once("ext/extended-gui/json.inc");
-if (($configuration = load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
+require_once("ext/extended-gui/extension-lib.inc");
+if (($configuration = ext_load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
 
 // Get the location of the log files (may be modified via rc.conf variables).
 $clogdir = rc_getenv_ex("clog_logdir", $g['varlog_path']);
