@@ -2,7 +2,7 @@
 /*
     extended-gui-stop.php
 
-    Copyright (c) 2014 - 2016 Andreas Schmidhuber
+    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
@@ -40,8 +40,8 @@ require_once("util.inc");
 
 $rootfolder = dirname(__FILE__)."/";
 $config_file = "{$rootfolder}ext/extended-gui.conf";
-require_once("{$rootfolder}ext/json.inc");
-if (($configuration = load_config($config_file)) === false) {
+require_once("{$rootfolder}ext/extension-lib.inc");
+if (($configuration = ext_load_config($config_file)) === false) {
     exec("logger extended-gui: configuration file {$config_file} not found, stopping aborted!");
     exit;
 }

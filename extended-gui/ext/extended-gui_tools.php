@@ -2,7 +2,7 @@
 /*
     extended-gui_tools.php
 
-    Copyright (c) 2014 - 2016 Andreas Schmidhuber
+    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
@@ -37,12 +37,12 @@ require("auth.inc");
 require("guiconfig.inc");
 
 $config_file = "ext/extended-gui/extended-gui.conf";
-require_once("ext/extended-gui/json.inc");
-if (($configuration = load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
+require_once("ext/extended-gui/extension-lib.inc");
+if (($configuration = ext_load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
 if ( !isset( $configuration['rootfolder']) && !is_dir( $configuration['rootfolder'] )) $input_errors[] = gettext("Extension installed with fault");
 else {
     $config_file = "{$configuration['rootfolder']}ext/extended-gui.conf";
-    $configuration = load_config($config_file);
+    $configuration = ext_load_config($config_file);
 }
 
 bindtextdomain("nas4free", "/usr/local/share/locale-egui");
@@ -51,6 +51,7 @@ $pgtitle = array(gettext("Extensions"), "Extended GUI ".$configuration['version'
 $hours = array(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23);
 $confirm_message = gettext("The selected operation will be completed. Please do not click any other buttons!");
 $alert_message = gettext("Please wait for the previous operation to complete!");
+$purge_script = "/var/scripts/purge.sh";
 
 function cronjob_process_updatenotification($mode, $data) {
 	global $config;
@@ -82,38 +83,20 @@ if ($_POST) {
             $configuration['purge']['closedown'] = isset($_POST['purge_closedown']);
             $configuration['purge']['schedule'] = isset($_POST['purge_schedule']);
             $configuration['purge']['schedule_hour'] = $_POST['purge_schedule_hour'];
-            // de/activate startup purge
-            if ($configuration['purge']['startup']) {
-                if (is_array($config['rc']['postinit']) && is_array($config['rc']['postinit']['cmd'])) {
-                    for ($i = 0; $i < count($config['rc']['postinit']['cmd']);) {
-                        if (preg_match('/purge\.sh/', $config['rc']['postinit']['cmd'][$i])) break; ++$i; }
-                }
-                $config['rc']['postinit']['cmd'][$i] = "/var/scripts/purge.sh";
+            
+			ext_remove_rc_commands("purge.sh");
+
+            if ($configuration['purge']['startup']) {					// activate startup purge
+				$configuration['purge']['rc_uuid_start'] = $purge_script;
+				$configuration['purge']['rc_uuid_stop'] = false;
+				ext_create_rc_commands("Purge", $configuration['purge']['rc_uuid_start'], $configuration['purge']['rc_uuid_stop'], "Run", "");
             }
-            else {
-                if (is_array($config['rc']['postinit']) && is_array($config['rc']['postinit']['cmd'])) {
-            		for ($i = 0; $i < count($config['rc']['postinit']['cmd']);) {
-            		if (preg_match('/purge\.sh/', $config['rc']['postinit']['cmd'][$i])) { unset($config['rc']['postinit']['cmd'][$i]);} else{}
-            		++$i;
-            		}
-            	}
-            }   // end of de/activate startup purge
-            // de/activate closedown purge
-            if ($configuration['purge']['closedown']) {
-                if (is_array($config['rc']['shutdown']) && is_array($config['rc']['shutdown']['cmd'])) {
-                    for ($i = 0; $i < count($config['rc']['shutdown']['cmd']); ) {
-                        if (preg_match('/purge\.sh/', $config['rc']['shutdown']['cmd'][$i])) break; ++$i; }
-                }
-                $config['rc']['shutdown']['cmd'][$i] = "/var/scripts/purge.sh";
+            
+            if ($configuration['purge']['closedown']) {					// activate closedown purge
+				$configuration['purge']['rc_uuid_start'] = false;
+				$configuration['purge']['rc_uuid_stop'] = $purge_script;
+				ext_create_rc_commands("Purge", $configuration['purge']['rc_uuid_start'], $configuration['purge']['rc_uuid_stop'], "", "Run");
             }
-            else {
-            	if (is_array($config['rc']['shutdown']) && is_array($config['rc']['shutdown']['cmd'])) {
-            		for ($i = 0; $i < count($config['rc']['shutdown']['cmd']); ) {
-             		if (preg_match('/purge\.sh/', $config['rc']['shutdown']['cmd'][$i])) { unset($config['rc']['shutdown']['cmd'][$i]); } else {}
-            		++$i;
-            		}
-            	}
-            }   // end of de/activate closedown purge
 
             // de/activate purge schedule
             if ($configuration['purge']['schedule']) {
@@ -151,7 +134,7 @@ if ($_POST) {
                 	$cronjob['all_months'] = 1;
                 	$cronjob['all_weekdays'] = 1;
                 	$cronjob['who'] = 'root';
-                	$cronjob['command'] = "/var/scripts/purge.sh && logger purge: scheduled cleaning of recycle bins";
+                	$cronjob['command'] = "{$purge_script} && logger purge: scheduled cleaning of recycle bins";
                     $configuration['purge']['schedule_uuid'] = $cronjob['uuid'];
                 }
                 if (isset($uuid) && (FALSE !== $cnid)) {
@@ -162,7 +145,6 @@ if ($_POST) {
             		$mode = UPDATENOTIFY_MODE_NEW;
             	}
                 updatenotify_set("cronjob", $mode, $cronjob['uuid']);
-                write_config();
             }   // end of enable_schedule
             else {
             	if (is_array($config['cron'])) {
@@ -172,8 +154,8 @@ if ($_POST) {
         				if (false !== $index) { unset($config['cron']['job'][$index]); }
         			}
         		}
-            	write_config();
             }   // end of disable_schedule -> remove cronjob
+			write_config();
     		$retval = 0;
     		if (!file_exists($d_sysrebootreqd_path)) {
     			$retval |= updatenotify_process("cronjob", "cronjob_process_updatenotification");
@@ -185,20 +167,8 @@ if ($_POST) {
     		if ($retval == 0) { updatenotify_delete("cronjob"); }
         }   // end of activate purge
         else {
-            // remove purge startup
-            if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
-        		for ($i = 0; $i < count($config['rc']['postinit']['cmd']);) {
-        		if (preg_match('/purge\.sh/', $config['rc']['postinit']['cmd'][$i])) { unset($config['rc']['postinit']['cmd'][$i]);} else{}
-        		++$i;
-        		}
-        	}
-        	// remove purge closedown 
-            if ( is_array($config['rc']['shutdown'] ) && is_array( $config['rc']['shutdown']['cmd'] ) ) {
-        		for ($i = 0; $i < count($config['rc']['shutdown']['cmd']); ) {
-         		if (preg_match('/purge\.sh/', $config['rc']['shutdown']['cmd'][$i])) { unset($config['rc']['shutdown']['cmd'][$i]); } else {}
-        		++$i;
-        		}
-        	}
+            // remove purge startup & closedown commands from rc
+			ext_remove_rc_commands("purge.sh");
         	//remove purge schedule
            	if (is_array($config['cron'])) {
                 updatenotify_set("cronjob", UPDATENOTIFY_MODE_DIRTY, $configuration['purge']['schedule_uuid']);
@@ -219,21 +189,23 @@ if ($_POST) {
             unset($configuration['purge']);
         }   // end of remove purge
         $savemsg = get_std_save_message(write_config());
-        $savemsg = get_std_save_message(save_config($config_file, $configuration));
+        $savemsg = get_std_save_message(ext_save_config($config_file, $configuration));
     }   // end of purge configuration save
     
     if (isset($_POST['purge_now']) && $_POST['purge_now']) {
 		unset($input_errors);
-       	mwexec("/var/scripts/purge.sh 0", true);
+       	mwexec("{$purge_script} 0", true);
     }   // end of purge_now    
 
     if (isset($_POST['automount_save']) && $_POST['automount_save']) {
         $configuration['automount'] = isset($_POST['automount']);
-        $savemsg = get_std_save_message(save_config($config_file, $configuration));
+        $savemsg = get_std_save_message(ext_save_config($config_file, $configuration));
         require("{$configuration['rootfolder']}extended-gui-stop.php");
         require("{$configuration['rootfolder']}extended-gui-start.php");
     }   // end of automount_save
 }   // end of post	
+
+if (($message = ext_check_version("{$configuration['rootfolder']}log/version.txt", "extended-gui", $configuration['version'], gettext("Maintenance"))) !== false) $savemsg .= $message;
 
 bindtextdomain("nas4free", "/usr/local/share/locale");
 include("fbegin.inc");
@@ -289,7 +261,7 @@ function purge_enable_change(enable_change) {
                 </span></td></tr>
                 <?php html_combobox("purge_schedule_hour", gettext("Daily schedule"), $configuration['purge']['schedule_hour'], $hours, gettext("Choose an hour for daily purge of recycle bins."), false);?>
             	<?php html_inputbox("purge_days", gettext("Days"), !empty($configuration['purge']['days']) ? $configuration['purge']['days'] : 30, sprintf(gettext("Define the number of days after which files will be deleted from recycle bins. Default number of days are %d."), 30), true, 3);?>
-    			<?php html_text("purge_bins", gettext("Recycle bins found"), `/var/scripts/purge.sh show`);?>
+    			<?php html_text("purge_bins", gettext("Recycle bins found"), `{$purge_script} show`);?>
     			<?php html_separator();?>
             </table>
             <div id="purge_submit">

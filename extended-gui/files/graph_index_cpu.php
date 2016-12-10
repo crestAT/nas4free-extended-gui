@@ -37,8 +37,8 @@ require("auth.inc");
 require("guiconfig.inc");
 
 $config_file = "ext/extended-gui/extended-gui.conf";
-require_once("ext/extended-gui/json.inc");
-if (($configuration = load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
+require_once("ext/extended-gui/extension-lib.inc");
+if (($configuration = ext_load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
 
 /********* Other conf *******/
 $cpu=@htmlspecialchars($_GET["cpu"]);  // BSD / SNMP interface name / number
@@ -86,7 +86,6 @@ echo "<?xml version=\"1.0\" encoding=\"{$encoding}\"?>\n";
     <text id="grid_txt1" x="<?=$width*0.99?>" y="<?=$height/4.3*1?>" <?=$attribs['grid_txt']?> text-anchor="end">75%</text>
     <text id="grid_txt2" x="<?=$width*0.99?>" y="<?=$height/4.15*2?>" <?=$attribs['grid_txt']?> text-anchor="end">50%</text>
     <text id="grid_txt3" x="<?=$width*0.99?>" y="<?=$height/4.1*3?>" <?=$attribs['grid_txt']?> text-anchor="end">25%</text>
-    <text id="datetime" x="<?=$width*0.50?>" y="5" <?=$attribs['legend']?>> </text>
     <text id="cpu_name"  x="<?=$width*0.99?>" y="7" <?=$attribs['cpu']?> text-anchor="end">CPU <?=$cpu?></text>
     <polygon id="axis_arrow_x" <?=$attribs['axis']?> points="<?=($width) . "," . ($height)?> <?=($width-2) . "," . ($height-2)?> <?=($width-2) . "," . $height?>"/>
     <text id="error" x="<?=$width*0.5?>" y="<?=$height*0.4?>"  visibility="hidden" <?=$attribs['error']?> text-anchor="middle"><?=$error_text?></text>
@@ -159,11 +158,6 @@ function fetch_data() {
 }
 
 function plot_data(obj) {
-  // Show datetimelegend
-  var now = new Date();
-  var datetime = (now.getMonth()+1) + "/" + now.getDate() + "/" + now.getFullYear() + ' ' +
-    formatString(now.getHours()) + ":" + formatString(now.getMinutes()) + ":" + formatString(now.getSeconds());
-  SVGDoc.getElementById('datetime').firstChild.data = datetime;
 
 	if (!obj.success)
     return handle_error();  // getURL failed to get data
