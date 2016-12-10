@@ -33,20 +33,20 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
+// Page base: r2433 => r2898
+if (is_file("/usr/local/www/bar_left.gif")) $image_path = "";
+else $image_path = "images/";
+$EGUI_PREFIX = "/tmp/extended-gui_"; 
+$config_file = "ext/extended-gui/extended-gui.conf";
+require_once("ext/extended-gui/json.inc");
+if (($configuration = load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
+
 // Configure page permission
 $pgperm['allowuser'] = TRUE;
 
 require("auth.inc");
 require("guiconfig.inc");
 require("zfs.inc");
-
-// Page base: r2898 => 3305
-if (is_file("/usr/local/www/bar_left.gif")) $image_path = "";
-else $image_path = "images/";
-$EGUI_PREFIX = "/tmp/extended-gui_"; 
-$config_file = "ext/extended-gui/extended-gui.conf";
-require_once("ext/extended-gui/extension-lib.inc");
-if (($configuration = ext_load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
 
 $pgtitle = array(gettext("System Information"));
 $pgtitle_omit = true;
@@ -73,8 +73,10 @@ function get_vip_status() {
 }
 
 function get_ups_disp_status($ups_status) {
-	if (empty($ups_status))
+	if (empty($ups_status)) {
+        report_ups(gettext("Data stale!"));
 		return "";
+    }
 	$status = explode(' ', $ups_status);
 	foreach ($status as $condition) {
 		if ($disp_status) $disp_status .= ', ';
@@ -240,6 +242,14 @@ function get_xen_console($domid) {
 	return $info;
 }
 
+/* 
+function get_cputemp() {
+    global $EGUI_PREFIX;
+    $userinfo = exec("cat {$EGUI_PREFIX}cpu_check.log");
+    return $userinfo;
+}
+ */
+ 
 function report_ups($disp_status) {
     global $EGUI_PREFIX;
      if (($disp_status != gettext('UPS On Line')) && !is_file("{$EGUI_PREFIX}UPS_error.lock")) {
@@ -252,7 +262,7 @@ function report_ups($disp_status) {
     }
 }
 
-function egui_get_indexrefresh() {
+function get_indexrefresh() {
     global $EGUI_PREFIX, $config, $configuration;
     $indexrefresh['reason'] = "";
     $indexrefresh['message'] = "";
@@ -275,13 +285,13 @@ function egui_get_indexrefresh() {
     return $indexrefresh;
 }
 
-function egui_get_userinfo() {
+function get_userinfo() {
     global $EGUI_PREFIX;
     $userinfo = exec("cat {$EGUI_PREFIX}user_online.log");
     return $userinfo;
 }
 
-function egui_get_hostsinfo() {
+function get_hostsinfo() {
     global $EGUI_PREFIX;
     $hostsinfo = exec("cat {$EGUI_PREFIX}hosts_online.log");
     return $hostsinfo;
@@ -327,7 +337,19 @@ function egui_get_mount_usage() {
 	}
 	return $result;
 }
- 
+
+// needed for compatibility reasons for native N4F javascript code
+function egui_get_disk_usage() {
+	$value = array();
+	$a_diskusage = egui_get_mount_usage();
+	if (is_array($a_diskusage) && (0 < count($a_diskusage))) {
+		foreach ($a_diskusage as $diskusagek => $diskusagev) {
+			$value[] = $diskusagev;
+		}
+	}
+	return $value;
+}
+
 if (is_ajax()) {
 	$sysinfo = system_get_sysinfo();
 	$vipstatus = get_vip_status();
@@ -336,9 +358,10 @@ if (is_ajax()) {
 	$upsinfo2 = get_upsinfo2();
 	$sysinfo['upsinfo'] = $upsinfo;
 	$sysinfo['upsinfo2'] = $upsinfo2;
-	$sysinfo['indexrefresh'] = egui_get_indexrefresh();
-	$sysinfo['userinfo'] = egui_get_userinfo();
-	$sysinfo['hostsinfo'] = egui_get_hostsinfo();
+	$sysinfo['indexrefresh'] = get_indexrefresh();
+	$sysinfo['userinfo'] = get_userinfo();
+	$sysinfo['hostsinfo'] = get_hostsinfo();
+    $sysinfo['diskusage'] = egui_get_disk_usage();
     if (is_array($sysinfo['diskusage'])) {
         for ($i = 0; $i < count($sysinfo['diskusage']); ++$i) {
             $mountpoint_details = explode('##', exec("cat {$EGUI_PREFIX}{$sysinfo['diskusage'][$i]['name']}.smart"));
@@ -439,10 +462,14 @@ if(function_exists("date_default_timezone_set") and function_exists("date_defaul
 if ($_POST['clear_alarms']) {
     if (file_exists("{$EGUI_PREFIX}cpu.alarm")) { unlink("{$EGUI_PREFIX}cpu.alarm"); }
     if (file_exists("{$EGUI_PREFIX}zfs.alarm")) { unlink("{$EGUI_PREFIX}zfs.alarm"); }
+//    $errormsg .= gettext("Audible alarms for CPU and ZFS errors cleared!");
+//	$errormsg .= "<br />\n";
 }
 
 if ($_POST['clear_history']) {
     if (is_file("{$EGUI_PREFIX}system_error.msg.locked")) unlink("{$EGUI_PREFIX}system_error.msg.locked");
+//    $errormsg .= gettext("Alarm message history cleared!");
+//	$errormsg .= "<br />\n";
 }
 
 if ($_POST['umount']) {
@@ -579,7 +606,7 @@ $(document).ready(function(){
     					$('#poolusage_'+pu.id+'_'+idx1+'_temp').html(devs.temp);
                     }
 					$('#poolusage_'+pu.id+'_space').html(pu.space);
-					$('#poolusage_'+pu.id+'_state').text(pu.health);
+					$('#poolusage_'+pu.id+'_state').children().text(pu.health);
 				}
 			}
 		}
@@ -1237,13 +1264,13 @@ if ($configuration['hide_cpu']) { --$rowcounter; }
 <?php if ($configuration['user']) { ?>
 			  <tr>
 			    <td width="25%" valign="top" class="vncellt"><?=gettext("Users");?></td>
-			    <td class="listr" colspan="2"><span name="userinfo" id="userinfo"><?php echo egui_get_userinfo(); ?></span></td>
+			    <td class="listr" colspan="2"><span name="userinfo" id="userinfo"><?php echo get_userinfo(); ?></span></td>
 			  </tr>
 <?php } ?>
 <?php if ($configuration['hosts']) { ?>
 			  <tr>
 			    <td width="25%" valign="top" class="vncellt"><?=gettext("Hosts");?></td>
-			    <td class="listr" colspan="2"><span name="hostsinfo" id="hostsinfo"><?php echo egui_get_hostsinfo(); ?></span></td>
+			    <td class="listr" colspan="2"><span name="hostsinfo" id="hostsinfo"><?php echo get_hostsinfo(); ?></span></td>
 			  </tr>
 <?php } ?>
 <?php if ($configuration['services']) { ?>

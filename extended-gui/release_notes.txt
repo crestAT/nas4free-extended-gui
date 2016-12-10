@@ -1,29 +1,5 @@
 ﻿Version Date        Description
 *********************************************************************************
-*** Extended GUI version 0.6 is now fully compatible with NAS4Free 11.x series **
-*********************************************************************************
-0.6     2016.12.10  N: command scripts rc format for NAS4Free 11.x compatibility
-                    N: dedicated config file for Extended GUI to prevent problems during firmware upgrades
-                    N: Extended GUI | CONFIGURATION: new switch => System notifications
-                    N: Extended GUI | CONFIGURATION: new switch => Standby buttons
-                    N: STATUS | SYSTEM: System notifications => popup & alarm history display for disk space / temperature, ZFS, CPU & UPS errors
-                    N: STATUS | SYSTEM: drives spindown buttons => http://forums.nas4free.org/viewtopic.php?f=71&t=6405&start=390#p68719
-                    N: STATUS | SYSTEM: include user defined buttons / functions => check for existing file buttons.inc in Extended GUI root directory
-                    N: DIAGNOSE | LOG: include user defined log files => check for existing file logs.inc in Extended GUI root directory
-                    C: index.php: Page base: 3305
-                    C: Extended GUI | CONFIGURATION: removed Status | Graph view
-                    C: removed compatibility code for older NAS4Free revisions < 10.3
-                    F: improvements for Extended GUI startup to prevent problems during firmware upgrades
-                    F: display error during scrubing / resilvering
-                    F: SMART temperatures => partial for ada3 => http://forums.nas4free.org/viewtopic.php?f=71&t=6405&start=420#p69954
-                    F: SMART temperatures => http://forums.nas4free.org/viewtopic.php?f=71&t=6405&start=420#p69662
-                    F: SMART temperatures => http://forums.nas4free.org/viewtopic.php?f=71&t=6405&start=390#p68162
-                    F: Pools duplication => http://forums.nas4free.org/viewtopic.php?p=66903#p66903
-                    F: Pools duplication => http://forums.nas4free.org/viewtopic.php?f=71&t=6405&start=390#p67189
-                    F: Dataset names => http://forums.nas4free.org/viewtopic.php?f=71&t=6405&start=390#p68026
-                    F: Dataset names => http://forums.nas4free.org/viewtopic.php?f=71&t=6405&start=420#p70077
-
-*********************************************************************************
 *** ATTENTION: version 0.5.3 and higher needs at least NAS4Free 10.3.0.3.2853 ***
 ***            since NAS4Free 10.2 and older series are end of life           ***
 *********************************************************************************

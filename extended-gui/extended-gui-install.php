@@ -2,7 +2,7 @@
 /* 
     extended-gui-install.php
     
-    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
+    Copyright (c) 2014 - 2016 Andreas Schmidhuber
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
@@ -33,7 +33,7 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
-$version = "v0.6";              // extension version
+$version = "v0.6-b9";              // extension version
 $appname = "Extended-GUI";
 $min_release = 10.3032853;  // minimal OS release
 
@@ -69,13 +69,13 @@ if ($current_release < floatval($min_release)) {                        // relea
 }
 
 // fetch release archive
-$return_val = mwexec("fetch {$verify_hostname} -vo {$install_dir}master.zip 'https://github.com/crestAT/nas4free-extended-gui/releases/download/{$version}/extended-gui-{$version_striped}.zip'", false);
+$return_val = mwexec("fetch {$verify_hostname} -vo {$install_dir}master.zip 'https://github.com/crestAT/nas4free-extended-gui/releases/download/{$version}/extended-gui-{$version_striped}.zip'", true);
 if ($return_val == 0) {
     $return_val = mwexec("tar -xf {$install_dir}master.zip -C {$install_dir} --exclude='.git*' --strip-components 2", true);
     if ($return_val == 0) {
         exec("rm {$install_dir}master.zip");
         exec("chmod -R 775 {$install_dir}");
-        require_once("{$install_dir}ext/extension-lib.inc");
+        require_once("{$install_dir}ext/json.inc");
         $config_file = "{$install_dir}ext/{$config_name}.conf";
         if (is_file("{$install_dir}version.txt")) { $file_version = exec("cat {$install_dir}version.txt"); }
         else { $file_version = "n/a"; }
@@ -91,7 +91,7 @@ else {
 }
 
 // install / update application on NAS4Free
-if (($configuration = ext_load_config($config_file)) === false) {
+if (($configuration = load_config($config_file)) === false) {
     $configuration = array();             // new installation or first time with json config
     $new_installation = true;
 }
@@ -109,14 +109,18 @@ $configuration['product_version'] = "-----";
 $configuration['rootfolder'] = $install_dir;
 $configuration['postinit'] = "/usr/local/bin/php-cgi -f {$install_dir}{$config_name}-start.php";
 $configuration['shutdown'] = "/usr/local/bin/php-cgi -f {$install_dir}{$config_name}-stop.php";
-
-ext_remove_rc_commands($config_name);                                   
-$configuration['rc_uuid_start'] = $configuration['postinit'];
-$configuration['rc_uuid_stop'] = $configuration['shutdown'];
-ext_create_rc_commands($appname, $configuration['rc_uuid_start'], $configuration['rc_uuid_stop']);
+if (is_array($config['rc']['postinit'] ) && is_array($config['rc']['postinit']['cmd'] ) ) {
+    for ($i = 0; $i < count($config['rc']['postinit']['cmd']); $i++) {
+        if (preg_match("/{$config_name}/", $config['rc']['postinit']['cmd'][$i])) break; }
+}
+$config['rc']['postinit']['cmd'][$i] = $configuration['postinit'];
+if (is_array($config['rc']['shutdown'] ) && is_array($config['rc']['shutdown']['cmd'] ) ) {
+    for ($i = 0; $i < count($config['rc']['shutdown']['cmd']); $i++) {
+        if (preg_match("/{$config_name}/", $config['rc']['shutdown']['cmd'][$i])) break; }
+}
+$config['rc']['shutdown']['cmd'][$i] = $configuration['shutdown'];
 write_config();
-ext_save_config($config_file, $configuration);
-
+save_config($config_file, $configuration);
 if ($new_installation) echo "\nInstallation completed, use WebGUI | Extensions | ".$appname." to configure the application!\n";
 else {
     $savemsg = sprintf(gettext("Update to version %s completed!"), $file_version);

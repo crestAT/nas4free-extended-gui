@@ -2,7 +2,7 @@
 /*
     extended-gui_fcopy.inc
 
-    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
+    Copyright (c) 2014 - 2016 Andreas Schmidhuber
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
@@ -35,12 +35,12 @@
 */
 /* 
 $config_file = "ext/extended-gui/extended-gui.conf";
-require_once("ext/extended-gui/extension-lib.inc");
-if (($configuration = ext_load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
+require_once("ext/extended-gui/json.inc");
+if (($configuration = load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
 if ( !isset( $configuration['rootfolder']) && !is_dir( $configuration['rootfolder'] )) $input_errors[] = gettext("Extension installed with fault");
 else {
     $config_file = "{$configuration['rootfolder']}ext/extended-gui.conf";
-    $configuration = ext_load_config($config_file);
+    $configuration = load_config($config_file);
 }
  */
 // files which will be used/replaced by extended-gui (file name, original location)
@@ -67,7 +67,6 @@ $files = array(
 //    array("system.inc","/etc/inc/"),
 );
 
-/*	removed for v0.6 due to native RRDGraphs 
 $graph_files = array(
   // for Status | Graph time changes
     array("graph.php","/usr/local/www/"),
@@ -77,8 +76,7 @@ $graph_files = array(
 );
 
 if (!isset($config['rrdgraphs']['enable'])) $files = array_merge($files, $graph_files);
- */
- 
+
 $backup_path = $configuration['rootfolder']."backup/";
 $extend_path = $configuration['rootfolder']."files/";
 

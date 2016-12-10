@@ -2,7 +2,7 @@
 /*
     extended-gui.php
 
-    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
+    Copyright (c) 2014 - 2016 Andreas Schmidhuber
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
@@ -37,8 +37,8 @@ require("auth.inc");
 require("guiconfig.inc");
 
 $config_file = "ext/extended-gui/extended-gui.conf";
-require_once("ext/extended-gui/extension-lib.inc");
-if (($configuration = ext_load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
+require_once("ext/extended-gui/json.inc");
+if (($configuration = load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
 else require_once("{$configuration['rootfolder']}ext/extended-gui_fcopy.inc");
 $pidfile = "/tmp/extended-gui_system_calls.sh.lock";
 
@@ -64,7 +64,7 @@ $pgtitle = array(gettext("Extensions"), "Extended GUI ".$configuration['version'
 if ( !isset( $configuration['rootfolder']) && !is_dir( $configuration['rootfolder'] )) $input_errors[] = gettext("Extension installed with fault");
 else {
     $config_file = "{$configuration['rootfolder']}ext/extended-gui.conf";
-    $configuration = ext_load_config($config_file);
+    $configuration = load_config($config_file);
     if (!isset($configuration['system_warnings'])) $configuration['system_warnings'] = true;
 } 
     
@@ -108,8 +108,10 @@ if ($_POST) {
             $configuration['zfs_degraded_email'] = isset($_POST['zfs_degraded_email']);
             $configuration['user_email'] = isset($_POST['user_email']);
             $configuration['space_email_add'] = !empty($_POST['space_email_add']) ? $_POST['space_email_add'] : $config['system']['email']['from'];
+            $configuration['graph_nb_plot'] = !empty($_POST['graph_nb_plot']) ? $_POST['graph_nb_plot'] : 120;
+            $configuration['graph_time_interval'] = !empty($_POST['graph_time_interval']) ? $_POST['graph_time_interval'] : 1;
 		}
-        $savemsg = get_std_save_message(ext_save_config($config_file, $configuration));
+        $savemsg = get_std_save_message(save_config($config_file, $configuration));
     }
     if (isset($configuration['enable']) && ($configuration['type'] == "Extended")) {
         require_once("{$configuration['rootfolder']}extended-gui-stop.php");
@@ -138,8 +140,6 @@ if (is_ajax()) {
 	render_ajax($procinfo);
 }
 
-if (($message = ext_check_version("{$configuration['rootfolder']}log/version.txt", "extended-gui", $configuration['version'], gettext("Maintenance"))) !== false) $savemsg .= $message;
-	
 bindtextdomain("nas4free", "/usr/local/share/locale");
 include("fbegin.inc");
 bindtextdomain("nas4free", "/usr/local/share/locale-egui");
@@ -194,6 +194,8 @@ function enable_change(enable_change) {
 	document.iform.zfs_degraded_email.disabled = endis;
 	document.iform.user_email.disabled = endis;
 	document.iform.space_email_add.disabled = endis;
+	document.iform.graph_nb_plot.disabled = endis;
+	document.iform.graph_time_interval.disabled = endis;
 
 	document.iform.services.disabled = true;
 //	document.iform.buttons.disabled = true;
@@ -256,6 +258,10 @@ function enable_change_hosts() {
                 <?php html_checkbox("services", gettext("Services"), $configuration['services'], gettext("Enable display of services row."), "", false);?>
                 <?php html_checkbox("buttons", gettext("Functions"), $configuration['buttons'], gettext("Enable display of function buttons row."), "", false);?>
                 <?php html_checkbox("force_standby", gettext("Standby buttons"), $configuration['force_standby'], gettext("Enable display of buttons to force drive standby."), "", false);?>
+			<?php html_separator();?>
+			<?php html_titleline(gettext("Status")." | ".gettext("Graph"));?>
+            	<?php html_inputbox("graph_nb_plot", gettext("Graph show time"), !empty($configuration['graph_nb_plot']) ? $configuration['graph_nb_plot'] : 120, sprintf(gettext("Maximum duration for graphs show time in seconds. Default is %d seconds."), 120), true, 5);?>
+            	<?php html_inputbox("graph_time_interval", gettext("Graph refresh time"), !empty($configuration['graph_time_interval']) ? $configuration['graph_time_interval'] : 1, sprintf(gettext("Refresh time for graphs in seconds. Default is %d second."), 1), true, 5);?>
 			<?php html_separator();?>
 			<?php html_titleline(gettext("Monitoring and Alarming"));?>
                 <?php html_checkbox("system_warnings", gettext("System notifications"), $configuration['system_warnings'], sprintf(gettext("Enable alarms notifications/history on %s."), gettext("Status")." | ".gettext("System")), "", false);?>

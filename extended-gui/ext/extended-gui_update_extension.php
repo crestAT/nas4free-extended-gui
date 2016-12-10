@@ -2,7 +2,7 @@
 /*
     extended-gui_update_extension.php
     
-    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
+    Copyright (c) 2014 - 2016 Andreas Schmidhuber
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
@@ -37,12 +37,12 @@ require("auth.inc");
 require("guiconfig.inc");
 
 $config_file = "ext/extended-gui/extended-gui.conf";
-require_once("ext/extended-gui/extension-lib.inc");
-if (($configuration = ext_load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
+require_once("ext/extended-gui/json.inc");
+if (($configuration = load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
 if ( !isset( $configuration['rootfolder']) && !is_dir( $configuration['rootfolder'] )) $input_errors[] = gettext("Extension installed with fault");
 else {
     $config_file = "{$configuration['rootfolder']}ext/extended-gui.conf";
-    $configuration = ext_load_config($config_file);
+    $configuration = load_config($config_file);
 }
 
 bindtextdomain("nas4free", "/usr/local/share/locale-egui");
@@ -50,7 +50,7 @@ $pgtitle = array(gettext("Extensions"), "Extended GUI ".$configuration['version'
 
 if (is_file("{$configuration['rootfolder']}log/oneload")) { require_once("{$configuration['rootfolder']}log/oneload"); }
 
-$return_val = mwexec("fetch -o {$configuration['rootfolder']}log/version.txt https://raw.github.com/crestAT/nas4free-extended-gui/master/extended-gui/version.txt", false);
+$return_val = mwexec("fetch -o {$configuration['rootfolder']}log/version.txt https://raw.github.com/crestAT/nas4free-extended-gui/master/extended-gui/version.txt", true);
 if ($return_val == 0) { 
     $server_version = exec("cat {$configuration['rootfolder']}log/version.txt"); 
     if ($server_version != $configuration['version']) { $savemsg = sprintf(gettext("New extension version %s available, push '%s' button to install the new version!"), $server_version, gettext("Update Extension")); }
@@ -82,9 +82,18 @@ if (isset($_POST['ext_remove']) && $_POST['ext_remove']) {
 // restore original pages
     require_once("{$configuration['rootfolder']}extended-gui-stop.php");
 // remove start/stop commands
-	ext_remove_rc_commands("extended-gui");
-// remove purge startup & closedown commands from rc
-	ext_remove_rc_commands("purge.sh");
+    if ( is_array($config['rc']['postinit'] ) && is_array( $config['rc']['postinit']['cmd'] ) ) {
+		for ($i = 0; $i < count($config['rc']['postinit']['cmd']);) {
+    		if (preg_match('/extended-gui/', $config['rc']['postinit']['cmd'][$i])) { unset($config['rc']['postinit']['cmd'][$i]);} else{}
+		++$i;
+		}
+	}
+	if ( is_array($config['rc']['shutdown'] ) && is_array( $config['rc']['shutdown']['cmd'] ) ) {
+		for ($i = 0; $i < count($config['rc']['shutdown']['cmd']); ) {
+            if (preg_match('/extended-gui/', $config['rc']['shutdown']['cmd'][$i])) { unset($config['rc']['shutdown']['cmd'][$i]); } else {}
+		++$i;
+		}
+	}
 // unlink created links and remove extension pages
 	if (is_dir ("/usr/local/www/ext/extended-gui")) {
 	foreach ( glob( "{$configuration['rootfolder']}ext/*.php" ) as $file ) {
@@ -125,7 +134,7 @@ if (isset($_POST['ext_remove']) && $_POST['ext_remove']) {
 
 if (isset($_POST['ext_update']) && $_POST['ext_update']) {
 // download installer & install
-    $return_val = mwexec("fetch -vo {$configuration['rootfolder']}extended-gui-install.php 'https://raw.github.com/crestAT/nas4free-extended-gui/master/extended-gui/extended-gui-install.php'", false);
+    $return_val = mwexec("fetch -vo {$configuration['rootfolder']}extended-gui-install.php 'https://raw.github.com/crestAT/nas4free-extended-gui/master/extended-gui/extended-gui-install.php'", true);
     if ($return_val == 0) {
         require_once("{$configuration['rootfolder']}extended-gui-install.php"); 
         header("Refresh:8");;

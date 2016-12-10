@@ -1,13 +1,9 @@
 <?php
 /*
-    extended-gui-stop.php
+	json.inc
 
-    Copyright (c) 2014 - 2016 Andreas Schmidhuber
+    Copyright (c) 2013 - 2016 Andreas Schmidhuber
     All rights reserved.
-
-	Portions of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
-	All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions are met:
@@ -33,25 +29,24 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
-require_once("config.inc");
-require_once("functions.inc");
-require_once("install.inc");
-require_once("util.inc");
 
-$rootfolder = dirname(__FILE__)."/";
-$config_file = "{$rootfolder}ext/extended-gui.conf";
-require_once("{$rootfolder}ext/json.inc");
-if (($configuration = load_config($config_file)) === false) {
-    exec("logger extended-gui: configuration file {$config_file} not found, stopping aborted!");
-    exit;
+if (!function_exists('load_config'))   {
+    function load_config($config_file, $assoc = true, $depth = 512, $options = 0) {
+        if (is_file($config_file)) {
+            if (($config_data = file_get_contents($config_file)) === false) return false;
+            $config_data = utf8_encode($config_data);
+            $config_data = json_decode($config_data, $assoc, $depth, $options);
+            return $config_data;
+        }
+        else return false;
+    }
 }
-require_once("{$configuration['rootfolder']}ext/extended-gui_fcopy.inc");
 
-killbypid("/tmp/extended-gui_system_calls.sh.lock");
-// restore original files by shutdown
-copy_backup2origin($files, $backup_path, $extend_path);
-// save logs for embedded systems
-exec ("cp /var/log/autoshutdown.log ".$configuration['rootfolder']."log/autoshutdown.log >/dev/null 2>/dev/null");
-exec ("cp /var/log/notifications.log ".$configuration['rootfolder']."log/notifications.log >/dev/null 2>/dev/null");
-exec("logger extended-gui: stopped");
+if (!function_exists('save_config'))   {
+    function save_config($config_file, $config_data){
+    	header("Content-Type: application/json; UTF-8\n");
+        file_put_contents($config_file, json_encode($config_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ));
+        return json_last_error();
+    }
+}
 ?>
