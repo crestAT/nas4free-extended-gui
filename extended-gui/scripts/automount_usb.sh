@@ -1,5 +1,29 @@
 #!/bin/bash
 # filename:		automount_usb.sh
+#
+#    Copyright (c) 2013 - 2017 Andreas Schmidhuber <info@a3s.at>
+#    All rights reserved.
+#
+#    Redistribution and use in source and binary forms, with or without
+#    modification, are permitted provided that the following conditions are met:
+#
+#    1. Redistributions of source code must retain the above copyright notice, this
+#       list of conditions and the following disclaimer.
+#    2. Redistributions in binary form must reproduce the above copyright notice,
+#       this list of conditions and the following disclaimer in the documentation
+#       and/or other materials provided with the distribution.
+#
+#    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+#    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+#    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+#    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+#    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+#    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+#    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+#    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+#    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
 # author:		Andreas Schmidhuber
 # purpose:		auto-mount/umount partitions
 # usage:		automount.sh [umount | rmount | amount] mount / unmount USB (ATA) partitions daxxx automatically
@@ -13,6 +37,9 @@
 #                   and restart the server to use NTFS drives
 #
 # version:	date:		description:
+#   6.6     2016.09.24  N: verbose message on failed umount
+#   6.5     2016.09.23  N: create _DEVICE for SMART support
+#	5.9		2016.09.18	N: create _DEVICETYPEARG for SMART support
 #	5.8		2016.03.13	N: create index.refresh ctrl file -> force refresh of index.php to display newly mounted devices
 #	5.7		2015.11.23	C: set FIRST_DEVICE regarding to the used system (full or embedded)
 #	5.6		2015.11.21	C: ext2fs handling
@@ -49,6 +76,8 @@ CREATE_DISPLAY ()
     DEVICE_NAME=`gpart status | awk -v mp=\^${2}\$ '$1 ~ mp {print $3}'`    # get device from slice/partition
     if [ "${DEVICE_NAME}" == "" ]; then DEVICE_NAME=$2; fi
     echo "MOUNT${NEXT_MP}=${1}" >> USBMP
+    echo "MOUNT${NEXT_MP}DISK0_DEVICE=${DEVICE_NAME}" >> USBMP
+    echo "MOUNT${NEXT_MP}DISK0_DEVICETYPEARG=AUTOMOUNT_USB" >> USBMP
     echo "MOUNT${NEXT_MP}DISK0=${DEVICE_NAME}" >> USBMP
     NEXT_MP=$((NEXT_MP+1))
     echo "NEXT_MP=${NEXT_MP}" > nextUSBMP
@@ -59,7 +88,7 @@ FAILED ()
 {
 	NOTIFY ERROR $1
 	echo $1 > /mnt/$DEVICE.automount.failed
-	$SYSTEM_SCRIPT_DIR/beep gecceggecceg
+	$SYSTEM_SCRIPT_DIR/beep aaaaa
 }
 
 A_MOUNT ()
@@ -81,10 +110,10 @@ A_MOUNT ()
 			if [ $? -ne 0 ]
 			then
 # check if disk was already auto mounted OR disk mount failed (!), if YES do nothing
-echo stage 4
+#echo stage 4
 				if [ ! -e /mnt/$DEVICE.automount ] && [ ! -e /mnt/$DEVICE.automount.failed ]
 				then
-echo stage 4.1 no automount AND no automount.failed
+#echo stage 4.1 no automount AND no automount.failed
 # mount as $DEVICE - works ONLY for disks with ONE partition
 					if [ ! -e /mnt/$DEVICE ]; then mkdir -m 777 /mnt/$DEVICE; fi
 					chmod 777 /mnt/$DEVICE
@@ -114,10 +143,10 @@ echo stage 4.1 no automount AND no automount.failed
 						*)		FS_TYPE="unknown";;
 					esac
                     MOUNT_CMD="${MOUNT_CMD}${FS_TYPE}";
-echo "stage 5 FS_TYPE $FS_TYPE for DEVICE /dev/$1$x MP = /mnt/$DEVICE"
+#echo "stage 5 FS_TYPE $FS_TYPE for DEVICE /dev/$1$x MP = /mnt/$DEVICE"
 #fdisk /dev/$1$x
 					if [ "$FS_TYPE" == "unknown" ]; then 
-echo "stage 5.1 FS_TYPE $FS_TYPE for DEVICE /dev/$1$x MP = /mnt/$DEVICE - FAILED"
+#echo "stage 5.1 FS_TYPE $FS_TYPE for DEVICE /dev/$1$x MP = /mnt/$DEVICE - FAILED"
                         FAILED "File system type with sysid $TEST UNKNOWN - automount for $PART_NAME not possible"
                         rmdir /mnt/$DEVICE
 					else
@@ -127,18 +156,18 @@ echo "stage 5.1 FS_TYPE $FS_TYPE for DEVICE /dev/$1$x MP = /mnt/$DEVICE - FAILED
                             /usr/local/bin/mount.exfat $PART_NAME /mnt/$DEVICE  ;
 #                        else mount -o sync -t $FS_TYPE $PART_NAME /mnt/$DEVICE  >> $LOG_MSG_NOTIFY 2>&1 ; fi
                         else 
-echo "stage 6 $MOUNT_CMD $PART_NAME /mnt/$DEVICE"
+#echo "stage 6 $MOUNT_CMD $PART_NAME /mnt/$DEVICE"
                             $MOUNT_CMD $PART_NAME /mnt/$DEVICE  >> $LOG_MSG_NOTIFY 2>&1 ; 
                         fi
 						MOUNT_ERROR=$?
-echo "stage 6.1 $MOUNT_CMD $PART_NAME /mnt/$DEVICE - result = $MOUNT_ERROR"
+#echo "stage 6.1 $MOUNT_CMD $PART_NAME /mnt/$DEVICE - result = $MOUNT_ERROR"
 						if [ $MOUNT_ERROR -ne 0 ]; then 
                             FAILED "Partition $PART_NAME mount error $MOUNT_ERROR - mount for $DEVICE failed"
-echo "stage 7.1 FAILED Partition $PART_NAME mount return code $MOUNT_ERROR - mount for $DEVICE failed"
+#echo "stage 7.1 FAILED Partition $PART_NAME mount return code $MOUNT_ERROR - mount for $DEVICE failed"
                             rmdir /mnt/$DEVICE
                             EXITCODE=27
 						else
-echo "stage 7.2 SUCCESS Partition $PART_NAME mounted"
+#echo "stage 7.2 SUCCESS Partition $PART_NAME mounted"
 							if [ ! -e /mnt/$DEVICE/*.mounted ]; then 
                                 NOTIFY INFO "Partition $PART_NAME mounted as $DEVICE with file system type $TEST $FS_TYPE"
 								if [ "$TEST" != "cdrom" ]; then 
@@ -149,7 +178,7 @@ echo "stage 7.2 SUCCESS Partition $PART_NAME mounted"
 							else
 # fetch diskname 
 								DISK_NAME=`ls /mnt/$DEVICE/*.mounted | cut -d/ -f4 | cut -d. -f1`
-echo "stage 8 DISK_NAME $DISK_NAME"
+#echo "stage 8 DISK_NAME $DISK_NAME"
 								chmod 000 /mnt/$DEVICE/$DISK_NAME.mounted				# to make sure that the file survives
 								umount /mnt/$DEVICE
 								if [ $? -eq 0 ]; then rmdir /mnt/$DEVICE; fi
@@ -198,12 +227,18 @@ U_MOUNT ()
 #echo "stage 11 unmount"
 	MOUNTED=`mount | awk '/\/dev\/da/ && /\/mnt\// || /\/dev\/cd/ && /\/mnt\//  || /\/dev\/fuse/ && /\/mnt\// {print $3}'`
 	for NAME in $MOUNTED; do 
-#echo "stage 12 unmount $NAME"
+#echo "stage 12 unmount $NAME from $MOUNTED"
 		sync $NAME; 
 		umount $NAME >> $LOG_MSG_NOTIFY 2>&1; 
-		if [ $? -ne 0 ]; then NOTIFY ERROR "Cannot un-mount $NAME, device is busy"; EXITCODE=11: $SYSTEM_SCRIPT_DIR/beep ceggecceggec; exit 12
+		if [ $? -ne 0 ]; then 
+            NOTIFY ERROR "Cannot un-mount $NAME, device is busy";
+            NOTIFY ERROR "fstat output: "`fstat ${NAME} | grep "${NAME}"`;
+            $SYSTEM_SCRIPT_DIR/beep bgbgbgbg;
+            exit 12;
 		else 
 			rmdir $NAME
+            CNAME=`echo -e ${NAME} | awk '{gsub("/mnt/", ""); print}'`;     # remove the path from the mount name
+            rm ${PREFIX}${CNAME}*.*
 			NOTIFY INFO "$NAME unmounted"; $SYSTEM_SCRIPT_DIR/beep gec
 		fi
 	done

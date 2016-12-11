@@ -9,41 +9,41 @@
 	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
 	All rights reserved.
 
-	Portions of freenas (http://www.freenas.org).
-	Copyright (c) 2005-2011 by Olivier Cochard <olivier@freenas.org>.
-	All rights reserved.
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
 
-	Redistribution and use in source and binary forms, with or without
-	modification, are permitted provided that the following conditions are met:
+    1. Redistributions of source code must retain the above copyright notice, this
+       list of conditions and the following disclaimer.
+    2. Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
+       and/or other materials provided with the distribution.
 
-	1. Redistributions of source code must retain the above copyright notice, this
-	   list of conditions and the following disclaimer.
-	2. Redistributions in binary form must reproduce the above copyright notice,
-	   this list of conditions and the following disclaimer in the documentation
-	   and/or other materials provided with the distribution.
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-	DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-	LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-	ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	The views and conclusions contained in the software and documentation are those
-	of the authors and should not be interpreted as representing official policies,
-	either expressed or implied, of the NAS4Free Project.
+    The views and conclusions contained in the software and documentation are those
+    of the authors and should not be interpreted as representing official policies,
+    either expressed or implied, of the FreeBSD Project.
 */
 require("auth.inc");
 require("guiconfig.inc");
 
+$config_file = "ext/extended-gui/extended-gui.conf";
+require_once("ext/extended-gui/extension-lib.inc");
+if (($configuration = ext_load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
+
 /********* Other conf *******/
 $cpu=@htmlspecialchars($_GET["cpu"]);  // BSD / SNMP interface name / number
-$nb_plot=$config['extended-gui']['graph_nb_plot'];              //NB plot in graph default = 120
-$time_interval=$config['extended-gui']['graph_time_interval'];  //Refresh time Interval default = 1
+$nb_plot=$configuration['graph_nb_plot'];              //NB plot in graph default = 120
+$time_interval=$configuration['graph_time_interval'];  //Refresh time Interval default = 1
 $fetch_link = "stats.php?cpu=$cpu";
 
 //Style
@@ -86,7 +86,6 @@ echo "<?xml version=\"1.0\" encoding=\"{$encoding}\"?>\n";
     <text id="grid_txt1" x="<?=$width*0.99?>" y="<?=$height/4.3*1?>" <?=$attribs['grid_txt']?> text-anchor="end">75%</text>
     <text id="grid_txt2" x="<?=$width*0.99?>" y="<?=$height/4.15*2?>" <?=$attribs['grid_txt']?> text-anchor="end">50%</text>
     <text id="grid_txt3" x="<?=$width*0.99?>" y="<?=$height/4.1*3?>" <?=$attribs['grid_txt']?> text-anchor="end">25%</text>
-    <text id="datetime" x="<?=$width*0.50?>" y="5" <?=$attribs['legend']?>> </text>
     <text id="cpu_name"  x="<?=$width*0.99?>" y="7" <?=$attribs['cpu']?> text-anchor="end">CPU <?=$cpu?></text>
     <polygon id="axis_arrow_x" <?=$attribs['axis']?> points="<?=($width) . "," . ($height)?> <?=($width-2) . "," . ($height-2)?> <?=($width-2) . "," . $height?>"/>
     <text id="error" x="<?=$width*0.5?>" y="<?=$height*0.4?>"  visibility="hidden" <?=$attribs['error']?> text-anchor="middle"><?=$error_text?></text>
@@ -159,11 +158,6 @@ function fetch_data() {
 }
 
 function plot_data(obj) {
-  // Show datetimelegend
-  var now = new Date();
-  var datetime = (now.getMonth()+1) + "/" + now.getDate() + "/" + now.getFullYear() + ' ' +
-    formatString(now.getHours()) + ":" + formatString(now.getMinutes()) + ":" + formatString(now.getSeconds());
-  SVGDoc.getElementById('datetime').firstChild.data = datetime;
 
 	if (!obj.success)
     return handle_error();  // getURL failed to get data
