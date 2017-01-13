@@ -29,6 +29,7 @@
 # prereq.:		S.M.A.R.T. must be enabled and existing CONFIG2 file, which will be created at every eGUI startup
 # usage:		disk_check.sh
 # version:	date:		description:
+#   0.6.8   2017.01.11  N: lifetime parameter 232 Available Reserved Space for Intel SSDs
 #   0.6.7   2016.10.08  F: new bash 4.4 errors -> 'break' in case & if ... statements
 #   0.6.6   2016.09.24  N: create messages for index.php
 #   0.6.5   2016.09.19  N: _DEVICE for nice SMART output
@@ -85,6 +86,7 @@ GET_DETAILS ()
         case $1 in
             Model|Device|Rotation)      MSG_SSD="SSD";;                 # is SSD
             177|202)                    MSG_SSD_LT=$((100-$2));;        # lifetime parameter 177 Wear_Leveling_Count | 202 Percent Lifetime used
+            232)                        MSG_SSD_LT=$2;;                 # lifetime parameter 232 Available Reserved Space for Intel SSDs
             190|194)                    MSG_TEMP=$2;;                   # temperature parameter 190 or 194
         esac
         shift

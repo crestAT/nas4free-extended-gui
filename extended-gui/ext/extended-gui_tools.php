@@ -200,11 +200,36 @@ if ($_POST) {
     if (isset($_POST['automount_save']) && $_POST['automount_save']) {
         $configuration['automount'] = isset($_POST['automount']);
         $savemsg = get_std_save_message(ext_save_config($config_file, $configuration));
-        require("{$configuration['rootfolder']}extended-gui-stop.php");
-        require("{$configuration['rootfolder']}extended-gui-start.php");
+        require_once("{$configuration['rootfolder']}extended-gui-stop.php");
+        require_once("{$configuration['rootfolder']}extended-gui-start.php");
     }   // end of automount_save
+
+    if (isset($_POST['user_defined_save']) && $_POST['user_defined_save']) {
+		$configuration['user_defined']['enable'] = isset($_POST['user_defined']);
+		$configuration['user_defined']['use_buttons'] = !empty($_POST['user_defined_buttons']);
+		$configuration['user_defined']['use_logs'] = !empty($_POST['user_defined_logs']);
+		if ($configuration['user_defined']['enable']) {
+			$configuration['user_defined']['buttons_file'] = trim($_POST['user_defined_buttons']);
+			$configuration['user_defined']['logs_file'] = trim($_POST['user_defined_logs']);
+			if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['user_defined']['buttons_file'])) {
+				$input_errors[] = sprintf(gettext("Configuration file %s not found!"), $configuration['user_defined']['buttons_file']);
+			}
+			if ($configuration['user_defined']['use_logs'] && !is_file($configuration['user_defined']['logs_file'])) {
+				$input_errors[] = sprintf(gettext("Configuration file %s not found!"), $configuration['user_defined']['logs_file']);
+			}
+		}
+		else {
+			$configuration['user_defined']['use_buttons'] = false;
+			$configuration['user_defined']['use_logs'] = false;
+		}
+        $savemsg .= get_std_save_message(ext_save_config($config_file, $configuration));
+        require_once("{$configuration['rootfolder']}extended-gui-stop.php");
+        require_once("{$configuration['rootfolder']}extended-gui-start.php");
+    }   // end of user_defined_save
 }   // end of post	
 
+if  (!isset($configuration['user_defined']['buttons_file'])) $configuration['user_defined']['buttons_file'] = $configuration['rootfolder']."samples/buttons.inc";
+if  (!isset($configuration['user_defined']['logs_file'])) $configuration['user_defined']['logs_file'] = $configuration['rootfolder']."samples/logs.inc";
 if (($message = ext_check_version("{$configuration['rootfolder']}log/version.txt", "extended-gui", $configuration['version'], gettext("Maintenance"))) !== false) $savemsg .= $message;
 
 bindtextdomain("nas4free", "/usr/local/share/locale");
@@ -236,6 +261,14 @@ function purge_enable_change(enable_change) {
 	document.iform.purge_schedule_hour.disabled = endis;
 	document.iform.purge_now.disabled = endis;
 }
+
+function user_defined_enable_change(enable_change) {
+	var endis = !(document.iform.user_defined.checked || enable_change);
+	document.iform.user_defined_buttons.disabled = endis;
+	document.iform.user_defined_buttonsbrowsebtn.disabled = endis;
+	document.iform.user_defined_logs.disabled = endis;
+	document.iform.user_defined_logsbrowsebtn.disabled = endis;
+}
 //-->
 </script>
 <form action="extended-gui_tools.php" method="post" name="iform" id="iform" onsubmit="spinner()">
@@ -251,6 +284,14 @@ function purge_enable_change(enable_change) {
             <?php if (!empty($input_errors)) print_input_errors($input_errors);?>
             <?php if (!empty($savemsg)) print_info_box($savemsg);?>
             <table width="100%" border="0" cellpadding="6" cellspacing="0">
+            <?php html_titleline_checkbox("user_defined", gettext("User Defined Files"), $configuration['user_defined']['enable'], gettext("Enable"), "user_defined_enable_change(false)");?>
+    			<?php html_text("user_defined_description", gettext("Description"), gettext("User Defined Files")." ".gettext("allows to extend the functionality on the System page with additional self-defined action buttons and to include user logs into the Logs page."."<br />".sprintf(gettext("Examples can be found in the directory %s."), $configuration['rootfolder']."samples")));?>
+				<?php html_filechooser("user_defined_buttons", gettext("Buttons"), $configuration['user_defined']['buttons_file'], sprintf(gettext("Buttons definition file to display additional action buttons on %s page. An empty field means don't use."), gettext("Status")." > ".gettext("System")), true, 60);?>
+				<?php html_filechooser("user_defined_logs", gettext("Logs"), $configuration['user_defined']['logs_file'], sprintf(gettext("Logs definition file to display additional logs on %s page. An empty field means don't use."), gettext("Diagnose")." > ".gettext("Log")), true, 60);?>
+            </table>
+            <br /><input id="user_defined_save" name="user_defined_save" type="submit" class="formbtn" value="<?=gettext("Save");?>" />
+            <table width="100%" border="0" cellpadding="6" cellspacing="0">
+			<?php html_separator();?>
             <?php html_titleline_checkbox("purge", gettext("Purge"), $configuration['purge']['enable'], gettext("Enable"), "purge_enable_change(false)");?>
     			<?php html_text("purge_description", gettext("Description"), gettext("Clean recycle bins of CIFS/SMB shares (.recycle directories) from deleted files. Can be done automatically at system startup, closedown, at a specific hour as a daily schedule and/or on demand."));?>
                 <tr><td class="vncell"><?=gettext("Active");?></td>
@@ -285,6 +326,7 @@ function purge_enable_change(enable_change) {
 <script type="text/javascript">
 <!--
 purge_enable_change(false);
+user_defined_enable_change(false);
 //-->
 </script>
 <?php include("fend.inc");?>

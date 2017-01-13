@@ -1,4 +1,18 @@
 ﻿Version Date        Description
+0.6.1   2017.01.13  C: index.php: Page base: 3400
+                    N: Extended GUI | TOOLS: new section => User Defined Files
+                    N: Extended GUI | TOOLS: inclusion of user defined action buttons definitions file for STATUS | SYSTEM implemented
+                    N: Extended GUI | TOOLS: inclusion of user defined logs definitions file for DIAGNOSE | LOG implemented
+                    N: Extended GUI | TOOLS: logs & button samples (UPS and Webserver log, Plex Start/Stop example action buttons)
+                    N: STATUS | SYSTEM: user defined action buttons implemented
+                    N: DIAGNOSE | LOG: user defined logs implemented
+                    N: Swedish translation
+                    N: Ukrainian translation
+                    C: updated German translation
+                    C: STATUS | SYSTEM: CPU multicore display as in NAS4Free release 3330
+                    F: STATUS | SYSTEM: SSD Lifetime for Intel SSDs => http://forums.nas4free.org/viewtopic.php?f=71&t=6405&p=74468#p74321
+                    F: STATUS | SYSTEM: empty CPU and LAN graphs => http://forums.nas4free.org/viewtopic.php?f=71&t=6405&p=74468#p74321
+
 *********************************************************************************
 *** Extended GUI version 0.6 is now fully compatible with NAS4Free 11.x series **
 *********************************************************************************

@@ -2,7 +2,7 @@
 /*
 	diag_log.php
 	
-    Copyright (c) 2014 - 2016 Andreas Schmidhuber
+    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
@@ -83,6 +83,13 @@ function log_change() {
 	<tr>
     <td class="tabcont">
     	<form action="diag_log.php" method="post" name="iform" id="iform">
+			<?php
+				if ($configuration['user_defined']['use_logs'] && !is_file($configuration['user_defined']['logs_file'])) {
+					bindtextdomain("nas4free", "/usr/local/share/locale-egui");
+					print_error_box(sprintf(gettext("Configuration file %s not found!"), $configuration['user_defined']['logs_file']));
+					bindtextdomain("nas4free", "/usr/local/share/locale");
+				}
+			?>
 				<select id="log" class="formfld" onchange="log_change()" name="log">
 					<?php foreach($loginfo as $loginfok => $loginfov):?>
 					<?php if (FALSE === $loginfov['visible']) continue;?>

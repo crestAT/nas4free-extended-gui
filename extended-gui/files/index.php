@@ -2,7 +2,7 @@
 /*
 	index.php
 
-    Copyright (c) 2014 - 2016 Andreas Schmidhuber
+    Copyright (c) 2014 - 2017 Andreas Schmidhuber
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
@@ -40,13 +40,15 @@ require("auth.inc");
 require("guiconfig.inc");
 require("zfs.inc");
 
-// Page base: r2898 => 3305
+// Page base: r3305 => 3400
 if (is_file("/usr/local/www/bar_left.gif")) $image_path = "";
 else $image_path = "images/";
 $EGUI_PREFIX = "/tmp/extended-gui_"; 
 $config_file = "ext/extended-gui/extended-gui.conf";
 require_once("ext/extended-gui/extension-lib.inc");
+bindtextdomain("nas4free", "/usr/local/share/locale-egui");
 if (($configuration = ext_load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
+bindtextdomain("nas4free", "/usr/local/share/locale");
 
 $pgtitle = array(gettext("System Information"));
 $pgtitle_omit = true;
@@ -56,7 +58,14 @@ if (!isset($config['vinterfaces']['carp']) || !is_array($config['vinterfaces']['
 
 $smbios = get_smbios_info();
 $cpuinfo = system_get_cpu_info();
-
+/*	in some special cases for one-core CPUs $cpuinfo['temperature'] is empty 
+ *  but $cpuinfo['temperature2'][0] holds the temperature !  
+$errormsg .= "1: ".$cpuinfo['temperature']."<br />";
+$errormsg .= "2: ".$cpuinfo['temperature2']."<br />";
+$errormsg .= "3: ".$cpuinfo['temperature2'][0]."<br />";
+$errormsg .= "4: ".$cpuinfo['temperature2'][1]."<br />";
+ */
+ 
 function get_vip_status() {
 	global $config;
 
@@ -302,32 +311,41 @@ function egui_get_mount_usage() {
 		$avail = chop($aline[4]);
 		$capacity = chop($aline[5]);
 		$mountpoint = chop($aline[6]);
-//systems only with zfs 		if (is_array($config['mounts']) && is_array($config['mounts']['mount'])) {
-			foreach ($sharenames as $mountcfg) {
-                if ($configuration['boot'] && ($mountpoint == "/")) { $mountpoint = "/mnt/A_OS"; }
-                if ($configuration['varfs'] && ($mountpoint == "/var")) { $mountpoint = "/mnt/A_VAR"; }
-                if ($configuration['usrfs'] && ($mountpoint == "/usr/local")) { $mountpoint = "/mnt/A_USR"; }
-				if (0 == strcmp($mountpoint, "{$g['media_path']}/{$mountcfg}")) {
-					$result[$mountpoint] = array();
-                    $result[$mountpoint]['id'] = str_replace('/', '', $mountcfg);;  // derived from get_disk_usage
-					$result[$mountpoint]['mountpoint'] = $mountpoint;
-					$result[$mountpoint]['name'] = $mountcfg;
-					$result[$mountpoint]['filesystem'] = $filesystem;
-					$result[$mountpoint]['capacity'] = $capacity;
-                    $result[$mountpoint]['percentage'] = rtrim($capacity, "%");     // derived from get_disk_usage
-					$result[$mountpoint]['size'] = $size;
-					$result[$mountpoint]['used'] = $used;
-					$result[$mountpoint]['avail'] = $avail;
-                    $result[$mountpoint]['capofsize'] = sprintf(gettext("%s of %sB"), $result[$mountpoint]['capacity'], $result[$mountpoint]['size']);
-                    $result[$mountpoint]['tooltip']['used'] = sprintf(gettext("%sB used of %sB"), $result[$mountpoint]['used'], $result[$mountpoint]['size']);
-                    $result[$mountpoint]['tooltip']['avail'] = sprintf(gettext("%sB available of %sB"), $result[$mountpoint]['avail'], $result[$mountpoint]['size']);
- 				}
+		foreach ($sharenames as $mountcfg) {
+            if ($configuration['boot'] && ($mountpoint == "/")) { $mountpoint = "/mnt/A_OS"; }
+            if ($configuration['varfs'] && ($mountpoint == "/var")) { $mountpoint = "/mnt/A_VAR"; }
+            if ($configuration['usrfs'] && ($mountpoint == "/usr/local")) { $mountpoint = "/mnt/A_USR"; }
+			if (0 == strcmp($mountpoint, "{$g['media_path']}/{$mountcfg}")) {
+				$result[$mountpoint] = array();
+                $result[$mountpoint]['id'] = str_replace('/', '', $mountcfg);;  // derived from get_disk_usage
+				$result[$mountpoint]['mountpoint'] = $mountpoint;
+				$result[$mountpoint]['name'] = $mountcfg;
+				$result[$mountpoint]['filesystem'] = $filesystem;
+				$result[$mountpoint]['capacity'] = $capacity;
+                $result[$mountpoint]['percentage'] = rtrim($capacity, "%");     // derived from get_disk_usage
+				$result[$mountpoint]['size'] = $size;
+				$result[$mountpoint]['used'] = $used;
+				$result[$mountpoint]['avail'] = $avail;
+                $result[$mountpoint]['capofsize'] = sprintf(gettext("%s of %sB"), $result[$mountpoint]['capacity'], $result[$mountpoint]['size']);
+                $result[$mountpoint]['tooltip']['used'] = sprintf(gettext("%sB used of %sB"), $result[$mountpoint]['used'], $result[$mountpoint]['size']);
+                $result[$mountpoint]['tooltip']['avail'] = sprintf(gettext("%sB available of %sB"), $result[$mountpoint]['avail'], $result[$mountpoint]['size']);
 			}
-//systems only with zfs		}
+		}
 	}
 	return $result;
 }
  
+function egui_get_disk_usage() {
+	$value = array();
+	$a_diskusage = egui_get_mount_usage();
+	if (is_array($a_diskusage) && (0 < count($a_diskusage))) {
+		foreach ($a_diskusage as $diskusagek => $diskusagev) {
+			$value[] = $diskusagev;
+		}
+	}
+	return $value;
+}
+
 if (is_ajax()) {
 	$sysinfo = system_get_sysinfo();
 	$vipstatus = get_vip_status();
@@ -339,6 +357,7 @@ if (is_ajax()) {
 	$sysinfo['indexrefresh'] = egui_get_indexrefresh();
 	$sysinfo['userinfo'] = egui_get_userinfo();
 	$sysinfo['hostsinfo'] = egui_get_hostsinfo();
+	$sysinfo['diskusage'] = egui_get_disk_usage();
     if (is_array($sysinfo['diskusage'])) {
         for ($i = 0; $i < count($sysinfo['diskusage']); ++$i) {
             $mountpoint_details = explode('##', exec("cat {$EGUI_PREFIX}{$sysinfo['diskusage'][$i]['name']}.smart"));
@@ -445,6 +464,7 @@ if ($_POST['clear_history']) {
     if (is_file("{$EGUI_PREFIX}system_error.msg.locked")) unlink("{$EGUI_PREFIX}system_error.msg.locked");
 }
 
+bindtextdomain("nas4free", "/usr/local/share/locale-egui");
 if ($_POST['umount']) {
     $retval = mwexec("/var/scripts/automount_usb.sh umount", true);
     if ($retval <> 0) {
@@ -472,6 +492,7 @@ if (isset($_GET['standby_drive'])) {
     	$errormsg .= "<br />\n";
     }
 }
+bindtextdomain("nas4free", "/usr/local/share/locale");
 
 ?>
 <?php include("fbegin.inc");?>
@@ -536,7 +557,6 @@ $(document).ready(function(){
 		if (typeof(data.diskusage) != 'undefined') {
 			for (var idx = 0; idx < data.diskusage.length; idx++) {
 				var du = data.diskusage[idx];
-//a1    don't use '/' in javascript 'id'
 				if ($('#diskusage_'+du.id+'_bar_used').length > 0) {
 					$('#diskusage_'+du.id+'_name').text(du.name);
 					$('#diskusage_'+du.id+'_bar_used').attr('width', du.percentage + 'px');
@@ -678,14 +698,23 @@ $(document).ready(function(){
 	}
 	if (!empty($errormsg)) print_error_box($errormsg);
 
-$rowcounter = 13;       //@afs2 set/get # of rows for graphs
+$swapinfo = system_get_swap_info();
+$cpus = system_get_cpus();
+$rowcounter = 13;       // set/get # of rows for graphs
 if (!empty($config['vinterfaces']['carp'])) { ++$rowcounter; }
-if (!empty($cpuinfo['temperature']) || !empty($cpuinfo['temperature2'])) { ++$rowcounter; }
 if (!empty($cpuinfo['freq'])) { ++$rowcounter; } 
-$swapinfo = system_get_swap_info(); 
 if (!empty($swapinfo)) { ++$rowcounter; }	
-if ($configuration['hide_cpu']) { --$rowcounter; }	 
-?>
+if (($cpus == 1) && (!empty($cpuinfo['temperature']) || !empty($cpuinfo['temperature2']))) { ++$rowcounter; }
+if ($cpus > 1) { ++$rowcounter; }
+if ($configuration['hide_cpu'] && ($cpus > 1)) { $rowcounter = $rowcounter - 2; }
+if ($configuration['hide_cpu'] && ($cpus == 1)) { --$rowcounter; }
+if ($configuration['hide_cpu_usage']  && ($cpus > 1) && !$configuration['hide_cpu']) { --$rowcounter; }
+if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['user_defined']['buttons_file'])) {
+	bindtextdomain("nas4free", "/usr/local/share/locale-egui");
+	print_error_box(sprintf(gettext("Configuration file %s not found!"), $configuration['user_defined']['buttons_file']));
+	bindtextdomain("nas4free", "/usr/local/share/locale");
+}
+ ?>
 <table width="100%" border="0" cellpadding="0" cellspacing="0">
   <tr>
     <td class="tabcont">
@@ -758,38 +787,27 @@ if ($configuration['hide_cpu']) { --$rowcounter; }
 			html_textinfo("system", gettext("System"), sprintf("%s %s", htmlspecialchars($smbios['system']['maker']), htmlspecialchars($smbios['system']['product'])));
 		}
 	?>
-	<?php html_textinfo("system_bios", gettext("System bios"), sprintf("%s %s %s %s", htmlspecialchars($smbios['bios']['vendor']), gettext("version:"), htmlspecialchars($smbios['bios']['version']), htmlspecialchars($smbios['bios']['reldate'])));?>
-	<?php html_textinfo("system_datetime", gettext("System time"), htmlspecialchars(get_datetime_locale()));?>
-	<?php html_textinfo("system_uptime", gettext("System uptime"), htmlspecialchars(system_get_uptime()));?>
+	<?php html_textinfo("system_bios", gettext("System BIOS"), sprintf("%s %s %s %s", htmlspecialchars($smbios['bios']['vendor']), gettext("version:"), htmlspecialchars($smbios['bios']['version']), htmlspecialchars($smbios['bios']['reldate'])));?>
+	<?php html_textinfo("system_datetime", gettext("System Time"), htmlspecialchars(get_datetime_locale()));?>
+	<?php html_textinfo("system_uptime", gettext("System Uptime"), htmlspecialchars(system_get_uptime()));?>
     <?php if (Session::isAdmin()):?>
 		<?php if ($config['lastchange']):?>
-			<?php html_textinfo("last_config_change", gettext("System last config change"), htmlspecialchars(get_datetime_locale($config['lastchange'])));?>
+			<?php html_textinfo("last_config_change", gettext("Last Configuration Change"), htmlspecialchars(get_datetime_locale($config['lastchange'])));?>
 		<?php endif;?>
-				<?php if (!empty($cpuinfo['temperature2'])):
-					echo "<tr>";
-					echo "<td width='25%' class='vncellt'>".gettext("CPU temperature")."</td>";
-					echo "<td class='listr'>";
-					echo "<table width='100%' border='0' cellspacing='0' cellpadding='0'><tr><td>\n";
-					$cpus = system_get_cpus();
-					for ($idx = 0; $idx < $cpus; $idx++) {
-                        if (empty($cpuinfo['temperature2'][$idx])) continue;
-						echo "<input style='padding: 0; border: 0;' size='2' name='cputemp${idx}' id='cputemp${idx}' value='".htmlspecialchars($cpuinfo['temperature2'][$idx])."' />";
-    					echo $idx['temperature2']."&deg;C &nbsp;&nbsp;";
-					}
-					echo "</table></td>";
-					echo "</tr>\n";
-				?>
-				<?php elseif (!empty($cpuinfo['temperature'])):?>
-				<tr>
-					<td width="25%" class="vncellt"><?=gettext("CPU temperature");?></td>
-					<td class="listr">    
-						<input style="padding: 0; border: 0;" size="30" name="cputemp" id="cputemp" value="<?=htmlspecialchars($cpuinfo['temperature']);?>" />
-					</td>
-				</tr>
-				<?php endif;?>
+		<?php 
+			if (($cpus == 1) && (!empty($cpuinfo['temperature']) || !empty($cpuinfo['temperature2']))) { 
+				echo "<tr><td width='25%' class='vncellt'>".gettext("CPU Temperature")."</td>";
+				echo "<td class='listr'>";
+				if (!empty($cpuinfo['temperature'])) {
+					echo "<input style='padding: 0; border: 0;' size='1' id='cputemp' value='".htmlspecialchars($cpuinfo['temperature'])."' />&deg;C";
+				}
+				else echo "<input style='padding: 0; border: 0;' size='1' id='cputemp0' value='".htmlspecialchars($cpuinfo['temperature2'][0])."' />&deg;C";				    
+				echo "</td></tr>";
+			}
+		?>
 		<?php if (!empty($cpuinfo['freq'])):?>
 			<tr>
-				<td width="25%" class="vncellt"><?=gettext("CPU frequency");?></td>
+				<td width="25%" class="vncellt"><?=gettext("CPU Frequency");?></td>
 				<td width="75%" class="listr">
 					<input style="padding: 0; border: 0; background-color:#FCFCFC;" size="30" name="cpufreq" id="cpufreq" value="<?=htmlspecialchars($cpuinfo['freq']);?>MHz" title="<?=sprintf(gettext("Levels (MHz/mW): %s"), $cpuinfo['freqlevels']);?>" />
 				</td>
@@ -797,41 +815,48 @@ if ($configuration['hide_cpu']) { --$rowcounter; }
 		<?php endif;?>
 <?php if (!$configuration['hide_cpu']) { ?>
 		<tr>
-			<td width="25%" class="vncellt"><?=gettext("CPU usage");?></td>
+			<td width="25%" class="vncellt"><?=gettext("CPU Usage");?></td>
 			<td width="75%" class="listr">
-			<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td>
 			<?php
+				$gt_core = gettext('Core');
+				$gt_temp = gettext('Temp');
 				$percentage = 0;
 				echo "<img src='{$image_path}bar_left.gif' class='progbarl' alt='' />";
 				echo "<img src='{$image_path}bar_blue.gif' name='cpuusageu' id='cpuusageu' width='" . $percentage . "' class='progbarcf' alt='' />";
 				echo "<img src='{$image_path}bar_gray.gif' name='cpuusagef' id='cpuusagef' width='" . (100 - $percentage) . "' class='progbarc' alt='' />";
 				echo "<img src='{$image_path}bar_right.gif' class='progbarr' alt='' /> ";
+				echo "<input style='padding: 0; border: 0;' name='cpuusage' id='cpuusage' value='???' />";
 			?>
-				<input style="padding: 0; border: 0; background-color:#FCFCFC;" size="30" name="cpuusage" id="cpuusage" value="<?=gettext("Updating in 5 seconds.");?>" />
-			</td></tr>
+			</td>
+		</tr>
 			<?php
             if (!$configuration['hide_cpu_usage']) {
 				$cpus = system_get_cpus();
 				if ($cpus > 1) {
-					echo "<tr><td><hr size='1' /></td></tr>";
+					echo "<tr><td width='25%' class='vncellt'>".gettext('Core Usage')."</td><td width='75%' class='listr'>";
 					for ($idx = 0; $idx < $cpus; $idx++) {
 						$percentage = 0;
-						echo "<tr><td>";
+						echo "<span style='white-space:nowrap; display:inline-block; width:300px'>";
 						echo "<img src='{$image_path}bar_left.gif' class='progbarl' alt='' />";
 						echo "<img src='{$image_path}bar_blue.gif' name='cpuusageu${idx}' id='cpuusageu${idx}' width='" . $percentage . "' class='progbarcf' alt='' />";
 						echo "<img src='{$image_path}bar_gray.gif' name='cpuusagef${idx}' id='cpuusagef${idx}' width='" . (100 - $percentage) . "' class='progbarc' alt='' />";
 						echo "<img src='{$image_path}bar_right.gif' class='progbarr' alt='' /> ";
-						echo "<input style='padding: 0; border: 0; background-color:#FCFCFC;' size='30' name='cpuusage${idx}' id='cpuusage${idx}' value=\"".gettext("Updating in 5 seconds.")."\" />";
-						echo "</td></tr>";
+						echo "{$gt_core} {$idx}: ";
+						echo "<input style='padding: 0; border: 0;' size='3' name='cpuusage${idx}' id='cpuusage${idx}' value='???' />";
+                        if (!empty($cpuinfo['temperature2'][$idx])) {
+							echo "{$gt_temp}: ";
+							echo "<input style='padding: 0; border: 0; text-align:right' size='1' id='cputemp${idx}' value='???' />&deg;C";
+						}
+						echo "</span>";
 					}
+					echo "</td></tr>";
 				}
-            }
+			}
 			?>
-			</table></td>
 		</tr>
 <?php } ?>
 		<tr>
-			<td width="25%" class="vncellt"><?=gettext("Memory usage");?></td>
+			<td width="25%" class="vncellt"><?=gettext("Memory Usage");?></td>
 			<td width="75%" class="listr">
 			<?php
 				$raminfo = system_get_ram_info();
@@ -846,7 +871,7 @@ if ($configuration['hide_cpu']) { --$rowcounter; }
 		</tr>
 		<?php $a_swapusage = get_swap_usage(); if (!empty($a_swapusage)):?>
 		<tr>
-			<td width="25%" class="vncellt"><?=gettext("Swap usage");?></td>
+			<td width="25%" class="vncellt"><?=gettext("Swap Usage");?></td>
 			<td width="75%" class="listr">
 			<table width="100%" border="0" cellspacing="0" cellpadding="1">
 			<?php
@@ -891,7 +916,7 @@ if ($configuration['hide_cpu']) { --$rowcounter; }
 			</td>
 		</tr>
 		<tr>
-    	    <td width="25%" class="vncellt"><?=gettext("Disk space usage");?></td>
+    	    <td width="25%" class="vncellt"><?=gettext("Disk Space Usage");?></td>
     	    <td class="listr" colspan="2">
             <table border="0" cellspacing="0" cellpadding="1">
     		<?php
@@ -938,7 +963,6 @@ if ($configuration['hide_cpu']) { --$rowcounter; }
                         echo "</td><td style='white-space:nowrap; width:60px;'><span name='diskusage_{$ctrlid}_space' id='diskusage_{$ctrlid}_space'>{$diskusagev['space']}</span>";
     					echo "</td><td style='white-space:nowrap; width:50%;'>&nbsp;&nbsp;</td></tr>";
     				}
-//systems only with zfs    			}
 
 				$zfspools = get_pool_usage();
 				if (!empty($zfspools)) {
@@ -1279,8 +1303,12 @@ if ($configuration['hide_cpu']) { --$rowcounter; }
     <?php if ($configuration['purge']['enable']) { ?>
     		<input name="purge" type="submit" class="formbtn" title="<?=gettext("Purge now all CIFS/SMB recycle bins!");?>" value="<?=gettext("Purge now");?>">
     <?php } ?>
-    <?php if (is_file("{$configuration['rootfolder']}/buttons.inc")) include_once("{$configuration['rootfolder']}/buttons.inc"); ?>
 <?php } ?>
+<?php 
+	if ($configuration['user_defined']['use_buttons'] && is_file($configuration['user_defined']['buttons_file'])) {
+		include_once($configuration['user_defined']['buttons_file']);
+	}
+?>
 <?php bindtextdomain("nas4free", "/usr/local/share/locale"); ?>
  		<?php include("formend.inc"); ?>
 	</form>

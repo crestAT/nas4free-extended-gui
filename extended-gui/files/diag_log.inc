@@ -2,7 +2,7 @@
 /*
 	diag_log.inc
 
-    Copyright (c) 2014 - 2016 Andreas Schmidhuber
+    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
@@ -240,8 +240,10 @@ $loginfo = array(
 		))
 );
 
-if (is_file("{$configuration['rootfolder']}logs.inc")) include("{$configuration['rootfolder']}logs.inc");
-if (is_array($logs_info) && !empty($logs_info)) $loginfo = array_merge($loginfo, $logs_info);
+if ($configuration['user_defined']['use_logs']) {
+	if (is_file($configuration['user_defined']['logs_file'])) include_once($configuration['user_defined']['logs_file']);	
+	if (is_array($logs_info) && !empty($logs_info)) $loginfo = array_merge($loginfo, $logs_info);
+} 
 
 function log_get_contents($logfile, $type) {
 	global $config;

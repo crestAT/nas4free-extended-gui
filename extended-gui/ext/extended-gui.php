@@ -57,6 +57,9 @@ $dummy = gettext("Clear Alarms");
 $dummy = gettext("Clear alarm history!");
 $dummy = gettext("Clear History");
 $dummy = gettext("Alarm message history cleared!");
+$dummy = gettext("Cannot unmount USB device(s), device(s) is/are busy (maybe open files or directories)!");
+$dummy = gettext("Cannot remount USB device(s), look at <b>Diagnose | Log | Notifications</b> for more information!");
+$dummy = gettext("Cannot set drive %s to standby!");
 
 bindtextdomain("nas4free", "/usr/local/share/locale-egui");
 $pgtitle = array(gettext("Extensions"), "Extended GUI ".$configuration['version']);
@@ -79,6 +82,8 @@ if ($_POST) {
             $configuration['hide_cpu_usage'] = isset($_POST['hide_cpu_usage']);
             $configuration['hide_cpu_graph'] = isset($_POST['hide_cpu_graph']);
             $configuration['hide_lan_graph'] = isset($_POST['hide_lan_graph']);
+            $configuration['graph_nb_plot'] = !empty($_POST['graph_nb_plot']) ? $_POST['graph_nb_plot'] : 120;
+            $configuration['graph_time_interval'] = !empty($_POST['graph_time_interval']) ? $_POST['graph_time_interval'] : 1;
             $configuration['boot'] = isset($_POST['boot']);
             $configuration['varfs'] = isset($_POST['varfs']);
             $configuration['usrfs'] = isset($_POST['usrfs']);
@@ -165,6 +170,8 @@ function enable_change(enable_change) {
 	document.iform.hide_cpu_usage.disabled = endis;
 	document.iform.hide_cpu_graph.disabled = endis;
 	document.iform.hide_lan_graph.disabled = endis;
+	document.iform.graph_nb_plot.disabled = endis;
+	document.iform.graph_time_interval.disabled = endis;
 	document.iform.boot.disabled = endis;
 	document.iform.usrfs.disabled = endis;
 	document.iform.varfs.disabled = endis;
@@ -261,6 +268,8 @@ function enable_change_hosts() {
                 <?php html_checkbox("system_warnings", gettext("System notifications"), $configuration['system_warnings'], sprintf(gettext("Enable alarms notifications/history on %s."), gettext("Status")." | ".gettext("System")), "", false);?>
                 <?php html_checkbox("beep", gettext("System Beep"), $configuration['beep'], gettext("Enable audible alarms for Extended GUI."), "", false);?>
                 <?php html_checkbox("temp_always", gettext("Disk temperature"), $configuration['temp_always'], gettext("Enable display of disk temperatures even if disks are in standby mode. If enabled it could happen that disks don't spin down depending on disk/controler combinations!"), "", false);?>
+            	<?php html_inputbox("graph_nb_plot", gettext("Graph show time"), !empty($configuration['graph_nb_plot']) ? $configuration['graph_nb_plot'] : 120, sprintf(gettext("Maximum duration for graphs show time in seconds. Default is %d seconds."), 120), true, 5);?>
+            	<?php html_inputbox("graph_time_interval", gettext("Graph refresh time"), !empty($configuration['graph_time_interval']) ? $configuration['graph_time_interval'] : 1, sprintf(gettext("Refresh time for graphs in seconds. Default is %d second."), 1), true, 5);?>
             	<?php html_inputbox("cpu_temp_warning", gettext("CPU temperature warning level"), !empty($configuration['cpu_temp_warning']) ? $configuration['cpu_temp_warning'] : 65, sprintf(gettext("Define the CPU temperature for warning indication in &deg;C. Default warning temperature is %d &deg;C."), 65), true, 5);?>
             	<?php html_inputbox("cpu_temp_severe", gettext("CPU temperature critical level"), !empty($configuration['cpu_temp_severe']) ? $configuration['cpu_temp_severe'] : 75, sprintf(gettext("Define the CPU temperature for error indication in &deg;C. Default critical temperature is %d &deg;C."), 75), true, 5);?>
             	<?php html_inputbox("cpu_temp_hysteresis", gettext("CPU temperature hysteresis"), !empty($configuration['cpu_temp_hysteresis']) ? $configuration['cpu_temp_hysteresis'] : 3, sprintf(gettext("Define the difference to the CPU warning temperature (for how much the CPU temperature must be lower) to clear the alarms in &deg;C. Default hysteresis temperature is %d &deg;C."), 3), true, 5);?>
