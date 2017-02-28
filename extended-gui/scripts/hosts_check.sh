@@ -28,6 +28,7 @@
 # purpose:		monitoring of hosts in network
 # usage:		hosts_check.sh (... w/o parameters) 
 # version:	date:		description:
+#	3.1		2017.02.08	N: alternative method with arp
 #	3.0		2015.04.16	C: get extension variables from CONFIG2 instead of reading from config.xml
 #	2.3		2014.06.15	F: let grep -w search for whole words
 #	2.2		2014.06.06	C: display host names if given in /etc/hosts - don't use the own automatically generated name
@@ -55,6 +56,11 @@ CHECK_CLIENTS ()
 }
 
 # hosts in network ----------------------
+
+RUN_HOSTS_ARP=0;
+if [ $RUN_HOSTS_ARP -eq 1 ]; then 
+    arp -a | sort -k2 -V | awk 'BEGIN {ORS=""} !/(incomplete)/ {print "<font color=blue><b>"$1"</b></font>&nbsp;"$2"&nbsp;&nbsp; "}' > $ONLINE_LOG
+else
 NAMES=""
 CHECK_CLIENTS
 if [ -e $ONLINE_LOG.tmp ]; then 
@@ -65,4 +71,5 @@ if [ -e $ONLINE_LOG.tmp ]; then
 	done
 	echo "<b>Network ($SUBNET.$START_IP - $SUBNET.$END_IP):</b>&nbsp; $NAMES" > $ONLINE_LOG
 else rm $ONLINE_LOG
+    fi
 fi

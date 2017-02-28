@@ -6,7 +6,7 @@
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
+	Copyright (c) 2012-2017 The NAS4Free Project <info@nas4free.org>.
 	All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -79,7 +79,7 @@ if ($configuration['enable']) {
         copy_extended2origin ($files, $backup_path, $extend_path);
         require_once("{$extension_dir}/extended-gui_create_config2.inc"); 
         killbypid("/tmp/extended-gui_system_calls.sh.lock");
-        exec("/var/scripts/extended-gui_system_calls.sh >/dev/null 2>/dev/null &");
+		mwexec("nohup /var/scripts/extended-gui_system_calls.sh >/dev/null 2>&1 &", true);
     }
 }
 else { copy_backup2origin ($files, $backup_path, $extend_path); }   // case extension not enabled at start

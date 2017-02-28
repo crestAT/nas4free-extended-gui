@@ -6,7 +6,7 @@
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
+	Copyright (c) 2012-2017 The NAS4Free Project <info@nas4free.org>.
 	All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -285,7 +285,7 @@ function user_defined_enable_change(enable_change) {
             <?php if (!empty($savemsg)) print_info_box($savemsg);?>
             <table width="100%" border="0" cellpadding="6" cellspacing="0">
             <?php html_titleline_checkbox("user_defined", gettext("User Defined Files"), $configuration['user_defined']['enable'], gettext("Enable"), "user_defined_enable_change(false)");?>
-    			<?php html_text("user_defined_description", gettext("Description"), gettext("User Defined Files")." ".gettext("allows to extend the functionality on the System page with additional self-defined action buttons and to include user logs into the Logs page."."<br />".sprintf(gettext("Examples can be found in the directory %s."), $configuration['rootfolder']."samples")));?>
+    			<?php html_text("user_defined_description", gettext("Description"), gettext("User Defined Files")." ".gettext("allows to extend the functionality on the System page with additional self-defined action buttons and to include user logs into the Logs page.<br />").sprintf(gettext("Examples can be found in the directory %s."), $configuration['rootfolder']."samples"));?>
 				<?php html_filechooser("user_defined_buttons", gettext("Buttons"), $configuration['user_defined']['buttons_file'], sprintf(gettext("Buttons definition file to display additional action buttons on %s page. An empty field means don't use."), gettext("Status")." > ".gettext("System")), true, 60);?>
 				<?php html_filechooser("user_defined_logs", gettext("Logs"), $configuration['user_defined']['logs_file'], sprintf(gettext("Logs definition file to display additional logs on %s page. An empty field means don't use."), gettext("Diagnose")." > ".gettext("Log")), true, 60);?>
             </table>

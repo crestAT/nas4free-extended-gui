@@ -28,6 +28,7 @@
 # purpose:		monitoring of users in the home network
 # usage:		user_check.sh (... w/o parameters) 
 # version:	date:		description:
+#	3.3		2017.01.24	F: display of FTP user
 #	3.2		2015.12.01	F: change check order, start with SSH to avoid multiple SSH entries if CIFS/SMB is disabled
 #                       C: remove logger -p local3.notice 
 #	3.1		2015.09.27	N: check if SMB / FTP are enabled to prevent error messages and laggs
@@ -44,30 +45,39 @@ EMAIL_FILE=$LOCK_DIR/extended-gui_user_email.log
 #-----------------------------------------------
 
 # user online
-w -hn | awk '{print "<font color=blue><b>"$1"</b></font>@"$3"@"$2"&nbsp;(SSH)"}' | grep -v '<font color=blue><b>root</b></font>@-@' > $USER_ONLINE.tmp
+w -h | awk '{print "<font color=blue><b>"$1"</b></font>@"$3"@"$2"&nbsp;(<a href='diag_log.php?log=3'>SSH</a>)"}' | grep -v '<font color=blue><b>root</b></font>@-@' > $USER_ONLINE.tmp
 if [ $SMB_ENABLED -gt 0 ]; then
-    smbstatus -b | awk '/\(/ {print "<font color=blue><b>"$2"</b></font>@"$4$5"&nbsp;(CIFS/SMB)"}' >> $USER_ONLINE.tmp
+    smbstatus -b | awk '/\(/ {print "<font color=blue><b>"$2"</b></font>@"$4$5"&nbsp;(<a href='diag_infos_samba.php'>CIFS/SMB</a>)"}' >> $USER_ONLINE.tmp
 fi
 if [ $FTP_ENABLED -gt 0 ]; then
-    ftpwho -v -o oneline | grep -v 'standalone FTP' | grep -v 'Service class' | grep -v 'no users connected' | awk '{print "<font color=blue><b>"$2"</b></font>@"$8"&nbsp;(FTP)"}' >> $USER_ONLINE.tmp
+    ftpwho -v  | awk '!/standalone FTP daemon/ && !/Service class/ && !/no users connected/ && /\[/{ 
+        user=$2
+        getline
+        if ($1 == "client:") client=$2
+        else {
+            getline
+            client=$2
+        }
+        print "<font color=blue><b>"user"</b></font>@"client"&nbsp;(<a href='diag_infos_ftpd.php'>FTP</a>)"
+    }' >> $USER_ONLINE.tmp
 fi
 
 cat $USER_ONLINE.tmp | awk 'BEGIN {ORS=""} {print} {print "&nbsp; "}' > $USER_ONLINE
 
 # user login / logout
-cp $USER_ONLINE.tmp $USER_LOG_NEW
+cat $USER_ONLINE.tmp | cut -d "(" -f1 > $USER_LOG_NEW
 if [ ! -e $USER_LOG_OLD ]; then cp $USER_LOG_NEW $USER_LOG_OLD; fi
 USER_DIFF=`diff --suppress-common-lines $USER_LOG_NEW $USER_LOG_OLD `
 if [ $? != 0 ]; then
 	echo "Host: $HOST\n" >> $EMAIL_FILE;
 	for NAME in $USER_DIFF
 	do
-		if [ "$NAME" == "<" ]; then LOG_RECORD="User logged in: "; 
-		else if [ "$NAME" == ">" ]; then LOG_RECORD="User logged out: "
+		if [ "$NAME" == "<" ]; then LOG_RECORD="LOGIN User logged in: "; 
+		else if [ "$NAME" == ">" ]; then LOG_RECORD="LOGOUT User logged out: "
 			else if [ "`echo $NAME | awk '/@/ {print $1}'`" != "" ]; then 
 					LOG_RECORD="$LOG_RECORD `echo $NAME | awk '{gsub("color=blue><b>",""); gsub("</b></font>",""); gsub("&nbsp;"," ");print}'`";
 					echo $LOG_RECORD >> $EMAIL_FILE;
-					NOTIFY "WARNING $LOG_RECORD"
+					NOTIFY "$LOG_RECORD"
 				fi
 			fi
 		fi

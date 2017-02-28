@@ -8,7 +8,7 @@
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
+	Copyright (c) 2012-2017 The NAS4Free Project <info@nas4free.org>.
 	All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -47,6 +47,30 @@ $logs_info = array(
 			array("title" => gettext("Date & Time"), "class" => "listlr", "param" => "nowrap=\"nowrap\"", "pmid" => 1),
 			array("title" => gettext("User"), "class" => "listr", "param" => "", "pmid" => 2),
 			array("title" => gettext("Event"), "class" => "listr", "param" => "", "pmid" => 3)
+		)),
+/* 
+ * ProFTP log example
+*/	array(
+		"visible" => TRUE,
+		"desc" => gettext("ProFTP - File transfer"),
+		"logfile" => "{$g['varlog_path']}/xferlog",
+		"filename" => "xferlog",
+		"type" => "plain",
+		"pattern" => "/^(\S+\s+\S+\s+\d+\s+\S+\s+\d+) ((\d+) (\S+) (\d+) (\S+) (a|b) (C|U|T|_) (o|i|d) (a|g|r) (\S+) (\S+) (0|1) (\S+) (c|i))$/",
+		"columns" => array(
+			array("title" => gettext("Date & Time"), "class" => "listlr", "param" => "nowrap=\"nowrap\"", "pmid" => 1),
+			array("title" => gettext("IP"), "class" => "listr", "param" => "", "pmid" => 4),
+			array("title" => gettext("User"), "class" => "listr", "param" => "", "pmid" => 11),
+			array("title" => gettext("File"), "class" => "listr", "param" => "nowrap=\"nowrap\"", "pmid" => 6),
+			array("title" => gettext("Filesize"), "class" => "listr", "param" => "align=\"right\" nowrap=\"nowrap\"", "pmid" => 5),
+			array("title" => gettext("Type"), "class" => "listr", "param" => "align=\"center\" nowrap=\"nowrap\"", "pmid" => 7),
+//			array("title" => gettext("Event"), "class" => "listr", "param" => "nowrap=\"nowrap\"", "pmid" => 8),
+			array("title" => gettext("Direction"), "class" => "listr", "param" => "align=\"center\" nowrap=\"nowrap\"", "pmid" => 9),
+//			array("title" => gettext("Mode"), "class" => "listr", "param" => "align=\"center\" nowrap=\"nowrap\"", "pmid" => 10),
+//			array("title" => gettext("Service"), "class" => "listr", "param" => "align=\"center\" nowrap=\"nowrap\"", "pmid" => 12),
+//			array("title" => gettext("Authentication"), "class" => "listr", "param" => "align=\"center\" nowrap=\"nowrap\"", "pmid" => 13),
+//			array("title" => gettext("User ID"), "class" => "listr", "param" => "align=\"center\" nowrap=\"nowrap\"", "pmid" => 14),
+			array("title" => gettext("Status"), "class" => "listr", "param" => "align=\"center\" nowrap=\"nowrap\"", "pmid" => 15)
 		)),
 	array(
 /*
