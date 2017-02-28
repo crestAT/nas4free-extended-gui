@@ -30,8 +30,9 @@
     either expressed or implied, of the FreeBSD Project.
 */
 
-$extension_lib_version = "1.0";
+$extension_lib_version = "1.1";
 /* Version history:
+ * 1.1	2017.02.28	save config in ext_remove_rc_commands and ext_create_rc_commands 
  * 1.0	2017.02.27	includes changes for PHP 7.1
 */
 
@@ -110,6 +111,7 @@ if (!function_exists('ext_create_rc_commands'))   {
 				$shutdown = false;
 			}
 		}
+	write_config();
     }
 }
 
@@ -141,6 +143,7 @@ if (!function_exists('ext_remove_rc_commands'))   {
 		        if (preg_match("/{$config_name}/", $config['rc']['param'][$i]['value'])) unset($config['rc']['param'][$i]);
 			}
 		}
+	write_config();
     }
 }
 
