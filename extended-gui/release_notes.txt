@@ -1,5 +1,6 @@
 ﻿Version Date        Description
 0.6.1   2017.02.27  C: index.php: Page base: 3956
+                    C: make extension PHP 7.1 aware
                     N: Extended GUI | TOOLS: new section => User Defined Files
                     N: Extended GUI | TOOLS: inclusion of user defined action buttons definitions file for STATUS | SYSTEM implemented
                     N: Extended GUI | TOOLS: inclusion of user defined logs definitions file for DIAGNOSE | LOG implemented

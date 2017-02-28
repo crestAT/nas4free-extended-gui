@@ -130,7 +130,7 @@ GET_SMART ()
 #echo "INFO2 ${1} ${dcounter}_DEVICETYPEARG: ${!2} ${dcounter}_DEVICE ${!3}"    # for debugging
     MSG_TEMP="n/a"
     case $1 in                                                                          # check for special cases
-        xmd[0-9])   OUTPUT="${1}|<font color='black'>RAM-DRV</font>|n/a"; return;;
+        xmd[0-9]|md[0-9])   OUTPUT="${1}|<font color='black'>RAM-DRV</font>|n/a"; return;;
         ds*)        OUTPUT="${1}|<font color='black'>ZFS-DS</font>|n/a"; return;;
         vol*)       OUTPUT="${1}|<font color='black'>ZFS-VOL</font>|n/a"; return;;
         zvol/*)     OUTPUT="zvol|<font color='black'>ZFS-VOL</font>|n/a"; return;;
