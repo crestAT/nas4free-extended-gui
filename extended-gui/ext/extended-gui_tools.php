@@ -101,6 +101,7 @@ if ($_POST) {
             // de/activate purge schedule
             if ($configuration['purge']['schedule']) {
                 $cronjob = array();
+				if (!is_array($config['cron'])) $config['cron'] = [];
                 $a_cronjob = &$config['cron']['job'];
                 $uuid = isset($configuration['purge']['schedule_uuid']) ? $configuration['purge']['schedule_uuid'] : false;
                 if (isset($uuid) && (FALSE !== ($cnid = array_search_ex($uuid, $a_cronjob, "uuid")))) {
