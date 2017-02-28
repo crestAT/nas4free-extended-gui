@@ -29,6 +29,8 @@
 # prereq.:		S.M.A.R.T. must be enabled and existing CONFIG2 file, which will be created at every eGUI startup
 # usage:		disk_check.sh
 # version:	date:		description:
+#   0.6.9   2017.02.27  N: lifetime parameter 233 Media_Wearout_Indicator for Plextor SSDs
+#   0.6.8   2017.01.11  N: lifetime parameter 232 Available Reserved Space for Intel SSDs
 #   0.6.7   2016.10.08  F: new bash 4.4 errors -> 'break' in case & if ... statements
 #   0.6.6   2016.09.24  N: create messages for index.php
 #   0.6.5   2016.09.19  N: _DEVICE for nice SMART output
@@ -85,6 +87,8 @@ GET_DETAILS ()
         case $1 in
             Model|Device|Rotation)      MSG_SSD="SSD";;                 # is SSD
             177|202)                    MSG_SSD_LT=$((100-$2));;        # lifetime parameter 177 Wear_Leveling_Count | 202 Percent Lifetime used
+            232)                        MSG_SSD_LT=$2;;                 # lifetime parameter 232 Available Reserved Space for Intel SSDs
+            233)                        MSG_SSD_LT=$3;;                 # lifetime parameter 233 Media_Wearout_Indicator for Plextor SSDs
             190|194)                    MSG_TEMP=$2;;                   # temperature parameter 190 or 194
         esac
         shift
@@ -100,7 +104,7 @@ GET_SMART_SUB ()
 #echo "INFO3 $1 $2"                                    # for debugging
     SMART_OUTPUT=`smartctl -a $1 $2`;
     MSG_TEMP=`echo -e "${SMART_OUTPUT}" | awk '/Current Drive Temperature/ {print $4; exit}'`;                                      # alternative temperature
-    MSG_ALL=`echo -e "${SMART_OUTPUT}" | awk '/Solid State/ || /SSD/ || /Wear_/ || /Lifetime/ || /Temperature_/ {print $1,$10}'`;   # check for different params
+    MSG_ALL=`echo -e "${SMART_OUTPUT}" | awk '/Solid State/ || /SSD/ || /Wear/ || /Lifetime/ || /Temperature_/ {print $1,$10,$4}'`;   # check for different params
     GET_DETAILS $MSG_ALL
     CNAME=`echo -e ${1} | awk '{gsub("/dev/", ""); print}'`;            # remove the path from the device name
     CTRL_FILE_ORG=$CTRL_FILE;                                           # preserve CTR_FILE
@@ -126,7 +130,7 @@ GET_SMART ()
 #echo "INFO2 ${1} ${dcounter}_DEVICETYPEARG: ${!2} ${dcounter}_DEVICE ${!3}"    # for debugging
     MSG_TEMP="n/a"
     case $1 in                                                                          # check for special cases
-        xmd[0-9])   OUTPUT="${1}|<font color='black'>RAM-DRV</font>|n/a"; return;;
+        xmd[0-9]|md[0-9])   OUTPUT="${1}|<font color='black'>RAM-DRV</font>|n/a"; return;;
         ds*)        OUTPUT="${1}|<font color='black'>ZFS-DS</font>|n/a"; return;;
         vol*)       OUTPUT="${1}|<font color='black'>ZFS-VOL</font>|n/a"; return;;
         zvol/*)     OUTPUT="zvol|<font color='black'>ZFS-VOL</font>|n/a"; return;;

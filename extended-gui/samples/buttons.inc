@@ -1,13 +1,11 @@
-<?php
+<?php 
 /*
-    extended-gui-stop.php
+    buttons.inc
 
-    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
+    Sample file for Extended GUI
+
+    Copyright (c) 2016 - 2017 Andreas Schmidhuber <info@a3s.at>
     All rights reserved.
-
-	Portions of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2017 The NAS4Free Project <info@nas4free.org>.
-	All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions are met:
@@ -33,25 +31,22 @@
     of the authors and should not be interpreted as representing official policies,
     either expressed or implied, of the FreeBSD Project.
 */
-require_once("config.inc");
-require_once("functions.inc");
-require_once("install.inc");
-require_once("util.inc");
 
-$rootfolder = dirname(__FILE__)."/";
-$config_file = "{$rootfolder}ext/extended-gui.conf";
-require_once("{$rootfolder}ext/extension-lib.inc");
-if (($configuration = ext_load_config($config_file)) === false) {
-    exec("logger extended-gui: configuration file {$config_file} not found, stopping aborted!");
-    exit;
+/*
+Actions that will be performed after buttons have been clicked, in this simple example they just write one line to the system log 
+*/
+if ($_POST) {
+	if (isset($_POST['start_plex_example']) && $_POST['start_plex_example']) {
+		mwexec("logger Plex Media Server started!");
+	}
+	if (isset($_POST['stop_plex_example']) && $_POST['stop_plex_example']) {
+		mwexec("logger Plex Media Server stopped!");
+	}
 }
-require_once("{$configuration['rootfolder']}ext/extended-gui_fcopy.inc");
+?>    
 
-killbypid("/tmp/extended-gui_system_calls.sh.lock");
-// restore original files by shutdown
-copy_backup2origin($files, $backup_path, $extend_path);
-// save logs for embedded systems
-exec ("cp /var/log/autoshutdown.log ".$configuration['rootfolder']."log/autoshutdown.log >/dev/null 2>/dev/null");
-exec ("cp /var/log/notifications.log ".$configuration['rootfolder']."log/notifications.log >/dev/null 2>/dev/null");
-exec("logger extended-gui: stopped");
-?>
+<!-- Buttons will be shown at the end of the Status > System page -->
+<div id="submit">
+	<input name="start_plex_example" type="submit" class="formbtn" title="<?=gettext("Start Plex Media Server");?>" value="<?=gettext("Start Plex Example");?>" />
+	<input name="stop_plex_example" type="submit" class="formbtn" title="<?=gettext("Stop Plex Media Server");?>" value="<?=gettext("Stop Plex Example");?>" />
+</div>

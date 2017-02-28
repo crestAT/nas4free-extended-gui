@@ -30,6 +30,12 @@
     either expressed or implied, of the FreeBSD Project.
 */
 
+$extension_lib_version = "1.1";
+/* Version history:
+ * 1.1	2017.02.28	save config in ext_remove_rc_commands and ext_create_rc_commands 
+ * 1.0	2017.02.27	includes changes for PHP 7.1
+*/
+
 /*	function ext_check_release
  *	checks current release against a minimal neccessary release
  *	params:
@@ -73,6 +79,8 @@ if (!function_exists('ext_create_rc_commands'))   {
 				$rc_param['comment'] = "{$start_action} {$appname}";
 				$rc_param['typeid'] = '2';
 				$rc_param['enable'] = true;
+				if (!is_array($config['rc'])) $config['rc'] = [];
+				if (!is_array($config['rc']['param'])) $config['rc']['param'] = [];
 				$config['rc']['param'][] = $rc_param;
 				$postinit = $rc_param['uuid'];
 				unset($rc_param);
@@ -86,6 +94,8 @@ if (!function_exists('ext_create_rc_commands'))   {
 				$rc_param['comment'] = "{$stop_action} {$appname}";
 				$rc_param['typeid'] = '3';
 				$rc_param['enable'] = true;
+				if (!is_array($config['rc'])) $config['rc'] = [];
+				if (!is_array($config['rc']['param'])) $config['rc']['param'] = [];
 				$config['rc']['param'][] = $rc_param;
 				$shutdown = $rc_param['uuid'];				
 				unset($rc_param);
@@ -101,6 +111,7 @@ if (!function_exists('ext_create_rc_commands'))   {
 				$shutdown = false;
 			}
 		}
+	write_config();
     }
 }
 
@@ -132,6 +143,7 @@ if (!function_exists('ext_remove_rc_commands'))   {
 		        if (preg_match("/{$config_name}/", $config['rc']['param'][$i]['value'])) unset($config['rc']['param'][$i]);
 			}
 		}
+	write_config();
     }
 }
 

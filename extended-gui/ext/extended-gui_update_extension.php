@@ -6,7 +6,7 @@
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2016 The NAS4Free Project <info@nas4free.org>.
+	Copyright (c) 2012-2017 The NAS4Free Project <info@nas4free.org>.
 	All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -85,6 +85,8 @@ if (isset($_POST['ext_remove']) && $_POST['ext_remove']) {
 	ext_remove_rc_commands("extended-gui");
 // remove purge startup & closedown commands from rc
 	ext_remove_rc_commands("purge.sh");
+// save config for removed rc commands
+	write_config();
 // unlink created links and remove extension pages
 	if (is_dir ("/usr/local/www/ext/extended-gui")) {
 	foreach ( glob( "{$configuration['rootfolder']}ext/*.php" ) as $file ) {
