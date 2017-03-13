@@ -41,7 +41,7 @@ require("auth.inc");
 require("guiconfig.inc");
 require("zfs.inc");
 
-// Page base: r3400 => r3956
+// Page base: r3956 => 4040
 if (is_file("/usr/local/www/bar_left.gif")) $image_path = "";
 else $image_path = "images/";
 $EGUI_PREFIX = "/tmp/extended-gui_"; 
@@ -788,12 +788,12 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 			html_textinfo("system", gettext("System"), sprintf("%s %s", htmlspecialchars($smbios['system']['maker']), htmlspecialchars($smbios['system']['product'])));
 		}
 	?>
-	<?php html_textinfo("system_bios", gettext("System BIOS"), sprintf("%s %s %s %s", htmlspecialchars($smbios['bios']['vendor']), gettext("version:"), htmlspecialchars($smbios['bios']['version']), htmlspecialchars($smbios['bios']['reldate'])));?>
+	<?php html_textinfo("system_bios", gettext("System BIOS"), sprintf("%s %s %s %s", htmlspecialchars($smbios['bios']['vendor']), gettext("Version:"), htmlspecialchars($smbios['bios']['version']), htmlspecialchars($smbios['bios']['reldate'])));?>
 	<?php html_textinfo("system_datetime", gettext("System Time"), htmlspecialchars(get_datetime_locale()));?>
 	<?php html_textinfo("system_uptime", gettext("System Uptime"), htmlspecialchars(system_get_uptime()));?>
     <?php if (Session::isAdmin()):?>
 		<?php if ($config['lastchange']):?>
-			<?php html_textinfo("last_config_change", gettext("Last Configuration Change"), htmlspecialchars(get_datetime_locale($config['lastchange'])));?>
+			<?php html_textinfo("last_config_change", gettext("System Config Change"), htmlspecialchars(get_datetime_locale($config['lastchange'])));?>
 		<?php endif;?>
 		<?php 
 			if (($cpus == 1) && (!empty($cpuinfo['temperature']) || !empty($cpuinfo['temperature2']))) { 
@@ -834,7 +834,7 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
             if (!$configuration['hide_cpu_usage']) {
 				$cpus = system_get_cpus();
 				if ($cpus > 1) {
-					echo "<tr><td width='25%' class='vncellt'>".gettext('Core Usage')."</td><td width='75%' class='listr'>";
+					echo "<tr><td width='25%' class='vncellt'>".gettext('CPU Core Usage')."</td><td width='75%' class='listr'>";
 					for ($idx = 0; $idx < $cpus; $idx++) {
 						$percentage = 0;
 						echo "<span style='white-space:nowrap; display:inline-block; width:300px'>";
@@ -849,6 +849,8 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 							echo "<input style='padding: 0; border: 0; text-align:right' size='1' id='cputemp${idx}' value='???' />&deg;C";
 						}
 						echo "</span>";
+						if ($configuration['multicore_type'] == "1") echo "<br />";								// one-column type or
+						elseif (($configuration['multicore_type'] == "2") && ($idx % 2 == 1)) echo "<br />";    // two-column type else dynamic
 					}
 					echo "</td></tr>";
 				}

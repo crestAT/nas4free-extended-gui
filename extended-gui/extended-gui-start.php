@@ -80,6 +80,9 @@ if ($configuration['enable']) {
         require_once("{$extension_dir}/extended-gui_create_config2.inc"); 
         killbypid("/tmp/extended-gui_system_calls.sh.lock");
 		mwexec("nohup /var/scripts/extended-gui_system_calls.sh >/dev/null 2>&1 &", true);
+		sleep(2);													// give time to startup
+		if (exec("ps acx | grep -f /tmp/extended-gui_system_calls.sh.lock")) exec("logger extended-gui: startup OK"); 
+		else { exec("logger extended-gui: startup NOT ok" ); }
     }
 }
 else { copy_backup2origin ($files, $backup_path, $extend_path); }   // case extension not enabled at start

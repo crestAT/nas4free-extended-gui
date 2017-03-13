@@ -39,6 +39,7 @@ $raid_variants = array('gmirror', 'graid5', 'gconcat', 'gvinum', 'gstripe');    
 $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                                                       // create disk/share config file
     $clogdir = rc_getenv_ex("clog_logdir", $g['varlog_path']);                                          // get logdir from environment and
     fwrite($eguiconfig, "SYSTEM_LOG_DIR={$clogdir}"."\n");                                              // write it to CONFIG2
+    fwrite($eguiconfig, "FIRMWARELOCK_PATH={$d_firmwarelock_path}"."\n");								// write firmwarelock_path for SCS check 
     $txt = isset($config['samba']['enable']) ? "1" : "0";                                               // for user_check script
     fwrite($eguiconfig, "SMB_ENABLED=".$txt."\n");
     $txt = isset($config['ftpd']['enable']) ? "1" : "0";                                                // for user_check script
