@@ -80,6 +80,7 @@ if ($_POST) {
             $configuration['loop_delay'] = !empty($_POST['loop_delay']) ? $_POST['loop_delay'] : 60;
             $configuration['hide_cpu'] = isset($_POST['hide_cpu']);
             $configuration['hide_cpu_usage'] = isset($_POST['hide_cpu_usage']);
+            $configuration['multicore_type'] = $_POST['multicore_type'];
             $configuration['hide_cpu_graph'] = isset($_POST['hide_cpu_graph']);
             $configuration['hide_lan_graph'] = isset($_POST['hide_lan_graph']);
             $configuration['graph_nb_plot'] = !empty($_POST['graph_nb_plot']) ? $_POST['graph_nb_plot'] : 120;
@@ -168,6 +169,7 @@ function enable_change(enable_change) {
 	document.iform.loop_delay.disabled = endis;
 	document.iform.hide_cpu.disabled = endis;
 	document.iform.hide_cpu_usage.disabled = endis;
+	document.iform.multicore_type.disabled = endis;
 	document.iform.hide_cpu_graph.disabled = endis;
 	document.iform.hide_lan_graph.disabled = endis;
 	document.iform.graph_nb_plot.disabled = endis;
@@ -249,6 +251,7 @@ function enable_change_hosts() {
 			<?php html_titleline(gettext("Status")." | ".gettext("System"));?>
                 <?php html_checkbox("hide_cpu", gettext("CPU usage bar"), $configuration['hide_cpu'], gettext("Disable display of CPU usage bar."), "", false);?>
                 <?php html_checkbox("hide_cpu_usage", gettext("CPU multicore usage bars"), $configuration['hide_cpu_usage'], gettext("Disable display of multicore CPU usage bars."), "", false);?>
+            	<?php html_combobox("multicore_type", gettext("CPU Multicore Usage Bars View Type"), !empty($configuration['multicore_type']) ? $configuration['multicore_type'] : 0, array(gettext("Dynamic"), gettext("One-Column"), gettext("Two-Column")), "", false, false);?>
                 <?php html_checkbox("hide_cpu_graph", gettext("CPU graph"), $configuration['hide_cpu_graph'], gettext("Disable display of CPU graph."), "", false);?>
                 <?php html_checkbox("hide_lan_graph", gettext("LAN graph"), $configuration['hide_lan_graph'], gettext("Disable display of LAN graph."), "", false);?>
                 <?php html_checkbox("boot", gettext("Operating system"), $configuration['boot'], gettext("Enable display of Operating System partition (root filesystem named as A_OS)."), "", false);?>

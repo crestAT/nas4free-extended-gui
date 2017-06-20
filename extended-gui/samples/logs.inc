@@ -88,7 +88,7 @@ $logs_info = array(
  */
 		"visible" => TRUE,
 		"desc" => gettext("Webserver"),
-		"logfile" => "/mnt/DATA/log/lighthttp-access.log",
+		"logfile" => "{$g['varlog_path']}/lighthttp-access.log",
 		"filename" => "lighthttp-access.log",
 		"type" => "plain",
         "pattern" => '/^(\S+)\s+(\S+)\s+(\S+)\s+\[(\S+\s+\S+)\]\s+\"(\S+\s+\S+\s+\S+)\"\s+(\S+)\s+(\S+)\s+\"(\S+)\"\s+\"(.*)\"$/',

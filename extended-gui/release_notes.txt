@@ -1,4 +1,12 @@
 ﻿Version Date        Description
+0.6.2   2017.03.13  C: index.php: Page base: 4040
+                    N: Extended GUI: CPU Multicore Usage Bars View Type - selectable as dynamic, one-column or two-column view type
+                    N: STATUS | SYSTEM: CPU Core Usage bars according to CPU Multicore Usage Bars View Type
+                    N: Catalan translation
+                    C: updated Russian translation
+                    C: STATUS | SYSTEM: updated text strings
+                    C: improvements for System Calls Service and eGUI startup
+                    
 0.6.1   2017.02.27  C: index.php: Page base: 3956
                     C: make extension PHP 7.1 aware
                     N: Extended GUI | TOOLS: new section => User Defined Files
