@@ -51,13 +51,15 @@ $extension_dir = "/usr/local/www/ext/extended-gui";
 if ( !is_dir($extension_dir)) { mwexec("mkdir -p {$extension_dir}", true); }
 mwexec("cp {$configuration['rootfolder']}ext/* {$extension_dir}/", true);
 mwexec("cp -R {$configuration['rootfolder']}locale-egui /usr/local/share/", true);
-// restore logs for embedded systems
-mwexec("cp {$configuration['rootfolder']}log/* /var/log/ >/dev/null 2>/dev/null", false);
+// restore logs for embedded systems -> obsolete v0.6.3
+// mwexec("cp {$configuration['rootfolder']}log/* /var/log/ >/dev/null 2>/dev/null", false);
 mwexec("cp -R {$configuration['rootfolder']}scripts /var/", true);
 mwexec("chmod -R 770 /var/scripts", true);                           // to be sure that scripts are executable
 if ( !is_link("/usr/local/www/extended-gui.php")) { mwexec("ln -s {$extension_dir}/extended-gui.php /usr/local/www/extended-gui.php", true); }
 if ( !is_link("/usr/local/www/extended-gui_tools.php")) { mwexec("ln -s {$extension_dir}/extended-gui_tools.php /usr/local/www/extended-gui_tools.php", true); }
 if ( !is_link("/usr/local/www/extended-gui_update_extension.php")) { mwexec("ln -s {$extension_dir}/extended-gui_update_extension.php /usr/local/www/extended-gui_update_extension.php", true); }
+if ( !is_link("/usr/local/bin/curl")) { mwexec("ln -s /var/scripts/bin/curl /usr/local/bin/curl", true); }		// prerequisite for Telegram
+if ( !is_link("/usr/local/bin/telegram-notify")) { mwexec("ln -s /var/scripts/telegram-notify /usr/local/bin/telegram-notify", true); }
 
 if ($configuration['enable']) {
     $saved = $configuration['product_version'];

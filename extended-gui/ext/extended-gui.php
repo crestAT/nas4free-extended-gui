@@ -94,6 +94,7 @@ if ($_POST) {
             $configuration['hosts_network'] = !empty($_POST['hosts_network']) ? $_POST['hosts_network'] : "192.168.1";
             $configuration['hosts_network_start'] = !empty($_POST['hosts_network_start']) ? $_POST['hosts_network_start'] : 1;
             $configuration['hosts_network_end'] = !empty($_POST['hosts_network_end']) ? $_POST['hosts_network_end'] : 254;
+            $configuration['hosts_check_type'] = $_POST['hosts_check_type'];
             $configuration['services'] = isset($_POST['services']);
             $configuration['buttons'] = isset($_POST['buttons']);
             $configuration['force_standby'] = isset($_POST['force_standby']);
@@ -114,15 +115,26 @@ if ($_POST) {
             $configuration['zfs_degraded_email'] = isset($_POST['zfs_degraded_email']);
             $configuration['user_email'] = isset($_POST['user_email']);
             $configuration['space_email_add'] = !empty($_POST['space_email_add']) ? $_POST['space_email_add'] : $config['system']['email']['from'];
+            $configuration['email_enable'] = isset($_POST['email_enable']);
+            if ($configuration['email_enable'] && empty($configuration['space_email_add'])) {
+				$input_errors[] = gettext("Email notifications are enabled but no email destination address is defined!");
+			}  
+            $configuration['telegram_enable'] = isset($_POST['telegram_enable']);
+            $configuration['telegram_api_key'] = $_POST['telegram_api_key'];
+            $configuration['telegram_id'] = $_POST['telegram_id'];
+            if ($configuration['telegram_enable'] && (empty($configuration['telegram_api_key']) || empty($configuration['telegram_id']))) {
+				$input_errors[] = gettext("Telegram notifications are enabled but no Telegram API key and/or Telegram user/channel ID is defined!");
+			}
 		}
-        $savemsg = get_std_save_message(ext_save_config($config_file, $configuration));
     }
-    if (isset($configuration['enable']) && ($configuration['type'] == "Extended")) {
-        require_once("{$configuration['rootfolder']}extended-gui-stop.php");
-        require_once("{$configuration['rootfolder']}extended-gui-start.php");
-    }
-    else require_once("{$configuration['rootfolder']}extended-gui-stop.php");
- 
+	if (empty($input_errors)) {
+		$savemsg = get_std_save_message(ext_save_config($config_file, $configuration));
+	    if (isset($configuration['enable']) && ($configuration['type'] == "Extended")) {
+	        require_once("{$configuration['rootfolder']}extended-gui-stop.php");
+	        require_once("{$configuration['rootfolder']}extended-gui-start.php");
+	    }
+	    else require_once("{$configuration['rootfolder']}extended-gui-stop.php");
+	} 
 }	
 
 function get_process_info() {
@@ -145,6 +157,7 @@ if (is_ajax()) {
 }
 
 if (($message = ext_check_version("{$configuration['rootfolder']}log/version.txt", "extended-gui", $configuration['version'], gettext("Maintenance"))) !== false) $savemsg .= $message;
+$exec_interval = $configuration['hosts_network_end'] - $configuration['hosts_network_start'] + $configuration['loop_delay'];
 	
 bindtextdomain("nas4free", "/usr/local/share/locale");
 include("fbegin.inc");
@@ -183,6 +196,7 @@ function enable_change(enable_change) {
 	document.iform.hosts_network.disabled = endis;
 	document.iform.hosts_network_start.disabled = endis;
 	document.iform.hosts_network_end.disabled = endis;
+	document.iform.hosts_check_type.disabled = endis;
 	document.iform.services.disabled = endis;
 	document.iform.buttons.disabled = endis;
 	document.iform.force_standby.disabled = endis;
@@ -203,8 +217,12 @@ function enable_change(enable_change) {
 	document.iform.zfs_degraded_email.disabled = endis;
 	document.iform.user_email.disabled = endis;
 	document.iform.space_email_add.disabled = endis;
+	document.iform.email_enable.disabled = endis;
+	document.iform.telegram_enable.disabled = endis;
+	document.iform.telegram_api_key.disabled = endis;
+	document.iform.telegram_id.disabled = endis;
 
-	document.iform.services.disabled = true;
+//	document.iform.services.disabled = true;
 //	document.iform.buttons.disabled = true;
 }
 function enable_change_hosts() {
@@ -213,12 +231,14 @@ function enable_change_hosts() {
 			showElementById('hosts_network_tr','show');
 			showElementById('hosts_network_start_tr','show');
 			showElementById('hosts_network_end_tr','show');
+			showElementById('hosts_check_type_tr','show');
 			break;
 
 		case false:
 			showElementById('hosts_network_tr','hide');
 			showElementById('hosts_network_start_tr','hide');
 			showElementById('hosts_network_end_tr','hide');
+			showElementById('hosts_check_type_tr','hide');
 			break;
 	}
 }
@@ -260,15 +280,20 @@ function enable_change_hosts() {
                 <?php html_checkbox("zfs", gettext("ZFS datasets"), $configuration['zfs'], gettext("Enable display of ZFS datasets."), "", false);?>
                 <?php html_checkbox("user", gettext("Users"), $configuration['user'], gettext("Enable display of users logged in (CIFS/SMB, SSH, FTP)."), "", false);?>
                 <?php html_checkbox("hosts", gettext("Hosts"), $configuration['hosts'], gettext("Enable display of hosts in network."), "", false, "enable_change_hosts()");?>
-            	<?php html_inputbox("hosts_network", gettext("Hosts IP address network part"), !empty($configuration['hosts_network']) ? $configuration['hosts_network'] : "192.168.1", sprintf(gettext("Define the IP address network part (first 3 octets) for monitoring. Default is %s"), "192.168.1"), false, 10);?>
-            	<?php html_inputbox("hosts_network_start", gettext("Hosts IP address host part start"), !empty($configuration['hosts_network_start']) ? $configuration['hosts_network_start'] : 1, sprintf(gettext("Define the IP address host part (last octet) range start address for monitoring. Default is %d"), 1), false, 5);?>
-            	<?php html_inputbox("hosts_network_end", gettext("Hosts IP address host part end"), !empty($configuration['hosts_network_end']) ? $configuration['hosts_network_end'] : 254, sprintf(gettext("Define the IP address host part (last octet) range end address for monitoring. Default is %d"), 254), false, 5);?>
+            	<?php html_inputbox("hosts_network", gettext("Hosts")." - ".gettext("IP address network part"), !empty($configuration['hosts_network']) ? $configuration['hosts_network'] : "192.168.1", sprintf(gettext("Define the IP address network part (first 3 octets) for monitoring. Default is %s"), "192.168.1"), false, 10);?>
+            	<?php html_inputbox("hosts_network_start", gettext("Hosts")." - ".gettext("IP address host part start"), !empty($configuration['hosts_network_start']) ? $configuration['hosts_network_start'] : 1, sprintf(gettext("Define the IP address host part (last octet) range start address for monitoring. Default is %d"), 1), false, 5);?>
+            	<?php html_inputbox("hosts_network_end", gettext("Hosts")." - ".gettext("IP address host part end"), !empty($configuration['hosts_network_end']) ? $configuration['hosts_network_end'] : 254, sprintf(gettext("Define the IP address host part (last octet) range end address for monitoring. Default is %d"), 254), false, 5);?>
+            	<?php html_combobox("hosts_check_type", gettext("Hosts")." - ".gettext("Check Type"), !empty($configuration['hosts_check_type']) ? $configuration['hosts_check_type'] : 0, array(gettext("Parallel Ping"), gettext("Sequential Ping"), gettext("ARP")), gettext("Parallel Ping").": ".gettext("high system load, execution interval = ").$configuration['loop_delay']." s, ".gettext("Sequential Ping").": ".gettext("low system load, execution interval = ").$exec_interval." s, ".gettext("ARP").": ".gettext("experimental - very low system load, execution interval = ").$configuration['loop_delay']." s", false, false);?>
                 <?php html_checkbox("services", gettext("Services"), $configuration['services'], gettext("Enable display of services row."), "", false);?>
                 <?php html_checkbox("buttons", gettext("Functions"), $configuration['buttons'], gettext("Enable display of function buttons row."), "", false);?>
                 <?php html_checkbox("force_standby", gettext("Standby buttons"), $configuration['force_standby'], gettext("Enable display of buttons to force drive standby."), "", false);?>
 			<?php html_separator();?>
 			<?php html_titleline(gettext("Monitoring and Alarming"));?>
                 <?php html_checkbox("system_warnings", gettext("System notifications"), $configuration['system_warnings'], sprintf(gettext("Enable alarms notifications/history on %s."), gettext("Status")." | ".gettext("System")), "", false);?>
+                <?php html_checkbox("cpu_temp_email", gettext("CPU temperature critical threshold warning notification"), $configuration['cpu_temp_email'], gettext("Enable sending of notifications via Email or Telegram if CPU reach critical temperature threshold."), "", false);?>
+                <?php html_checkbox("space_email", gettext("Disk free space threshold warning notification"), $configuration['space_email'], gettext("Enable sending of notifications via Email or Telegram if disks reach free space thresholds."), "", false);?>
+                <?php html_checkbox("zfs_degraded_email", gettext("ZFS pool degraded warning notification"), $configuration['zfs_degraded_email'], gettext("Enable sending of notifications via Email or Telegram if ZFS pools are degraded."), "", false);?>
+                <?php html_checkbox("user_email", gettext("User login/logout warning notification"), $configuration['user_email'], gettext("Enable sending of notifications via Email or Telegram if users log in/out."), "", false);?>
                 <?php html_checkbox("beep", gettext("System Beep"), $configuration['beep'], gettext("Enable audible alarms for Extended GUI."), "", false);?>
                 <?php html_checkbox("temp_always", gettext("Disk temperature"), $configuration['temp_always'], gettext("Enable display of disk temperatures even if disks are in standby mode. If enabled it could happen that disks don't spin down depending on disk/controler combinations!"), "", false);?>
             	<?php html_inputbox("graph_nb_plot", gettext("Graph show time"), !empty($configuration['graph_nb_plot']) ? $configuration['graph_nb_plot'] : 120, sprintf(gettext("Maximum duration for graphs show time in seconds. Default is %d seconds."), 120), true, 5);?>
@@ -283,13 +308,16 @@ function enable_change_hosts() {
             	<?php html_inputbox("space_severe", gettext("Disk free space critical level - MB"), !empty($configuration['space_severe']) ? $configuration['space_severe'] : 5000, sprintf(gettext("Define the lowest free space threshold for disks before warning and reporting in MB. Default critical free space is %d MB."), 5000), true, 5);?>
             	<?php html_inputbox("space_severe_percent", gettext("Disk free space critical level - %"), !empty($configuration['space_severe_percent']) ? $configuration['space_severe_percent'] : 5, sprintf(gettext("Define the lowest free space threshold for disks before warning and reporting in percent. Default critical free space is %d &#037;."), 5), true, 5);?>
 			<?php html_separator();?>
-			<?php html_titleline(gettext("Email"));?>
-                <?php html_inputbox("space_email_add", gettext("To email"), !empty($configuration['space_email_add']) ? $configuration['space_email_add'] : $config['system']['email']['from'], gettext("Destination email address for warning reports. Default as defined in <a href='system_email.php'>System | Advanced | Email</a> from."), false, 40);?>
-                <?php html_checkbox("cpu_temp_email", gettext("CPU temperature critical threshold warning email"), $configuration['cpu_temp_email'], gettext("Enable sending of email reports if CPU reach critical temperature threshold."), "", false);?>
-                <?php html_checkbox("space_email", gettext("Disk free space threshold warning email"), $configuration['space_email'], gettext("Enable sending of email reports if disks reach free space thresholds."), "", false);?>
-                <?php html_checkbox("zfs_degraded_email", gettext("ZFS pool degraded warning email"), $configuration['zfs_degraded_email'], gettext("Enable sending of email reports if ZFS pools are degraded."), "", false);?>
-                <?php html_checkbox("user_email", gettext("User login/logout warning email"), $configuration['user_email'], gettext("Enable sending of email reports if users log in/out."), "", false);?>
+			<?php html_titleline_checkbox("email_enable", gettext("Email"), $configuration['email_enable'], gettext("Enable"));?>
+                <?php html_inputbox("space_email_add", gettext("To email"), !empty($configuration['space_email_add']) ? $configuration['space_email_add'] : $config['system']['email']['from'], gettext("Destination email address for warning notifications. Default as defined in <a href='system_email.php'>System | Advanced | Email</a> from."), false, 50);?>
+			<?php html_separator();?>
+			<?php html_titleline_checkbox("telegram_enable", gettext("Telegram"), $configuration['telegram_enable'], gettext("Enable"));?>
+                <?php html_inputbox("telegram_api_key", gettext("API Key"), !empty($configuration['telegram_api_key']) ? $configuration['telegram_api_key'] : "", gettext("Telegram API key for warning notifications."), false, 50);?>
+                <?php html_inputbox("telegram_id", gettext("User / Channel ID"), !empty($configuration['telegram_id']) ? $configuration['telegram_id'] : "", gettext("Telegram user or channel ID for warning notifications."), false, 50);?>
             </table>
+			<?php html_remark("note", gettext("Note"), sprintf(gettext("These parameters will be added to %s."), "/var/scripts/telegram-notify.conf")." ".sprintf(gettext("Please check the <a href='%s' target='_blank'>documentation</a>."), "https://core.telegram.org/bots#3-how-do-i-create-a-bot").
+				"<br />".gettext("One can use Telegram notifications for own purposes with the command 'telegram-notify' or a direct call to '/var/scripts/telegram-notify' (provided with kind permission by N. Bernaerts).").
+				" ".sprintf(gettext("Please check the <a href='%s' target='_blank'>documentation</a>."), "http://bernaerts.dyndns.org/linux/75-debian/351-debian-send-telegram-notification"));?>
             <div id="submit">
             	<input name="Submit" type="submit" class="formbtn" value="<?=gettext("Save");?>" />
             </div>

@@ -28,6 +28,8 @@
 # purpose:		monitoring of users in the home network
 # usage:		user_check.sh (... w/o parameters) 
 # version:	date:		description:
+#	4.1		2017.06.19	C: change SSH log entry from 3 -> 1
+#	4.0		2017.06.15	N: introduced Telegram as new notification service
 #	3.3		2017.01.24	F: display of FTP user
 #	3.2		2015.12.01	F: change check order, start with SSH to avoid multiple SSH entries if CIFS/SMB is disabled
 #                       C: remove logger -p local3.notice 
@@ -45,7 +47,7 @@ EMAIL_FILE=$LOCK_DIR/extended-gui_user_email.log
 #-----------------------------------------------
 
 # user online
-w -h | awk '{print "<font color=blue><b>"$1"</b></font>@"$3"@"$2"&nbsp;(<a href='diag_log.php?log=3'>SSH</a>)"}' | grep -v '<font color=blue><b>root</b></font>@-@' > $USER_ONLINE.tmp
+w -h | awk '{print "<font color=blue><b>"$1"</b></font>@"$3"@"$2"&nbsp;(<a href='diag_log.php?log=1'>SSH</a>)"}' | grep -v '<font color=blue><b>root</b></font>@-@' > $USER_ONLINE.tmp
 if [ $SMB_ENABLED -gt 0 ]; then
     smbstatus -b | awk '/\(/ {print "<font color=blue><b>"$2"</b></font>@"$4$5"&nbsp;(<a href='diag_infos_samba.php'>CIFS/SMB</a>)"}' >> $USER_ONLINE.tmp
 fi
@@ -78,11 +80,14 @@ if [ $? != 0 ]; then
 					LOG_RECORD="$LOG_RECORD `echo $NAME | awk '{gsub("color=blue><b>",""); gsub("</b></font>",""); gsub("&nbsp;"," ");print}'`";
 					echo $LOG_RECORD >> $EMAIL_FILE;
 					NOTIFY "$LOG_RECORD"
+                    if [ $TELEGRAM_NOTIFICATIONS -eq 1 ] && [ $EMAIL_ENABLED -eq 1 ]; then      # call Telegram if enabled
+                        TELEGRAM "$LOG_RECORD"
+                    fi
 				fi
 			fi
 		fi
 	done
-	if [ $EMAIL_ENABLED -gt 0 ]; then $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-USR Log" $EMAIL_FILE; fi
+	if [ $EMAIL_NOTIFICATIONS -eq 1 ] && [ $EMAIL_ENABLED -eq 1 ]; then $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-USR Log" $EMAIL_FILE; fi
 	$SYSTEM_SCRIPT_DIR/beep USER_LOGGED_IN
 	rm $EMAIL_FILE
 	cp $USER_LOG_NEW $USER_LOG_OLD

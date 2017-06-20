@@ -29,6 +29,8 @@
 # prereq.:		S.M.A.R.T. must be enabled and existing CONFIG2 file, which will be created at every eGUI startup
 # usage:		disk_check.sh
 # version:	date:		description:
+#	0.7		2017.06.15	N: introduced Telegram as new notification service
+#   0.6.10  2017.05.21  N: lifetime parameter xxx ???
 #   0.6.9   2017.02.27  N: lifetime parameter 233 Media_Wearout_Indicator for Plextor SSDs
 #   0.6.8   2017.01.11  N: lifetime parameter 232 Available Reserved Space for Intel SSDs
 #   0.6.7   2016.10.08  F: new bash 4.4 errors -> 'break' in case & if ... statements
@@ -64,6 +66,9 @@ REPORT_DISK ()
 #echo $1 $2 $3 $4 $5 $6 $7 $8 $CTRL_FILE"_"$2".lock"                                          # for debugging
 	if [ ! -e $CTRL_FILE"_"$2".lock" ]; then 
         echo -e "`date +"$DT_STR"` ${3} $4 $5 $6 $7 $8" >> ${PREFIX}system_error.msg      # create system error message for index.php
+        if [ $TELEGRAM_NOTIFICATIONS -eq 1 ] && ([ $EMAIL_DEGRADED_ENABLED -eq 1 ] || [ $EMAIL_SPACE_ENABLED -eq 1 ]); then     # call Telegram if enabled
+            TELEGRAM "${3} $4 $5 $6 $7 $8"
+        fi
         if [ $RUN_BEEP -gt 0 ]; then                                # call beep when enabled and ERROR condition set
             $SYSTEM_SCRIPT_DIR/beep ZFS_ERROR &
         fi
@@ -72,10 +77,10 @@ REPORT_DISK ()
 		echo "\n${4}\n" >> $CTRL_FILE"_"$2.lock
 		if [ "$2" == "degraded" ]; then 
             zpool status -v $1 >> $CTRL_FILE"_"$2.lock
-			if [ $EMAIL_DEGRADED_ENABLED -gt 0 ]; then $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-DISK $2" $CTRL_FILE"_"$2.lock; fi
+			if [ $EMAIL_NOTIFICATIONS -eq 1 ] && [ $EMAIL_DEGRADED_ENABLED -eq 1 ]; then $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-DISK $2" $CTRL_FILE"_"$2.lock; fi
 		else 
 			df -h /mnt/$1 >> $CTRL_FILE"_"$2.lock
-			if [ $EMAIL_SPACE_ENABLED -gt 0 ]; then $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-DISK $2" $CTRL_FILE"_"$2.lock; fi
+			if [ $EMAIL_NOTIFICATIONS -eq 1 ] &&[ $EMAIL_SPACE_ENABLED -eq 1 ]; then $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-DISK $2" $CTRL_FILE"_"$2.lock; fi
 		fi
 	fi
 }
@@ -84,12 +89,12 @@ GET_DETAILS ()
 {
     MSG_SSD=""; MSG_SSD_LT=""; MSG_SSD_LT_PCT="";
     while [ "${1}" != "" ]; do
+#echo GET_DETAILS $1 $2 $3 "---------------"
         case $1 in
-            Model|Device|Rotation)      MSG_SSD="SSD";;                 # is SSD
-            177|202)                    MSG_SSD_LT=$((100-$2));;        # lifetime parameter 177 Wear_Leveling_Count | 202 Percent Lifetime used
-            232)                        MSG_SSD_LT=$2;;                 # lifetime parameter 232 Available Reserved Space for Intel SSDs
-            233)                        MSG_SSD_LT=$3;;                 # lifetime parameter 233 Media_Wearout_Indicator for Plextor SSDs
-            190|194)                    MSG_TEMP=$2;;                   # temperature parameter 190 or 194
+            Model|Device|Rotation)      MSG_SSD="SSD";;                          # is SSD
+            177|202|232)                MSG_SSD_LT=$((100-$2)); shift 2;;        # lifetime parameter 177 Wear_Leveling_Count | 202 Percent Lifetime used | 232 Perc_Avail_Resrvd_Space = Available Reserved Space for Intel SSDs
+            233)                        MSG_SSD_LT=$3; shift 2;;                 # lifetime parameter 233 Media_Wearout_Indicator for Plextor SSDs
+            190|194)                    MSG_TEMP=$2; shift 2;;                   # temperature parameter 190 or 194
         esac
         shift
     done
@@ -104,7 +109,8 @@ GET_SMART_SUB ()
 #echo "INFO3 $1 $2"                                    # for debugging
     SMART_OUTPUT=`smartctl -a $1 $2`;
     MSG_TEMP=`echo -e "${SMART_OUTPUT}" | awk '/Current Drive Temperature/ {print $4; exit}'`;                                      # alternative temperature
-    MSG_ALL=`echo -e "${SMART_OUTPUT}" | awk '/Solid State/ || /SSD/ || /Wear/ || /Lifetime/ || /Temperature_/ {print $1,$10,$4}'`;   # check for different params
+    MSG_ALL=`echo -e "${SMART_OUTPUT}" | awk '/Perc_Avail_Resrvd_Space/ || /Solid State/ || /SSD/ || /Wear/ || /Lifetime/ || /Temperature_/ {print $1,$10,$4}'`;   # check for different params
+#echo -e "\n\nGET_SMART_SUB Input for checks: Param1: $1 Param2: $2 MSG_ALL: $MSG_ALL -----------------"
     GET_DETAILS $MSG_ALL
     CNAME=`echo -e ${1} | awk '{gsub("/dev/", ""); print}'`;            # remove the path from the device name
     CTRL_FILE_ORG=$CTRL_FILE;                                           # preserve CTR_FILE
@@ -112,7 +118,7 @@ GET_SMART_SUB ()
     if [ "${MSG_TEMP}" == "" ]; then MSG_TEMP="n/a"
     else
         if [ ${MSG_TEMP} -ge ${TEMP_SEVERE} ]; then 
-            REPORT_DISK ${CNAME} critical ERROR "Disk ${CNAME}: temperature ${MSG_TEMP}  C  reached/exceeded the disk temperature critical level ${TEMP_SEVERE}  C !"
+            REPORT_DISK ${CNAME} critical ERROR "Disk ${CNAME}: temperature ${MSG_TEMP} °C reached/exceeded the disk temperature critical level ${TEMP_SEVERE} °C!"
             MSG_TEMP="<font color='red'>${MSG_TEMP}&nbsp;&deg;C</font>"
         else if [ ${MSG_TEMP} -ge ${TEMP_WARNING} ]; then 
                 MSG_TEMP="<font color='orange'>${MSG_TEMP}&nbsp;&deg;C</font>"

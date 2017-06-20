@@ -28,6 +28,8 @@
 # purpose:		INITIAL VARIABLES FOR NAS-SCRIPTS
 # usage:		. /path/to/CONFIG -> call in every shell script at the first line
 # version:	date:		description:
+#	4.0		2017.06.15	N: introduced Telegram as new notification service
+#	3.3		2017.05.28	N: keep LOCK_SCRIPT quiet if it is called without info message
 #	3.2		2015.11.16	C: logger reports now to system log
 #	3.1		2015.05.12	C: path for CONFIG2 for other scripts which are not in $SYSTEM_SCRIPT_DIR 
 #	3.0		2015.04.09	C: for Extended GUI version 0.5 
@@ -62,6 +64,12 @@ HOST=`uname -n`
 XML_CONFIG_FILE=/conf/config.xml
 #-----------------------------------------------
 
+
+TELEGRAM ()
+{
+    /var/scripts/telegram-notify --html --title "$HOST" --text "${SCRIPT_NAME}:%0A${@}"
+}
+
 NOTIFY ()
 {
 	echo "`date +"$DT_STR"` $SCRIPT_NAME $@" >> $LOG_MSG_NOTIFY
@@ -72,7 +80,9 @@ LOCK_SCRIPT ()
 {
 	if [ -e $LOCK_FILE ]; then
 		ps acx | grep -f $LOCK_FILE
-		if [ $? -eq 0 ]; then NOTIFY "$1"; exit 1; 
+		if [ $? -eq 0 ]; then 
+            if [ $# -ne 0 ]; then NOTIFY "$1"; fi
+            exit 1; 
 		else NOTIFY "INFO Remove obsolete pid file for pid `cat $LOCK_FILE`, new pid: ${PID}"; rm -f $LOCK_FILE; fi
 	fi
 	echo ${PID} > $LOCK_FILE

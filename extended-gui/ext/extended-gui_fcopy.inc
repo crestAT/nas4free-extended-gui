@@ -52,7 +52,7 @@ $files = array(
     array("graph_index_cpu.php","/usr/local/www/"),
   // for Diagnostics | Log page search and user column amendment 
     array("diag_log.inc","/usr/local/www/"),
-    array("diag_log.php","/usr/local/www/"),
+//    array("diag_log.php","/usr/local/www/"),			removed, search now included in 11.x series of N4F
 // for Status | Disks page amendment additional column Activity, removed, amendments in r1349
   //  array("status_disks.php","/usr/local/www/"),
 // for Access | Users page amendment showing all groups a user belongs to, removed, no longer needed, included in r1349
@@ -82,6 +82,9 @@ if (!isset($config['rrdgraphs']['enable'])) $files = array_merge($files, $graph_
 $backup_path = $configuration['rootfolder']."backup/";
 $extend_path = $configuration['rootfolder']."files/";
 
+// cleanup for obsolete files
+if (is_file("{$configuration['rootfolder']}files/diag_log.php")) unlink("{$configuration['rootfolder']}files/diag_log.php"); 
+    
 function copy_origin2backup ($files, $backup_path, $extend_path) {
     foreach ($files as $file) {
         if (is_file($file[1].$file[0])) {

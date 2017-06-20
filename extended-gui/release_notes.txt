@@ -1,4 +1,5 @@
 ﻿Version Date        Description
+0.6.3b1 2017.06.20  N: Telegram, ...
 0.6.2   2017.03.13  C: index.php: Page base: 4040
                     N: Extended GUI: CPU Multicore Usage Bars View Type - selectable as dynamic, one-column or two-column view type
                     N: STATUS | SYSTEM: CPU Core Usage bars according to CPU Multicore Usage Bars View Type

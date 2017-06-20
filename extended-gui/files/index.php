@@ -275,14 +275,18 @@ function egui_get_indexrefresh() {
     if ($configuration['system_warnings']) {
         if (is_file("{$EGUI_PREFIX}system_error.msg")) {
             $indexrefresh['reason'] = "system_error";
-            $indexrefresh['message'] = str_replace("degreeC", " C ", shell_exec("cat {$EGUI_PREFIX}system_error.msg"));
-            $a_search = array("\n", " C ");
-            $a_replace = array("<br />", "&deg;C");
-            file_put_contents("{$EGUI_PREFIX}system_error.msg.locked", str_replace($a_search, $a_replace, $indexrefresh['message']), FILE_APPEND );
+            $indexrefresh['message'] = shell_exec("cat {$EGUI_PREFIX}system_error.msg");
+            file_put_contents("{$EGUI_PREFIX}system_error.msg.locked", str_replace("\n", "<br />", $indexrefresh['message']), FILE_APPEND );
             unlink("{$EGUI_PREFIX}system_error.msg");
         }
     }
     return $indexrefresh;
+}
+
+function egui_get_servicesinfo() {
+    global $EGUI_PREFIX;
+    $servicesinfo = exec("cat {$EGUI_PREFIX}services_info.log");
+    return $servicesinfo;
 }
 
 function egui_get_userinfo() {
@@ -356,6 +360,7 @@ if (is_ajax()) {
 	$sysinfo['upsinfo'] = $upsinfo;
 	$sysinfo['upsinfo2'] = $upsinfo2;
 	$sysinfo['indexrefresh'] = egui_get_indexrefresh();
+	$sysinfo['servicesinfo'] = egui_get_servicesinfo();
 	$sysinfo['userinfo'] = egui_get_userinfo();
 	$sysinfo['hostsinfo'] = egui_get_hostsinfo();
 	$sysinfo['diskusage'] = egui_get_disk_usage();
@@ -481,6 +486,7 @@ if ($_POST['rmount']) {
     }
 }    
 if ($_POST['purge']) { exec("/var/scripts/purge.sh 0"); }
+if ($_POST['auto_shutdown']) { exec("/var/scripts/autoshutdown.sh toggle"); }
 
 if ($configuration['system_warnings'] && is_file("{$EGUI_PREFIX}system_error.msg.locked")) { 
     $errormsg .= shell_exec("cat {$EGUI_PREFIX}system_error.msg.locked");
@@ -510,6 +516,7 @@ $(document).ready(function(){
             alert(data.indexrefresh.message);
             location.assign("index.php");
         }
+		if ($('#servicesinfo').length > 0) $('#servicesinfo').html(data.servicesinfo);
 		if ($('#userinfo').length > 0) $('#userinfo').html(data.userinfo);
 		if ($('#hostsinfo').length > 0)$('#hostsinfo').html(data.hostsinfo);
 
@@ -1276,10 +1283,7 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 <?php if ($configuration['services']) { ?>
 			  <tr>
 			    <td width="25%" valign="top" class="vncellt"><?=gettext("Services");?></td>
-			    <td class="listr" colspan="2">
-                <?php echo exec("/var/scripts/autoshutdown.sh"); ?>
-
-                </td>
+			    <td class="listr" colspan="2"><span name="servicesinfo" id="servicesinfo"><?php echo egui_get_servicesinfo(); ?></span></td>
 			  </tr>
 <?php } ?>
 				<?php endif;?>
@@ -1305,6 +1309,7 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 <?php if ($configuration['buttons']) { ?>
     <?php if ($configuration['purge']['enable']) { ?>
     		<input name="purge" type="submit" class="formbtn" title="<?=gettext("Purge now all CIFS/SMB recycle bins!");?>" value="<?=gettext("Purge now");?>">
+	    	<input name="auto_shutdown" type="submit" class="formbtn" value="<?=gettext("Autoshutdown");?>">
     <?php } ?>
 <?php } ?>
 <?php 
