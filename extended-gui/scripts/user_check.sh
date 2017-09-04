@@ -28,6 +28,9 @@
 # purpose:		monitoring of users in the home network
 # usage:		user_check.sh (... w/o parameters) 
 # version:	date:		description:
+#	4.2		2017.08.29	N: check and report authentication errors
+#	4.1		2017.06.19	C: change SSH log entry from 3 -> 1
+#	4.0		2017.06.15	N: introduced Telegram as new notification service
 #	3.3		2017.01.24	F: display of FTP user
 #	3.2		2015.12.01	F: change check order, start with SSH to avoid multiple SSH entries if CIFS/SMB is disabled
 #                       C: remove logger -p local3.notice 
@@ -45,7 +48,7 @@ EMAIL_FILE=$LOCK_DIR/extended-gui_user_email.log
 #-----------------------------------------------
 
 # user online
-w -h | awk '{print "<font color=blue><b>"$1"</b></font>@"$3"@"$2"&nbsp;(<a href='diag_log.php?log=3'>SSH</a>)"}' | grep -v '<font color=blue><b>root</b></font>@-@' > $USER_ONLINE.tmp
+w -h | awk '{print "<font color=blue><b>"$1"</b></font>@"$3"@"$2"&nbsp;(<a href='diag_log.php?log=1'>SSH</a>)"}' | grep -v '<font color=blue><b>root</b></font>@-@' > $USER_ONLINE.tmp
 if [ $SMB_ENABLED -gt 0 ]; then
     smbstatus -b | awk '/\(/ {print "<font color=blue><b>"$2"</b></font>@"$4$5"&nbsp;(<a href='diag_infos_samba.php'>CIFS/SMB</a>)"}' >> $USER_ONLINE.tmp
 fi
@@ -78,12 +81,40 @@ if [ $? != 0 ]; then
 					LOG_RECORD="$LOG_RECORD `echo $NAME | awk '{gsub("color=blue><b>",""); gsub("</b></font>",""); gsub("&nbsp;"," ");print}'`";
 					echo $LOG_RECORD >> $EMAIL_FILE;
 					NOTIFY "$LOG_RECORD"
+                    if [ $TELEGRAM_NOTIFICATIONS -eq 1 ] && [ $EMAIL_ENABLED -eq 1 ]; then      # call Telegram if enabled
+                        TELEGRAM "$LOG_RECORD"
+                    fi
 				fi
 			fi
 		fi
 	done
-	if [ $EMAIL_ENABLED -gt 0 ]; then $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-USR Log" $EMAIL_FILE; fi
+	if [ $EMAIL_NOTIFICATIONS -eq 1 ] && [ $EMAIL_ENABLED -eq 1 ]; then $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-USR Log" $EMAIL_FILE; fi
 	$SYSTEM_SCRIPT_DIR/beep USER_LOGGED_IN
 	rm $EMAIL_FILE
 	cp $USER_LOG_NEW $USER_LOG_OLD
 fi
+
+# check system.log for authentication errors
+cat $SYSTEM_LOG_DIR/system.log | grep -a 'AUTH:' > ${PREFIX}user_auth.new
+if [ $? == 0 ]; then                                        # entries found
+    diff --suppress-common-lines --new-file ${PREFIX}user_auth.old ${PREFIX}user_auth.new > ${PREFIX}user_auth.tmp
+    if [ $? != 0 ]; then                                    # if new entries found than report it
+        if [ $USER_AUTH_ENABLED -eq 1 ]; then
+            DT=`date +"$DT_STR"`
+            MSG=`cat ${PREFIX}user_auth.tmp | awk '/\>/ {gsub("> ",""); print $1,$2,$3,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15}'`
+            if [ $EMAIL_NOTIFICATIONS -eq 1 ]; then 
+                $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-AUTH" "Host: ${HOST}\n\n${MSG}"
+            fi
+            if [ $TELEGRAM_NOTIFICATIONS -eq 1 ]; then     # call Telegram if enabled
+                $SYSTEM_SCRIPT_DIR/telegram-notify --html --title "$HOST" --text "${SCRIPT_NAME}:%0A${MSG}" 
+            fi
+            if [ $RUN_BEEP -gt 0 ]; then                   # call beep if enabled and ERROR condition set
+                $SYSTEM_SCRIPT_DIR/beep USER_LOGGED_IN
+            fi
+            MSG=`cat ${PREFIX}user_auth.tmp | awk -v DT="${DT}" '/\>/ {gsub("> ",""); print DT,"WARNING",$1,$2,$3,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15}'`
+            echo -e "${MSG}" >> ${PREFIX}system_error.msg
+        fi
+        NOTIFY "WARNING User authentication (AUTH) error(s) in system log detected"
+        cp ${PREFIX}user_auth.new ${PREFIX}user_auth.old 
+    fi
+fi    
