@@ -110,10 +110,12 @@ if ($_POST) {
             $configuration['space_warning_percent'] = !empty($_POST['space_warning_percent']) ? $_POST['space_warning_percent'] : 10;
             $configuration['space_severe'] = !empty($_POST['space_severe']) ? $_POST['space_severe'] : 5000;
             $configuration['space_severe_percent'] = !empty($_POST['space_severe_percent']) ? $_POST['space_severe_percent'] : 5;
+            $configuration['services_email'] = isset($_POST['services_email']);
             $configuration['cpu_temp_email'] = isset($_POST['cpu_temp_email']);
             $configuration['space_email'] = isset($_POST['space_email']);
             $configuration['zfs_degraded_email'] = isset($_POST['zfs_degraded_email']);
             $configuration['user_email'] = isset($_POST['user_email']);
+            $configuration['user_auth_email'] = isset($_POST['user_auth_email']);
             $configuration['space_email_add'] = !empty($_POST['space_email_add']) ? $_POST['space_email_add'] : $config['system']['email']['from'];
             $configuration['email_enable'] = isset($_POST['email_enable']);
             if ($configuration['email_enable'] && empty($configuration['space_email_add'])) {
@@ -203,6 +205,7 @@ function enable_change(enable_change) {
 	document.iform.system_warnings.disabled = endis;
 	document.iform.beep.disabled = endis;
 	document.iform.temp_always.disabled = endis;
+	document.iform.services_email.disabled = endis;
 	document.iform.cpu_temp_warning.disabled = endis;
 	document.iform.cpu_temp_severe.disabled = endis;
 	document.iform.cpu_temp_hysteresis.disabled = endis;
@@ -216,6 +219,7 @@ function enable_change(enable_change) {
 	document.iform.space_email.disabled = endis;
 	document.iform.zfs_degraded_email.disabled = endis;
 	document.iform.user_email.disabled = endis;
+	document.iform.user_auth_email.disabled = endis;
 	document.iform.space_email_add.disabled = endis;
 	document.iform.email_enable.disabled = endis;
 	document.iform.telegram_enable.disabled = endis;
@@ -290,11 +294,13 @@ function enable_change_hosts() {
 			<?php html_separator();?>
 			<?php html_titleline(gettext("Monitoring and Alarming"));?>
                 <?php html_checkbox("system_warnings", gettext("System notifications"), $configuration['system_warnings'], sprintf(gettext("Enable alarms notifications/history on %s."), gettext("Status")." | ".gettext("System")), "", false);?>
-                <?php html_checkbox("cpu_temp_email", gettext("CPU temperature critical threshold warning notification"), $configuration['cpu_temp_email'], gettext("Enable sending of notifications via Email or Telegram if CPU reach critical temperature threshold."), "", false);?>
-                <?php html_checkbox("space_email", gettext("Disk free space threshold warning notification"), $configuration['space_email'], gettext("Enable sending of notifications via Email or Telegram if disks reach free space thresholds."), "", false);?>
-                <?php html_checkbox("zfs_degraded_email", gettext("ZFS pool degraded warning notification"), $configuration['zfs_degraded_email'], gettext("Enable sending of notifications via Email or Telegram if ZFS pools are degraded."), "", false);?>
-                <?php html_checkbox("user_email", gettext("User login/logout warning notification"), $configuration['user_email'], gettext("Enable sending of notifications via Email or Telegram if users log in/out."), "", false);?>
                 <?php html_checkbox("beep", gettext("System Beep"), $configuration['beep'], gettext("Enable audible alarms for Extended GUI."), "", false);?>
+                <?php html_checkbox("services_email", gettext("Services stopped notification"), $configuration['services_email'], gettext("Enable sending of notifications via Email or Telegram if enabled services are in stopped state."), "", false);?>
+                <?php html_checkbox("cpu_temp_email", gettext("CPU temperature critical threshold notification"), $configuration['cpu_temp_email'], gettext("Enable sending of notifications via Email or Telegram if CPU reach critical temperature threshold."), "", false);?>
+                <?php html_checkbox("space_email", gettext("Disk free space threshold notification"), $configuration['space_email'], gettext("Enable sending of notifications via Email or Telegram if disks reach free space thresholds."), "", false);?>
+                <?php html_checkbox("zfs_degraded_email", gettext("ZFS pool degraded notification"), $configuration['zfs_degraded_email'], gettext("Enable sending of notifications via Email or Telegram if ZFS pools are degraded."), "", false);?>
+                <?php html_checkbox("user_email", gettext("User login/logout notification"), $configuration['user_email'], gettext("Enable sending of notifications via Email or Telegram if users log in/out."), "", false);?>
+                <?php html_checkbox("user_auth_email", gettext("User authentication notification"), $configuration['user_auth_email'], gettext("Enable sending of notifications via Email or Telegram for user authentication errors."), "", false);?>
                 <?php html_checkbox("temp_always", gettext("Disk temperature"), $configuration['temp_always'], gettext("Enable display of disk temperatures even if disks are in standby mode. If enabled it could happen that disks don't spin down depending on disk/controler combinations!"), "", false);?>
             	<?php html_inputbox("graph_nb_plot", gettext("Graph show time"), !empty($configuration['graph_nb_plot']) ? $configuration['graph_nb_plot'] : 120, sprintf(gettext("Maximum duration for graphs show time in seconds. Default is %d seconds."), 120), true, 5);?>
             	<?php html_inputbox("graph_time_interval", gettext("Graph refresh time"), !empty($configuration['graph_time_interval']) ? $configuration['graph_time_interval'] : 1, sprintf(gettext("Refresh time for graphs in seconds. Default is %d second."), 1), true, 5);?>
@@ -309,11 +315,11 @@ function enable_change_hosts() {
             	<?php html_inputbox("space_severe_percent", gettext("Disk free space critical level - %"), !empty($configuration['space_severe_percent']) ? $configuration['space_severe_percent'] : 5, sprintf(gettext("Define the lowest free space threshold for disks before warning and reporting in percent. Default critical free space is %d &#037;."), 5), true, 5);?>
 			<?php html_separator();?>
 			<?php html_titleline_checkbox("email_enable", gettext("Email"), $configuration['email_enable'], gettext("Enable"));?>
-                <?php html_inputbox("space_email_add", gettext("To email"), !empty($configuration['space_email_add']) ? $configuration['space_email_add'] : $config['system']['email']['from'], gettext("Destination email address for warning notifications. Default as defined in <a href='system_email.php'>System | Advanced | Email</a> from."), false, 50);?>
+                <?php html_inputbox("space_email_add", gettext("To email"), !empty($configuration['space_email_add']) ? $configuration['space_email_add'] : $config['system']['email']['from'], gettext("Destination email address for notifications. Default as defined in <a href='system_email.php'>System | Advanced | Email</a> from."), false, 50);?>
 			<?php html_separator();?>
 			<?php html_titleline_checkbox("telegram_enable", gettext("Telegram"), $configuration['telegram_enable'], gettext("Enable"));?>
-                <?php html_inputbox("telegram_api_key", gettext("API Key"), !empty($configuration['telegram_api_key']) ? $configuration['telegram_api_key'] : "", gettext("Telegram API key for warning notifications."), false, 50);?>
-                <?php html_inputbox("telegram_id", gettext("User / Channel ID"), !empty($configuration['telegram_id']) ? $configuration['telegram_id'] : "", gettext("Telegram user or channel ID for warning notifications."), false, 50);?>
+                <?php html_inputbox("telegram_api_key", gettext("API Key"), !empty($configuration['telegram_api_key']) ? $configuration['telegram_api_key'] : "", gettext("Telegram API key for notifications."), false, 50);?>
+                <?php html_inputbox("telegram_id", gettext("User / Channel ID"), !empty($configuration['telegram_id']) ? $configuration['telegram_id'] : "", gettext("Telegram user or channel ID for notifications."), false, 50);?>
             </table>
 			<?php html_remark("note", gettext("Note"), sprintf(gettext("These parameters will be added to %s."), "/var/scripts/telegram-notify.conf")." ".sprintf(gettext("Please check the <a href='%s' target='_blank'>documentation</a>."), "https://core.telegram.org/bots#3-how-do-i-create-a-bot").
 				"<br />".gettext("One can use Telegram notifications for own purposes with the command 'telegram-notify' or a direct call to '/var/scripts/telegram-notify' (provided with kind permission by N. Bernaerts).").

@@ -269,6 +269,7 @@ function egui_get_indexrefresh() {
     if (is_file("{$EGUI_PREFIX}index.refresh")) {
         unlink("{$EGUI_PREFIX}index.refresh");
         write_log("extended-gui: autmount refresh");
+        exec("/var/scripts/disk_check.sh");
         $indexrefresh['reason'] = "automount";
         $indexrefresh['message'] = "USB auto-mounted";
     }
@@ -479,7 +480,7 @@ if ($_POST['umount']) {
     }
 }
 if ($_POST['rmount']) {
-    $retval = mwexec("/var/scripts/automount_usb.sh rmount", true);
+    $retval = mwexec("/var/scripts/automount_usb.sh rmount && /var/scripts/disk_check.sh", true);
     if ($retval > 20) {
         $errormsg .= gettext("Cannot remount USB device(s), look at <b>Diagnose | Log | Notifications</b> for more information!");
 		$errormsg .= "<br />\n";
@@ -493,19 +494,35 @@ if ($configuration['system_warnings'] && is_file("{$EGUI_PREFIX}system_error.msg
 }
 
 if (isset($_GET['standby_drive'])) {
-    $retval = mwexec("camcontrol standby {$_GET['standby_drive']} && /var/scripts/disk_check.sh", true);        
+    $retval = mwexec("camcontrol standby {$_GET['standby_drive']} && /var/scripts/disk_check.sh", true);
     if ($retval <> 0) {
         $errormsg .= sprintf(gettext("Cannot set drive %s to standby!"), $_GET['standby_drive']);
     	$errormsg .= "<br />\n";
     }
 }
-bindtextdomain("nas4free", "/usr/local/share/locale");
 
+if (isset($_GET['unmount_usb'])) {
+    $retval = mwexec("umount /mnt/{$_GET['unmount_usb']} && /var/scripts/disk_check.sh", true);
+    if ($retval <> 0) {
+        $errormsg .= sprintf(gettext("Unmount of mount point %s failed: Device is busy!"), $_GET['unmount_usb']);
+    	$errormsg .= "<br />\n";
+    	mwexec("logger \"Unmount of mount point {$_GET['unmount_usb']} failed: Device is busy!\" && fstat | grep \"/mnt/{$_GET['unmount_usb']}\" | logger", true);
+    }
+    else {
+		unlink_if_exists("{$EGUI_PREFIX}{$_GET['unmount_usb']}.smart");		// remove SMART infos
+		mwexec("rmdir /mnt/{$_GET['unmount_usb']}", true);					// remove moint point directory
+	}
+}
+bindtextdomain("nas4free", "/usr/local/share/locale");
 ?>
 <?php include("fbegin.inc");?>
 <script type="text/javascript">//<![CDATA[
 function set_standby(drive) {
     location.href = "index.php?standby_drive="+drive;
+}
+
+function unmount_usb(drive) {
+    location.href = "index.php?unmount_usb="+drive;
 }
 
 $(document).ready(function(){
@@ -807,9 +824,9 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 				echo "<tr><td width='25%' class='vncellt'>".gettext("CPU Temperature")."</td>";
 				echo "<td class='listr'>";
 				if (!empty($cpuinfo['temperature'])) {
-					echo "<input style='padding: 0; border: 0;' size='1' id='cputemp' value='".htmlspecialchars($cpuinfo['temperature'])."' />&deg;C";
+					echo "<input style='padding: 0; border: 0;' size='1' id='cputemp' value='".htmlspecialchars($cpuinfo['temperature'])."' />&nbsp;&deg;C";
 				}
-				else echo "<input style='padding: 0; border: 0;' size='1' id='cputemp0' value='".htmlspecialchars($cpuinfo['temperature2'][0])."' />&deg;C";				    
+				else echo "<input style='padding: 0; border: 0;' size='1' id='cputemp0' value='".htmlspecialchars($cpuinfo['temperature2'][0])."' />&nbsp;&deg;C";				    
 				echo "</td></tr>";
 			}
 		?>
@@ -844,7 +861,7 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 					echo "<tr><td width='25%' class='vncellt'>".gettext('CPU Core Usage')."</td><td width='75%' class='listr'>";
 					for ($idx = 0; $idx < $cpus; $idx++) {
 						$percentage = 0;
-						echo "<span style='white-space:nowrap; display:inline-block; width:300px'>";
+						echo "<span style='white-space:nowrap; display:inline-block; width:310px'>";
 						echo "<img src='{$image_path}bar_left.gif' class='progbarl' alt='' />";
 						echo "<img src='{$image_path}bar_blue.gif' name='cpuusageu${idx}' id='cpuusageu${idx}' width='" . $percentage . "' class='progbarcf' alt='' />";
 						echo "<img src='{$image_path}bar_gray.gif' name='cpuusagef${idx}' id='cpuusagef${idx}' width='" . (100 - $percentage) . "' class='progbarc' alt='' />";
@@ -853,7 +870,7 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 						echo "<input style='padding: 0; border: 0;' size='3' name='cpuusage${idx}' id='cpuusage${idx}' value='???' />";
                         if (!empty($cpuinfo['temperature2'][$idx])) {
 							echo "{$gt_temp}: ";
-							echo "<input style='padding: 0; border: 0; text-align:right' size='1' id='cputemp${idx}' value='???' />&deg;C";
+							echo "<input style='text-align: center; width:28px; padding-right:1px; border:0; text-align:right' size='3' id='cputemp${idx}' value='???' />&deg;C";
 						}
 						echo "</span>";
 						if ($configuration['multicore_type'] == "1") echo "<br />";								// one-column type or
@@ -976,7 +993,7 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 
 				$zfspools = get_pool_usage();
 				if (!empty($zfspools)) {
-					if (!empty($a_diskusage)) {echo "<tr><td colspan='7'><hr size='1' /></td></tr>";}
+					if (!empty($a_diskusage)) {echo "<tr><td colspan='7'><hr size='1' /></td></tr>";}			
 					array_sort_key($zfspools, "name");
 					$index = 0;
 					foreach ($zfspools as $poolk => $poolv) {
@@ -1018,11 +1035,10 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
                         }
                         echo "</table>";
 						echo "</td><td style='white-space:nowrap; width:60px;'><span name='poolusage_{$ctrlid}_space' id='poolusage_{$ctrlid}_space'>{$poolv['space']}</span>";
-						echo "</td><td style='white-space:nowrap; width:50%;'>&nbsp;&nbsp;<a href='disks_zfs_zpool_info.php?pool={$poolv['name']}'><span name='poolusage_{$ctrlid}_state' id='poolusage_{$ctrlid}_state' class='state'>{$poolv['health']}</span></a>";
-						echo "</td></tr>";
+						echo "&nbsp;&nbsp;<a href='disks_zfs_zpool_info.php?pool={$poolv['name']}'><span name='poolusage_{$ctrlid}_state' id='poolusage_{$ctrlid}_state' class='state'>{$poolv['health']}</span></a>";
+    					echo "</td><td style='white-space:nowrap; width:50%;'>&nbsp;&nbsp;</td></tr>";
 
-						if (++$index < count($zfspools))
-							echo "<tr><td colspan='7'><hr size='1' /></td></tr>";
+						if (++$index < count($zfspools)) echo "<tr><td colspan='7'><hr size='1' /></td></tr>";
 					}
 				}
 

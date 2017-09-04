@@ -28,6 +28,7 @@
 # purpose:		monitoring of users in the home network
 # usage:		user_check.sh (... w/o parameters) 
 # version:	date:		description:
+#	4.2		2017.08.29	N: check and report authentication errors
 #	4.1		2017.06.19	C: change SSH log entry from 3 -> 1
 #	4.0		2017.06.15	N: introduced Telegram as new notification service
 #	3.3		2017.01.24	F: display of FTP user
@@ -92,3 +93,28 @@ if [ $? != 0 ]; then
 	rm $EMAIL_FILE
 	cp $USER_LOG_NEW $USER_LOG_OLD
 fi
+
+# check system.log for authentication errors
+cat $SYSTEM_LOG_DIR/system.log | grep -a 'AUTH:' > ${PREFIX}user_auth.new
+if [ $? == 0 ]; then                                        # entries found
+    diff --suppress-common-lines --new-file ${PREFIX}user_auth.old ${PREFIX}user_auth.new > ${PREFIX}user_auth.tmp
+    if [ $? != 0 ]; then                                    # if new entries found than report it
+        if [ $USER_AUTH_ENABLED -eq 1 ]; then
+            DT=`date +"$DT_STR"`
+            MSG=`cat ${PREFIX}user_auth.tmp | awk '/\>/ {gsub("> ",""); print $1,$2,$3,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15}'`
+            if [ $EMAIL_NOTIFICATIONS -eq 1 ]; then 
+                $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-AUTH" "Host: ${HOST}\n\n${MSG}"
+            fi
+            if [ $TELEGRAM_NOTIFICATIONS -eq 1 ]; then     # call Telegram if enabled
+                $SYSTEM_SCRIPT_DIR/telegram-notify --html --title "$HOST" --text "${SCRIPT_NAME}:%0A${MSG}" 
+            fi
+            if [ $RUN_BEEP -gt 0 ]; then                   # call beep if enabled and ERROR condition set
+                $SYSTEM_SCRIPT_DIR/beep USER_LOGGED_IN
+            fi
+            MSG=`cat ${PREFIX}user_auth.tmp | awk -v DT="${DT}" '/\>/ {gsub("> ",""); print DT,"WARNING",$1,$2,$3,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15}'`
+            echo -e "${MSG}" >> ${PREFIX}system_error.msg
+        fi
+        NOTIFY "WARNING User authentication (AUTH) error(s) in system log detected"
+        cp ${PREFIX}user_auth.new ${PREFIX}user_auth.old 
+    fi
+fi    

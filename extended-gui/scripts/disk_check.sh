@@ -29,6 +29,8 @@
 # prereq.:		S.M.A.R.T. must be enabled and existing CONFIG2 file, which will be created at every eGUI startup
 # usage:		disk_check.sh
 # version:	date:		description:
+#	0.8     2017.09.03	N: create unmount button for USB devices to unmount one specific device
+#	0.7.1   2017.07.22	F: changed '&' in error messages to 'and' to work with Telegram correctly
 #	0.7		2017.06.15	N: introduced Telegram as new notification service
 #   0.6.10  2017.05.21  N: lifetime parameter xxx ???
 #   0.6.9   2017.02.27  N: lifetime parameter 233 Media_Wearout_Indicator for Plextor SSDs
@@ -133,9 +135,9 @@ GET_SMART_SUB ()
 GET_SMART ()
 {
 # Parameter 1: device_special_file 2: smart_device_type_arg 3: smart_device
-#echo "INFO2 ${1} ${dcounter}_DEVICETYPEARG: ${!2} ${dcounter}_DEVICE ${!3}"    # for debugging
+#echo "INFO2 ${1} ${counter}: ${!counter} ${dcounter}_DEVICETYPEARG: ${!2} ${dcounter}_DEVICE ${!3}"        # for debugging
     MSG_TEMP="n/a"
-    case $1 in                                                                          # check for special cases
+    case $1 in                                                                      # check for special cases
         xmd[0-9]|md[0-9])   OUTPUT="${1}|<font color='black'>RAM-DRV</font>|n/a"; return;;
         ds*)        OUTPUT="${1}|<font color='black'>ZFS-DS</font>|n/a"; return;;
         vol*)       OUTPUT="${1}|<font color='black'>ZFS-VOL</font>|n/a"; return;;
@@ -144,19 +146,23 @@ GET_SMART ()
         *)      ;;
     esac
 
-    if [ ! ${!2} ] || [ ${!2} == "UNAVAILABLE" ]; then                                  # check if SMART is available
+    if [ ! ${!2} ] || [ ${!2} == "UNAVAILABLE" ]; then                              # check if SMART is available
         OUTPUT="${1}|<font color='black'>SMART&nbsp;n/a</font>|n/a";
         return
     fi
 
-    if [ "${!2}" == "AUTOMOUNT_USB" ]; then DEVICETYPEARG="";                           # we don't know the USB device type
-    else DEVICETYPEARG="-d ${!2}";
+    if [ "${!2}" == "AUTOMOUNT_USB" ]; then                                         # @v0.8
+        DEVICETYPEARG="";                                                           # we don't know the USB device type
+        UNMOUNT_BUTTON="&nbsp;&nbsp;<input name='unmount_usb' type='submit' class='formbtn' style='color:red;' title='Unmount USB device' onclick='unmount_usb(\"${!counter}\")' value='Unmount'>";
+    else
+        DEVICETYPEARG="-d ${!2}";
+        UNMOUNT_BUTTON="";
     fi
 	
     if [ $TEMP_ALWAYS -eq 0 ]; then SMART_STANDBY="-n standby"; else SMART_STANDBY=""; fi
     smartctl $SMART_STANDBY -q silent -A /dev/${!3} $DEVICETYPEARG
     EXIT_VAL=`echo $?`;
-#echo INFO2a exit_value: $EXIT_VAL;                                                  # for debugging
+#echo INFO2a exit_value: $EXIT_VAL;                                                 # for debugging
     case $EXIT_VAL in 
         4) MSG="<font color='black'>SMART&nbsp;n/a</font>";;
         2) MSG="<font color='green'>Standby</font>"; if [ "${TEMP_ALWAYS}" == "1" ]; then GET_SMART_SUB "/dev/${!3}" "${DEVICETYPEARG}" ; fi;;
@@ -181,7 +187,7 @@ GET_SPACE ()
         A_USR)	MP_TYPE="/usr/local";;
         A_VAR)	MP_TYPE="/var";;
         cd[0-9])    MP_TYPE="cdrom";
-                    OUTPUT="${OUTPUT}##<img src='ext/extended-gui/state_ok.png' alt='Space OK' title='Free space on device is ok.'/>${MSG_ACTION}";;
+                    OUTPUT="${OUTPUT}##<img src='ext/extended-gui/state_ok.png' align='bottom' alt='Space OK' title='Free space on device is ok.'/>${MSG_ACTION}";;
         *)      MP_TYPE="/mnt/${1}";;
     esac
 	SPACE=`echo -e "$MOUNTPOINTS" | awk -v mp=\^${MP_TYPE}\$ '$6 ~ mp {print $4}'`
@@ -194,12 +200,12 @@ GET_SPACE ()
         if [ -e $CTRL_FILE"_low.lock" ]; then rm $CTRL_FILE"_low.lock"; fi
         if [ -e $CTRL_FILE"_full.lock" ]; then rm $CTRL_FILE"_full.lock"; fi
     elif [ $SPACE -gt $SPACE_SEVERE ] || [ $SPACE_PERCENT -gt $SPACE_SEVERE_PC ]; then
-        MSG_SPACE_TXT="Disk Space on device $1 is LOW (below $SPACE_WARNING_MB MB & $SPACE_WARNING_PC %)!";
+        MSG_SPACE_TXT="Disk Space on device $1 is LOW (below $SPACE_WARNING_MB MB and $SPACE_WARNING_PC %)!";
         MSG_SPACE="<img src='ext/extended-gui/state_warning.png' alt='Space LOW' title='"$MSG_SPACE_TXT"'/>";
         REPORT_DISK $1 low WARNING "$MSG_SPACE_TXT"
         if [ -e $CTRL_FILE"_full.lock" ]; then rm $CTRL_FILE"_full.lock"; fi
 	else 
-        MSG_SPACE_TXT="Disk Space on device $1 is (almost) FULL (below $SPACE_SEVERE_MB MB & $SPACE_SEVERE_PC %)!";
+        MSG_SPACE_TXT="Disk Space on device $1 is (almost) FULL (below $SPACE_SEVERE_MB MB and $SPACE_SEVERE_PC %)!";
         MSG_SPACE="<img src='ext/extended-gui/state_error.png' alt='Device FULL' title='"$MSG_SPACE_TXT"'/>";
 		REPORT_DISK $1 full ERROR "$MSG_SPACE_TXT"
         if [ -e $CTRL_FILE"_low.lock" ]; then rm $CTRL_FILE"_low.lock"; fi
@@ -223,15 +229,16 @@ POOL_BUSY=`zpool status`                                                # get po
 i=0; counter=MOUNT${i};                                                 # set first mountpoint i
 while [ "${!counter}" != "" ]; do                                       # run through all mountpoints
     j=0; dcounter=MOUNT${i}DISK${j};                                    # set first disk j for mountpoint i
-#echo "INFO ${counter}: ${!counter}"                                    # for debugging
+#echo "INFO 1 ${counter}: ${!counter}"                                  # for debugging
     OUTPUT=""
     while [ "${!dcounter}" != "" ]; do                                  # run through all disks of a mountpoint (RAID, ZFS POOL)
     if [ ! -d `dirname ${PREFIX}${!counter}.smart` ]; then mkdir -p `dirname ${PREFIX}${!counter}.smart`; fi    # create zfs ds/vol directory
-#echo "INFO ${!dcounter} ${dcounter}_DEVICETYPEARG ${dcounter}_DEVICE"  # for debugging
+#echo "INFO 2 ${!dcounter} ${dcounter}_DEVICETYPEARG: ${!dcounter}_DEVICETYPEARG  ${dcounter}_DEVICE"  # for debugging
         GET_SMART ${!dcounter} ${dcounter}_DEVICETYPEARG ${dcounter}_DEVICE     # retrive SMART values
         j=$((j+1)); dcounter=MOUNT${i}DISK${j};                         # increase disk counter j
     done
     GET_SPACE ${!counter}
+    OUTPUT="${OUTPUT}${UNMOUNT_BUTTON}"                                 # @v0.8
     echo "${OUTPUT}" > "${PREFIX}${!counter}.smart"                     # output SMART values to file named as the mountpoint
     i=$((i+1)); counter=MOUNT${i};                                      # increase mountpoint counter i
 done

@@ -28,7 +28,7 @@
 # purpose:		executes several scripts every n seconds
 # usage:		extended-gui_system_calls.sh (... w/o parameters)
 # version:	date:		description:
-#	4.2		2017.06.07	N: run services check
+#	4.2		2017.06.27	N: run services check
 #	4.1		2017.03.13	N: check for firmware upgrade
 #	4.0		2015.11.22	N: CPU temperature monitoring and reporting (cpu_check)
 #	3.1		2015.04.16	C: get extension variables from CONFIG2 instead of reading from config.xml
@@ -57,8 +57,10 @@ do
 
         $SYSTEM_SCRIPT_DIR/cpu_check.sh
         $SYSTEM_SCRIPT_DIR/disk_check.sh
-#        if [ $RUN_SERVICES -gt 0 ]; then $SYSTEM_SCRIPT_DIR/autoshutdown.sh; fi
-        if [ $RUN_SERVICES -gt 0 ]; then php /mnt/DATA/extensions/extended-gui/ext/extended-gui_create_services_list.inc; fi
+        if [ $RUN_SERVICES -gt 0 ]; then 
+            if [ -e ${PREFIX}services_firstrun.lock ]; then php $SYSTEM_SCRIPT_DIR/extended-gui_create_services_list.inc;
+            else touch ${PREFIX}services_firstrun.lock; fi
+        fi
         if [ $RUN_USER -gt 0 ]; then $SYSTEM_SCRIPT_DIR/user_check.sh; fi
         if [ $RUN_HOSTS -gt 0 ]; then 
             $SYSTEM_SCRIPT_DIR/hosts_check.sh &

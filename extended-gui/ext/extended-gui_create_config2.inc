@@ -91,8 +91,12 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
     fwrite($eguiconfig, "END_IP='{$configuration['hosts_network_end']}'"."\n");
     fwrite($eguiconfig, "HOSTS_CHECK_TYPE='{$configuration['hosts_check_type']}'"."\n");
     fwrite($eguiconfig, "DAYSOLD='{$configuration['purge']['days']}'"."\n");            // for purge.sh script
-    $txt = $configuration['user_email'] ? "1" : "0";                                    // for user_check.sh script
+    $txt = $configuration['services_email'] ? "1" : "0";                                // for services_check.sh script
+    fwrite($eguiconfig, "SERVICES_EMAIL=".$txt."\n");
+    $txt = $configuration['user_email'] ? "1" : "0";                                    // for user_check.sh script => login/out
     fwrite($eguiconfig, "EMAIL_ENABLED=".$txt."\n");
+    $txt = $configuration['user_auth_email'] ? "1" : "0";								// for user_check.sh script => authentication
+    fwrite($eguiconfig, "USER_AUTH_ENABLED=".$txt."\n");
     $txt = $configuration['email_enable'] ? "1" : "0";                                  // notofications via email
     fwrite($eguiconfig, "EMAIL_NOTIFICATIONS=".$txt."\n");
     $txt = $configuration['telegram_enable'] ? "1" : "0";								// notofications via telegram
