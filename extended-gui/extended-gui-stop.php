@@ -48,11 +48,10 @@ if (($configuration = ext_load_config($config_file)) === false) {
 require_once("{$configuration['rootfolder']}ext/extended-gui_fcopy.inc");
 
 killbypid("/tmp/extended-gui_system_calls.sh.lock");
-exec("rm /tmp/extended-gui_services_firstrun.lock");
 // restore original files by shutdown
 copy_backup2origin($files, $backup_path, $extend_path);
 // save logs for embedded systems
-exec("cp /var/log/autoshutdown.log ".$configuration['rootfolder']."log/autoshutdown.log >/dev/null 2>/dev/null");
-exec("cp /var/log/notifications.log ".$configuration['rootfolder']."log/notifications.log >/dev/null 2>/dev/null");
+exec ("cp /var/log/autoshutdown.log ".$configuration['rootfolder']."log/autoshutdown.log >/dev/null 2>/dev/null");
+exec ("cp /var/log/notifications.log ".$configuration['rootfolder']."log/notifications.log >/dev/null 2>/dev/null");
 exec("logger extended-gui: stopped");
 ?>

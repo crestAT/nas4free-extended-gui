@@ -37,7 +37,6 @@
 #                   and restart the server to use NTFS drives
 #
 # version:	date:		description:
-#   6.7     2017.09.04  C: improve sysid 7 handling, could be either exFAT or NTFS
 #   6.6     2016.09.24  N: verbose message on failed umount
 #   6.5     2016.09.23  N: create _DEVICE for SMART support
 #	5.9		2016.09.18	N: create _DEVICETYPEARG for SMART support
@@ -103,10 +102,10 @@ A_MOUNT ()
 		DEVICE=$1$x$2
 # check if device exists, if YES then continue
 #echo stage 2 $PART_NAME $DEVICE
-		if [ -e $PART_NAME ]
+		if [ -r $PART_NAME ]
 		then 
 # check if device is already mounted, if NO then continue
-#echo stage 3 $PART_NAME
+#echo stage 3
 			mount | grep $PART_NAME
 			if [ $? -ne 0 ]
 			then
@@ -114,13 +113,12 @@ A_MOUNT ()
 #echo stage 4
 				if [ ! -e /mnt/$DEVICE.automount ] && [ ! -e /mnt/$DEVICE.automount.failed ]
 				then
-#echo stage 4.1 no automount AND no automount.failed /mnt/$DEVICE.automount $1$x
+#echo stage 4.1 no automount AND no automount.failed
 # mount as $DEVICE - works ONLY for disks with ONE partition
 					if [ ! -e /mnt/$DEVICE ]; then mkdir -m 777 /mnt/$DEVICE; fi
 					chmod 777 /mnt/$DEVICE
 					if [ "$1" != "cd" ]; then TEST=`fdisk /dev/$1$x | grep --max-count=1 sysid | awk '{print $2}'`;
                     else TEST="cdrom"; fi
-#echo stage 4.2 /dev/$1$x $TEST
                     if [ "$TEST" == "238" ]; then                                                   # UFS or NTFS
                         TEST1=`fdisk /dev/$DEVICE | grep --max-count=1 sysid | awk '{print $2}'`
                         if [ "$TEST1" == "165" ]; then TEST=$TEST1; fi                              # UFS
@@ -130,8 +128,7 @@ A_MOUNT ()
                         cdrom)  FS_TYPE="cd9660";;          # CD/DVD
 						1)      FS_TYPE="msdosfs";;         # 01 DOS
 						6)      FS_TYPE="msdosfs";;         # 06 Primary 'big' DOS (>= 32MB)
-#						7)      FS_TYPE="ntfs";;			# 07 HPFS/NTFS/exFAT                # could be either exFAT OR NTFS !!!
-						7)      FS_TYPE="exfat";;			# 07 HPFS/NTFS/exFAT                # let's try first exFAT
+						7)      FS_TYPE="ntfs";;			# 07 HPFS/NTFS/exFAT
 						11)		FS_TYPE="msdosfs";			# 0B W95 FAT32
                                 MOUNT_CMD="mount -o large -t ";;
 						12)		FS_TYPE="msdosfs";;			# 0C W95 FAT32 (LBA)
@@ -154,21 +151,15 @@ A_MOUNT ()
                         rmdir /mnt/$DEVICE
 					else
                         if [ "$FS_TYPE" == "exfat" ]; then 
-#echo "stage 5.2 FS_TYPE $FS_TYPE for DEVICE /dev/$1$x PART_NAME $PART_NAME MP = /mnt/$DEVICE"
-                            MOUNT_CMD="/usr/local/bin/mount.exfat";
-                            $MOUNT_CMD $PART_NAME /mnt/$DEVICE  >> $LOG_MSG_NOTIFY 2>&1;
-                            if [ $? -ne 0 ]; then               # no? than let's try ntfs
-#echo "stage 5.3 FS_TYPE $FS_TYPE for DEVICE /dev/$1$x PART_NAME $PART_NAME MP = /mnt/$DEVICE"
-                                MOUNT_CMD="mount_ntfs";
-                                $MOUNT_CMD $PART_NAME /mnt/$DEVICE  >> $LOG_MSG_NOTIFY 2>&1 ; 
-                                MOUNT_ERROR=$?
-                            else MOUNT_ERROR=0
-                            fi
+                            /sbin/kldload /boot/kernel/fuse.ko;
+#                            /usr/local/bin/mount.exfat $PART_NAME /mnt/$DEVICE  >> $LOG_MSG_NOTIFY 2>&1;
+                            /usr/local/bin/mount.exfat $PART_NAME /mnt/$DEVICE  ;
+#                        else mount -o sync -t $FS_TYPE $PART_NAME /mnt/$DEVICE  >> $LOG_MSG_NOTIFY 2>&1 ; fi
                         else 
 #echo "stage 6 $MOUNT_CMD $PART_NAME /mnt/$DEVICE"
                             $MOUNT_CMD $PART_NAME /mnt/$DEVICE  >> $LOG_MSG_NOTIFY 2>&1 ; 
-                            MOUNT_ERROR=$?
                         fi
+						MOUNT_ERROR=$?
 #echo "stage 6.1 $MOUNT_CMD $PART_NAME /mnt/$DEVICE - result = $MOUNT_ERROR"
 						if [ $MOUNT_ERROR -ne 0 ]; then 
                             FAILED "Partition $PART_NAME mount error $MOUNT_ERROR - mount for $DEVICE failed"
@@ -224,10 +215,7 @@ A_MOUNT ()
 			fi
 		else 
 # if a partition is no longer available, remove the appropriate lock file
-			if [ -e /mnt/$DEVICE.automount* ]; then 
-#echo "RM $DEVICE.automount*"
-                rm /mnt/$DEVICE.automount*;
-            fi
+			if [ -e /mnt/$DEVICE.automount* ]; then rm /mnt/$DEVICE.automount*; fi
 		fi
 		x=$((x+1))
 	done
@@ -239,7 +227,7 @@ U_MOUNT ()
 #echo "stage 11 unmount"
 	MOUNTED=`mount | awk '/\/dev\/da/ && /\/mnt\// || /\/dev\/cd/ && /\/mnt\//  || /\/dev\/fuse/ && /\/mnt\// {print $3}'`
 	for NAME in $MOUNTED; do 
-echo "stage 12 unmount $NAME from $MOUNTED"
+#echo "stage 12 unmount $NAME from $MOUNTED"
 		sync $NAME; 
 		umount $NAME >> $LOG_MSG_NOTIFY 2>&1; 
 		if [ $? -ne 0 ]; then 
