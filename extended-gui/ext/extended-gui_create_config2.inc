@@ -56,16 +56,16 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
     fwrite($eguiconfig, "TEMP_ALWAYS=".$txt."\n");
     $txt = $configuration['force_standby'] ? "1" : "0";                                 // for disk_check.sh script
     fwrite($eguiconfig, "FORCE_STANDBY=".$txt."\n");
-    $txt = system_get_cpus();															// for cpu_check.sh script
+    $txt = system_get_cpus();                                                                           // for cpu_check.sh script
     fwrite($eguiconfig, "CPU_NUMBER='{$txt}'"."\n");       
     fwrite($eguiconfig, "CPU_TEMP_WARNING='{$configuration['cpu_temp_warning']}'"."\n");
     fwrite($eguiconfig, "CPU_TEMP_SEVERE='{$configuration['cpu_temp_severe']}'"."\n");
     fwrite($eguiconfig, "CPU_TEMP_HYSTERESIS='{$configuration['cpu_temp_hysteresis']}'"."\n");
     $txt = $configuration['cpu_temp_email'] ? "1" : "0";
     fwrite($eguiconfig, "EMAIL_CPU_TEMP_ENABLED=".$txt."\n");
-    fwrite($eguiconfig, "TEMP_WARNING='{$configuration['temp_warning']}'"."\n");        // for disk_check.sh script
+    fwrite($eguiconfig, "TEMP_WARNING='{$configuration['temp_warning']}'"."\n");               // for disk_check.sh script
     fwrite($eguiconfig, "TEMP_SEVERE='{$configuration['temp_severe']}'"."\n");
-    fwrite($eguiconfig, "SPACE_WARNING_MB='{$configuration['space_warning']}'"."\n");   // for disk_check.sh script
+    fwrite($eguiconfig, "SPACE_WARNING_MB='{$configuration['space_warning']}'"."\n");          // for disk_check.sh script
     fwrite($eguiconfig, "SPACE_WARNING_PC='{$configuration['space_warning_percent']}'"."\n");
     fwrite($eguiconfig, "SPACE_SEVERE_MB='{$configuration['space_severe']}'"."\n");
     fwrite($eguiconfig, "SPACE_SEVERE_PC='{$configuration['space_severe_percent']}'"."\n");
@@ -74,42 +74,22 @@ $eguiconfig = fopen("/var/scripts/CONFIG2", "w");                               
     $txt = $configuration['zfs_degraded_email'] ? "1" : "0";
     fwrite($eguiconfig, "EMAIL_DEGRADED_ENABLED=".$txt."\n");
     fwrite($eguiconfig, "EMAIL_TO='{$configuration['space_email_add']}'"."\n");
-    fwrite($eguiconfig, "EMAIL_FROM='{$config['system']['email']['from']}'"."\n");      // for email.sh script
-    $txt = $configuration['services'] ? "1" : "0";										// for extended-gui_system_calls.sh script
-    fwrite($eguiconfig, "RUN_SERVICES=".$txt."\n");
-    $txt = $configuration['user'] ? "1" : "0";
+    fwrite($eguiconfig, "EMAIL_FROM='{$config['system']['email']['from']}'"."\n");                      // for email.sh script
+    $txt = $configuration['user'] ? "1" : "0";                                          // for extended-gui_system_calls.sh script
     fwrite($eguiconfig, "RUN_USER=".$txt."\n");
     $txt = $configuration['hosts'] ? "1" : "0";
     fwrite($eguiconfig, "RUN_HOSTS=".$txt."\n");
     $txt = $configuration['automount'] ? "1" : "0";
     fwrite($eguiconfig, "RUN_AUTOMOUNT=".$txt."\n");
-    if ($g['platform'] == "full") fwrite($eguiconfig, "FIRST_USB='0'"."\n");            // for automount.sh script
+    if ($g['platform'] == "full") fwrite($eguiconfig, "FIRST_USB='0'"."\n");                            // for automount.sh script
     else fwrite($eguiconfig, "FIRST_USB='1'"."\n");
     fwrite($eguiconfig, "LOOP_DELAY='{$configuration['loop_delay']}'"."\n");
-    fwrite($eguiconfig, "SUBNET='{$configuration['hosts_network']}'"."\n");             // for hosts_check.sh script
+    fwrite($eguiconfig, "SUBNET='{$configuration['hosts_network']}'"."\n");                    // for hosts_check.sh script
     fwrite($eguiconfig, "START_IP='{$configuration['hosts_network_start']}'"."\n");
     fwrite($eguiconfig, "END_IP='{$configuration['hosts_network_end']}'"."\n");
-    fwrite($eguiconfig, "HOSTS_CHECK_TYPE='{$configuration['hosts_check_type']}'"."\n");
-    fwrite($eguiconfig, "DAYSOLD='{$configuration['purge']['days']}'"."\n");            // for purge.sh script
-    $txt = $configuration['services_email'] ? "1" : "0";                                // for services_check.sh script
-    fwrite($eguiconfig, "SERVICES_EMAIL=".$txt."\n");
-    $txt = $configuration['user_email'] ? "1" : "0";                                    // for user_check.sh script => login/out
+    fwrite($eguiconfig, "DAYSOLD='{$configuration['purge']['days']}'"."\n");                    // for purge.sh script
+    $txt = $configuration['user_email'] ? "1" : "0";                                     // for user_check.sh script
     fwrite($eguiconfig, "EMAIL_ENABLED=".$txt."\n");
-    $txt = $configuration['user_auth_email'] ? "1" : "0";								// for user_check.sh script => authentication
-    fwrite($eguiconfig, "USER_AUTH_ENABLED=".$txt."\n");
-    $txt = $configuration['email_enable'] ? "1" : "0";                                  // notofications via email
-    fwrite($eguiconfig, "EMAIL_NOTIFICATIONS=".$txt."\n");
-    $txt = $configuration['telegram_enable'] ? "1" : "0";								// notofications via telegram
-    fwrite($eguiconfig, "TELEGRAM_NOTIFICATIONS=".$txt."\n");
-    if ($configuration['telegram_enable']) {                                            // create telegram config file if enabled
-		$telegram_config = fopen("/var/scripts/telegram-notify.conf", "w");
-		fwrite($telegram_config, "# WARNING: THIS IS AN AUTOMATICALLY CREATED FILE, DO NOT CHANGE THE CONTENT!\n\n");
-		fwrite($telegram_config, "[general]"."\n");
-		fwrite($telegram_config, "api-key={$configuration['telegram_api_key']}"."\n");
-		fwrite($telegram_config, "user-id={$configuration['telegram_id']}"."\n");
-		fclose($telegram_config);
-		chmod("/var/scripts/telegram-notify.conf", 0770);
-	}
 
     // get all mountpoints + pools including all disks for eGUI index.php
     $i = 0;                                                                                             // set to initialize if there are no mounts
