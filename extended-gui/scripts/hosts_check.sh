@@ -28,6 +28,7 @@
 # purpose:		monitoring of hosts in network
 # usage:		hosts_check.sh (... w/o parameters) 
 # version:	date:		description:
+#	3.2		2017.05.28	N: HOSTS_CHECK_TYPE: Parallel Ping = 0, Sequential Ping = 1, ARP = 2
 #	3.1		2017.02.08	N: alternative method with arp
 #	3.0		2015.04.16	C: get extension variables from CONFIG2 instead of reading from config.xml
 #	2.3		2014.06.15	F: let grep -w search for whole words
@@ -46,10 +47,19 @@ CHECK_CLIENTS ()
 	x=$START_IP
 	while [ $x -le $END_IP ]
 	do
-		(	
-		ping -c 1 -t 1 $SUBNET.$x 1>/dev/null 2>&1
-		if [ $? -eq 0 ]; then echo "$SUBNET.$x" >> $ONLINE_LOG.tmp ; fi
-		) &
+        if [ $HOSTS_CHECK_TYPE -eq 1 ]; then            # Sequential Ping
+            ping -c 1 -t 1 $SUBNET.$x 1>/dev/null 2>&1
+            if [ $? -eq 0 ]; then echo "$SUBNET.$x" >> $ONLINE_LOG.tmp ; 
+#NOTIFY "INFO Client with IP@ $SUBNET.$x found";
+            fi
+        else                                            # Parallel Ping
+            (	
+            ping -c 1 -t 1 $SUBNET.$x 1>/dev/null 2>&1
+            if [ $? -eq 0 ]; then echo "$SUBNET.$x" >> $ONLINE_LOG.tmp ; 
+#NOTIFY "INFO Client with IP@ $SUBNET.$x found";
+            fi
+            ) &
+        fi
 		x=$((x+1));
 	done
 	sleep 1
@@ -57,19 +67,21 @@ CHECK_CLIENTS ()
 
 # hosts in network ----------------------
 
-RUN_HOSTS_ARP=0;
-if [ $RUN_HOSTS_ARP -eq 1 ]; then 
+LOCK_SCRIPT
+if [ $HOSTS_CHECK_TYPE -eq 2 ]; then                    # ARP
     arp -a | sort -k2 -V | awk 'BEGIN {ORS=""} !/(incomplete)/ {print "<font color=blue><b>"$1"</b></font>&nbsp;"$2"&nbsp;&nbsp; "}' > $ONLINE_LOG
 else
-NAMES=""
-CHECK_CLIENTS
-if [ -e $ONLINE_LOG.tmp ]; then 
-	for NAME in `cat $ONLINE_LOG.tmp | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n`; do 
-		HNAME=`cat /etc/hosts | grep -v $HOST | grep -w $NAME | awk 'BEGIN {ORS=""} {print "<font color=blue><b>"$2"</b></font>&nbsp;("$1")"}'`
-		if [ "$HNAME" == "" ]; then NAMES="$NAMES <font color=red><b>${NAME}</b></font>&nbsp;&nbsp;"; 
-		else NAMES="$NAMES ${HNAME}&nbsp;&nbsp;"; fi
-	done
-	echo "<b>Network ($SUBNET.$START_IP - $SUBNET.$END_IP):</b>&nbsp; $NAMES" > $ONLINE_LOG
-else rm $ONLINE_LOG
+    NAMES=""
+    CHECK_CLIENTS
+    if [ -e $ONLINE_LOG.tmp ]; then 
+        for NAME in `cat $ONLINE_LOG.tmp | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n`; do 
+            HNAME=`cat /etc/hosts | grep -v $HOST | grep -w $NAME | awk 'BEGIN {ORS=""} {print "<font color=blue><b>"$2"</b></font>&nbsp;("$1")"}'`
+            if [ "$HNAME" == "" ]; then NAMES="$NAMES <font color=red><b>${NAME}</b></font>&nbsp;&nbsp;"; 
+            else NAMES="$NAMES ${HNAME}&nbsp;&nbsp;"; fi
+        done
+        echo "<b>Network ($SUBNET.$START_IP - $SUBNET.$END_IP):</b>&nbsp; $NAMES" > $ONLINE_LOG
+    else rm $ONLINE_LOG
     fi
 fi
+#NOTIFY "FINISHED The script $SCRIPT_NAME finished one pass"
+UNLOCK_SCRIPT

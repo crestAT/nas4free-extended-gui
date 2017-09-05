@@ -28,6 +28,7 @@
 # purpose:		retrive CPU temperature infos for eGUI in file: cpu_check.log
 # usage:		cpu_check.sh
 # version:	date:		description:
+#	0.5		2017.06.15	N: introduced Telegram as new notification service
 #   0.4     2016.09.25  N: create messages for index.php
 #   0.3     2016.08.21  F: if [ "${TEMPERATURE}" != "" ]; then => avoid false alarms on rpi
 #   0.2     2015.11.24  N: beep on ERROR
@@ -52,14 +53,17 @@ SUB ()
 REPORT ()
 {
 	if [ ! -e ${CTRL_FILE}_${1}.lock ]; then 
-        CONVERSION=`echo -e "${@}" | awk '{gsub("캜", "degreeC"); print}'`	   
-        NOTIFY "${CONVERSION}"
-        echo `date +"$DT_STR"` "${CONVERSION}" >> ${PREFIX}system_error.msg    # create system error message for index.php
+#        CONVERSION=`echo -e "${@}" | awk '{gsub("째C", "degreeC"); print}'`     # v0.6.3: no longer needed, script must be UTF-8 w/o BOM !!!
+        NOTIFY "$1 $2"
+        echo `date +"$DT_STR"` "$1 $2" >> ${PREFIX}system_error.msg    # create system error message for index.php
+        if [ $TELEGRAM_NOTIFICATIONS -eq 1 ] && [ $EMAIL_CPU_TEMP_ENABLED -eq 1 ]; then     # call Telegram if enabled
+            TELEGRAM "$1 $2"
+        fi
 		echo "Host: $HOST" > ${CTRL_FILE}_${1}.lock
 		echo "\n$2" >> ${CTRL_FILE}_${1}.lock
-        if [ $EMAIL_CPU_TEMP_ENABLED -gt 0 ] && [ -e ${CTRL_FILE}_ERROR.lock ]; then 
+        if [ $EMAIL_NOTIFICATIONS -eq 1 ] && [ $EMAIL_CPU_TEMP_ENABLED -eq 1 ] && [ -e ${CTRL_FILE}_ERROR.lock ]; then 
             $SYSTEM_SCRIPT_DIR/email.sh "$EMAIL_TO" "N4F-CPU" ${CTRL_FILE}_ERROR.lock; 
-            if [ $RUN_BEEP -gt 0 ]; then                                # call beep when enabled and ERROR condition set
+            if [ $RUN_BEEP -gt 0 ]; then                            # call beep when enabled and ERROR condition set
                 $SYSTEM_SCRIPT_DIR/beep CPU_ERROR &
             fi
         fi
@@ -78,16 +82,16 @@ GET_TEMPERATURE ()
             COMPARE ${TEMPERATURE} ${CPU_TEMP_SEVERE}                               # test if temperature is >= CPU_TEMP_SEVERE
             if [ $? -ge 1 ]; then 
                 MSG_TEMP="<font color='red'>${TEMPERATURE}&nbsp;&deg;C</font>"
-                REPORT ERROR "CPU ${x} reached critical temperature threshold ${CPU_TEMP_SEVERE} 캜, temperature is ${TEMPERATURE} 캜!"
+                REPORT ERROR "CPU reached critical temperature threshold ${CPU_TEMP_SEVERE} 째C, temperature is ${TEMPERATURE} 째C!"
 #echo 2 "$TEMPERATURE ${TEMPERATURE}"
             else 
                 COMPARE ${TEMPERATURE} ${CPU_TEMP_WARNING}                          # test if temperature is >= CPU_TEMP_WARNING
                 if [ $? -ge 1 ]; then 
                     MSG_TEMP="<font color='orange'>${TEMPERATURE}&nbsp;&deg;C</font>"
-                    REPORT WARNING "CPU ${x} reached warning temperature threshold ${CPU_TEMP_WARNING} 캜, temperature is ${TEMPERATURE} 캜!"
+                    REPORT WARNING "CPU reached warning temperature threshold ${CPU_TEMP_WARNING} 째C, temperature is ${TEMPERATURE} 째C!"
 #echo 3 "$TEMPERATURE ${TEMPERATURE}"
                 else 
-                    COMPARE ${TEMPERATURE} `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`    # test if temperature is < CPU_TEMP_WARNING - $HYSTERESIS � C !
+                    COMPARE ${TEMPERATURE} `SUB ${CPU_TEMP_WARNING} $HYSTERESIS`    # test if temperature is < CPU_TEMP_WARNING - $HYSTERESIS 째C !
                     if [ $? -eq 0 ]; then 
                         if [ -e "${CTRL_FILE}_ERROR.lock" ]; then rm "${CTRL_FILE}_ERROR.lock"; fi
                         if [ -e "${CTRL_FILE}_WARNING.lock" ]; then rm "${CTRL_FILE}_WARNING.lock"; fi
