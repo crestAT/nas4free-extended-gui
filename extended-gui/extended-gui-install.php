@@ -69,7 +69,10 @@ if ($current_release < floatval($min_release)) {                        // relea
 }
 
 // stop running eGUI instance if already installed
-if (is_file("{$install_dir}{$config_name}-stop.php")) require_once("{$install_dir}{$config_name}-stop.php");
+if (is_file("{$install_dir}{$config_name}-stop.php")) {
+	require_once("{$install_dir}{$config_name}-stop.php");
+	exec("logger extended-gui: old stop procedure executed");	
+}
     
 // fetch release archive
 $return_val = mwexec("fetch {$verify_hostname} -vo {$install_dir}master.zip 'https://github.com/crestAT/nas4free-extended-gui/releases/download/{$version}/extended-gui-{$version_striped}.zip'", false);
