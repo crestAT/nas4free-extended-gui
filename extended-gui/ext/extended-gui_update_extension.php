@@ -129,6 +129,7 @@ if (isset($_POST['ext_update']) && $_POST['ext_update']) {
 // download installer & install
     $return_val = mwexec("fetch -vo {$configuration['rootfolder']}extended-gui-install.php 'https://raw.github.com/crestAT/nas4free-extended-gui/master/extended-gui/extended-gui-install.php'", false);
     if ($return_val == 0) {
+		require_once("{$configuration['rootfolder']}extended-gui-stop.php");
         require_once("{$configuration['rootfolder']}extended-gui-install.php"); 
         header("Refresh:8");;
     }

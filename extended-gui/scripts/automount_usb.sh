@@ -239,7 +239,7 @@ U_MOUNT ()
 #echo "stage 11 unmount"
 	MOUNTED=`mount | awk '/\/dev\/da/ && /\/mnt\// || /\/dev\/cd/ && /\/mnt\//  || /\/dev\/fuse/ && /\/mnt\// {print $3}'`
 	for NAME in $MOUNTED; do 
-echo "stage 12 unmount $NAME from $MOUNTED"
+#echo "stage 12 unmount $NAME from $MOUNTED"
 		sync $NAME; 
 		umount $NAME >> $LOG_MSG_NOTIFY 2>&1; 
 		if [ $? -ne 0 ]; then 

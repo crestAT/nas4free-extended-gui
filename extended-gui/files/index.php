@@ -487,7 +487,6 @@ if ($_POST['rmount']) {
     }
 }    
 if ($_POST['purge']) { exec("/var/scripts/purge.sh 0"); }
-if ($_POST['auto_shutdown']) { exec("/var/scripts/autoshutdown.sh toggle"); }
 
 if ($configuration['system_warnings'] && is_file("{$EGUI_PREFIX}system_error.msg.locked")) { 
     $errormsg .= shell_exec("cat {$EGUI_PREFIX}system_error.msg.locked");
@@ -1325,7 +1324,6 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 <?php if ($configuration['buttons']) { ?>
     <?php if ($configuration['purge']['enable']) { ?>
     		<input name="purge" type="submit" class="formbtn" title="<?=gettext("Purge now all CIFS/SMB recycle bins!");?>" value="<?=gettext("Purge now");?>">
-	    	<input name="auto_shutdown" type="submit" class="formbtn" value="<?=gettext("Autoshutdown");?>">
     <?php } ?>
 <?php } ?>
 <?php 

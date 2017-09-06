@@ -68,6 +68,9 @@ if ($current_release < floatval($min_release)) {                        // relea
     return;
 }
 
+// stop running eGUI instance if already installed
+if (is_file("{$install_dir}{$config_name}-stop.php")) require_once("{$install_dir}{$config_name}-stop.php");
+    
 // fetch release archive
 $return_val = mwexec("fetch {$verify_hostname} -vo {$install_dir}master.zip 'https://github.com/crestAT/nas4free-extended-gui/releases/download/{$version}/extended-gui-{$version_striped}.zip'", false);
 if ($return_val == 0) {
@@ -118,9 +121,7 @@ write_config();
 ext_save_config($config_file, $configuration);
 
 if ($new_installation) echo "\nInstallation completed, use WebGUI | Extensions | ".$appname." to configure the application!\n";
-else {
-    $savemsg = sprintf(gettext("Update to version %s completed!"), $file_version);
-    require_once("{$install_dir}{$config_name}-stop.php");
-}
+else $savemsg = sprintf(gettext("Update to version %s completed!"), $file_version);
+require_once("{$install_dir}{$config_name}-stop.php");
 require_once("{$install_dir}{$config_name}-start.php");
 ?>
