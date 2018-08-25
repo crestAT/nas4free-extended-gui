@@ -310,15 +310,23 @@ function egui_get_mount_usage() {
 	global $config, $g, $configuration;
 
 	$result = array();
-	if(is_sidisksizevalues()):
-		exec("/bin/df -H", $rawdata);
-	    exec("df -H | awk '/^\/dev\// && /\/mnt\// {print $6}'| cut -d/ -f3", $sharenames);
-		$unit_suffix = 'B';
-	else:
+
+	if (function_exists('is_sidisksizevalues')) {
+		if(is_sidisksizevalues()):
+			exec("/bin/df -H", $rawdata);
+		    exec("df -H | awk '/^\/dev\// && /\/mnt\// {print $6}'| cut -d/ -f3", $sharenames);
+			$unit_suffix = 'B';
+		else:
+			exec("/bin/df -h", $rawdata);
+		    exec("df -h | awk '/^\/dev\// && /\/mnt\// {print $6}'| cut -d/ -f3", $sharenames);
+			$unit_suffix = 'iB';
+		endif;
+	} else {
 		exec("/bin/df -h", $rawdata);
 	    exec("df -h | awk '/^\/dev\// && /\/mnt\// {print $6}'| cut -d/ -f3", $sharenames);
-		$unit_suffix = 'iB';
-	endif;
+		$unit_suffix = 'B';
+	}
+
     if (isset($configuration['shares'])) foreach($configuration['shares'] as $a_share) $sharenames[] = $a_share; // put file systems and datasets in sharenames
 	foreach ($rawdata as $line) {
 		if (0 == preg_match("/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+%)\s+(.+)/", $line, $aline)) continue;

@@ -29,7 +29,7 @@
 require_once("config.inc");
 
 $branch = "master";    // GIT branch: master, development
-$min_release = 10.3032853;
+$min_release = 11.1044517;  // minimal OS release => 11.1.0.4 - Atomics (Revision 4517)
 
 // check FreeBSD release for fetch options >= 9.3
 $release = explode("-", exec("uname -r"));

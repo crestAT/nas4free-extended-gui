@@ -27,7 +27,7 @@
 */
 $version = "v0.7";		// extension version
 $appname = "Extended-GUI";
-$min_release = 10.3032853;  // minimal OS release
+$min_release = 11.1044517;  // minimal OS release => 11.1.0.4 - Atomics (Revision 4517)
 
 require_once("config.inc");
 
