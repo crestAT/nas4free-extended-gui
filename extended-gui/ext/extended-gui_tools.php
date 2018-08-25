@@ -2,7 +2,7 @@
 /*
     extended-gui_tools.php
 
-    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
+    Copyright (c) 2014 - 2018 Andreas Schmidhuber
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
@@ -28,10 +28,6 @@
     ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-    The views and conclusions contained in the software and documentation are those
-    of the authors and should not be interpreted as representing official policies,
-    either expressed or implied, of the FreeBSD Project.
 */
 require("auth.inc");
 require("guiconfig.inc");
@@ -45,7 +41,11 @@ else {
     $configuration = ext_load_config($config_file);
 }
 
-bindtextdomain("nas4free", "/usr/local/share/locale-egui");
+$domain = strtolower(get_product_name());
+$localeOSDirectory = "/usr/local/share/locale";
+$localeExtDirectory = "/usr/local/share/locale-egui";
+bindtextdomain($domain, $localeExtDirectory);
+
 $pgtitle = array(gettext("Extensions"), "Extended GUI ".$configuration['version'], gettext("Tools"));
 
 $hours = array(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23);
@@ -231,11 +231,11 @@ if ($_POST) {
 
 if  (!isset($configuration['user_defined']['buttons_file'])) $configuration['user_defined']['buttons_file'] = $configuration['rootfolder']."samples/buttons.inc";
 if  (!isset($configuration['user_defined']['logs_file'])) $configuration['user_defined']['logs_file'] = $configuration['rootfolder']."samples/logs.inc";
-if (($message = ext_check_version("{$configuration['rootfolder']}log/version.txt", "extended-gui", $configuration['version'], gettext("Maintenance"))) !== false) $savemsg .= $message;
+if (($message = ext_check_version("{$configuration['rootfolder']}version_server.txt", "extended-gui", $configuration['version'], gettext("Maintenance"))) !== false) $savemsg .= $message;
 
-bindtextdomain("nas4free", "/usr/local/share/locale");
+bindtextdomain($domain, $localeOSDirectory);
 include("fbegin.inc");
-bindtextdomain("nas4free", "/usr/local/share/locale-egui");
+bindtextdomain($domain, $localeExtDirectory);
 ?>
 <script type="text/javascript">
 <!--
@@ -278,7 +278,7 @@ function user_defined_enable_change(enable_change) {
     		<ul id="tabnav">
     			<li class="tabinact"><a href="extended-gui.php"><span><?=gettext("Configuration");?></span></a></li>
     			<li class="tabact"><a href="extended-gui_tools.php"><span><?=gettext("Tools");?></span></a></li>
-                <li class="tabinact"><a href="extended-gui_update_extension.php"><span><?=gettext("Extension Maintenance");?></span></a></li>
+                <li class="tabinact"><a href="extended-gui_update_extension.php"><span><?=gettext("Maintenance");?></span></a></li>
     		</ul>
     	</td></tr>
         <tr><td class="tabcont">

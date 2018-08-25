@@ -2,12 +2,8 @@
 /*
     extended-gui_fcopy.inc
 
-    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
+    Copyright (c) 2014 - 2018 Andreas Schmidhuber
     All rights reserved.
-
-	Portions of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2017 The NAS4Free Project <info@nas4free.org>.
-	All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions are met:
@@ -28,10 +24,6 @@
     ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-    The views and conclusions contained in the software and documentation are those
-    of the authors and should not be interpreted as representing official policies,
-    either expressed or implied, of the FreeBSD Project.
 */
 /* 
 $config_file = "ext/extended-gui/extended-gui.conf";
@@ -52,7 +44,7 @@ $files = array(
     array("graph_index_cpu.php","/usr/local/www/"),
   // for Diagnostics | Log page search and user column amendment 
     array("diag_log.inc","/usr/local/www/"),
-    array("diag_log.php","/usr/local/www/"),
+//    array("diag_log.php","/usr/local/www/"),			removed, search now included in 11.x series of N4F
 // for Status | Disks page amendment additional column Activity, removed, amendments in r1349
   //  array("status_disks.php","/usr/local/www/"),
 // for Access | Users page amendment showing all groups a user belongs to, removed, no longer needed, included in r1349
@@ -82,6 +74,9 @@ if (!isset($config['rrdgraphs']['enable'])) $files = array_merge($files, $graph_
 $backup_path = $configuration['rootfolder']."backup/";
 $extend_path = $configuration['rootfolder']."files/";
 
+// cleanup for obsolete files
+if (is_file("{$configuration['rootfolder']}files/diag_log.php")) unlink("{$configuration['rootfolder']}files/diag_log.php"); 
+    
 function copy_origin2backup ($files, $backup_path, $extend_path) {
     foreach ($files as $file) {
         if (is_file($file[1].$file[0])) {

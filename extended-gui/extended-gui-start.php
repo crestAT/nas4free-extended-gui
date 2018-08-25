@@ -2,12 +2,8 @@
 /*
     extended-gui-start.php 
 
-    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
+    Copyright (c) 2014 - 2018 Andreas Schmidhuber
     All rights reserved.
-
-	Portions of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2017 The NAS4Free Project <info@nas4free.org>.
-	All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions are met:
@@ -28,10 +24,6 @@
     ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-    The views and conclusions contained in the software and documentation are those
-    of the authors and should not be interpreted as representing official policies,
-    either expressed or implied, of the FreeBSD Project.
 */
 require_once("config.inc");
 require_once("functions.inc");
@@ -50,14 +42,19 @@ require_once("{$configuration['rootfolder']}ext/extended-gui_fcopy.inc");
 $extension_dir = "/usr/local/www/ext/extended-gui";
 if ( !is_dir($extension_dir)) { mwexec("mkdir -p {$extension_dir}", true); }
 mwexec("cp {$configuration['rootfolder']}ext/* {$extension_dir}/", true);
+// check for product name and eventually rename translation files for new product name (XigmaNAS)
+$domain = strtolower(get_product_name());
+if ($domain <> "nas4free") mwexec("find {$configuration['rootfolder']}locale-egui -name nas4free.mo -execdir mv nas4free.mo {$domain}.mo \;", true);
 mwexec("cp -R {$configuration['rootfolder']}locale-egui /usr/local/share/", true);
-// restore logs for embedded systems
-mwexec("cp {$configuration['rootfolder']}log/* /var/log/ >/dev/null 2>/dev/null", false);
 mwexec("cp -R {$configuration['rootfolder']}scripts /var/", true);
-mwexec("chmod -R 770 /var/scripts", true);                           // to be sure that scripts are executable
+mwexec("chmod -R 775 /var/scripts", true);                           // to be sure that scripts are executable, o=rx needed for LetsEncrypt curl
 if ( !is_link("/usr/local/www/extended-gui.php")) { mwexec("ln -s {$extension_dir}/extended-gui.php /usr/local/www/extended-gui.php", true); }
 if ( !is_link("/usr/local/www/extended-gui_tools.php")) { mwexec("ln -s {$extension_dir}/extended-gui_tools.php /usr/local/www/extended-gui_tools.php", true); }
 if ( !is_link("/usr/local/www/extended-gui_update_extension.php")) { mwexec("ln -s {$extension_dir}/extended-gui_update_extension.php /usr/local/www/extended-gui_update_extension.php", true); }
+if ( !is_link("/usr/bin/curl")) { mwexec("ln -s /var/scripts/bin/curl /usr/bin/curl", true); }					// prerequisites for Telegram
+if ( !is_link("/usr/local/bin/curl")) { mwexec("ln -s /var/scripts/bin/curl /usr/local/bin/curl", true); }
+if ( !is_link("/usr/bin/telegram-notify")) { mwexec("ln -s /var/scripts/telegram-notify /usr/bin/telegram-notify", true); }
+if ( !is_link("/usr/local/bin/telegram-notify")) { mwexec("ln -s /var/scripts/telegram-notify /usr/local/bin/telegram-notify", true); }
 
 if ($configuration['enable']) {
     $saved = $configuration['product_version'];

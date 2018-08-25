@@ -2,11 +2,10 @@
 /*
 	index.php
 
-	Part of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2017 The NAS4Free Project <info@nas4free.org>.
-	All rights reserved.
-
-    Modified by Andreas Schmidhuber Copyright (c) 2014 - 2017 <info@a3s.at>
+	Part of XigmaNAS (https://www.xigmanas.com).
+	Copyright (c) 2018 XigmaNAS <info@xigmanas.com>.
+	
+    Modified by Andreas Schmidhuber Copyright (c) 2014 - 2018
     All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without
@@ -31,25 +30,30 @@
 	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 	The views and conclusions contained in the software and documentation are those
-	of the authors and should not be interpreted as representing official policies,
-	either expressed or implied, of the NAS4Free Project.
+	of the authors and should not be interpreted as representing official policies
+	of XigmaNAS, either expressed or implied.
 */
 // Configure page permission
 $pgperm['allowuser'] = TRUE;
 
-require("auth.inc");
-require("guiconfig.inc");
-require("zfs.inc");
+require_once 'auth.inc';
+require_once 'guiconfig.inc';
+require_once 'zfs.inc';
 
-// Page base: r3956 => 4040
+// Page base: r4040 => 5962
 if (is_file("/usr/local/www/bar_left.gif")) $image_path = "";
 else $image_path = "images/";
 $EGUI_PREFIX = "/tmp/extended-gui_"; 
 $config_file = "ext/extended-gui/extended-gui.conf";
 require_once("ext/extended-gui/extension-lib.inc");
-bindtextdomain("nas4free", "/usr/local/share/locale-egui");
+
+$domain = strtolower(get_product_name());
+$localeOSDirectory = "/usr/local/share/locale";
+$localeExtDirectory = "/usr/local/share/locale-egui";
+bindtextdomain($domain, $localeExtDirectory);
+
 if (($configuration = ext_load_config($config_file)) === false) $input_errors[] = sprintf(gettext("Configuration file %s not found!"), "extended-gui.conf");
-bindtextdomain("nas4free", "/usr/local/share/locale");
+bindtextdomain($domain, $localeOSDirectory);
 $pgtitle = array(gettext("System Information"));
 $pgtitle_omit = true;
 
@@ -269,20 +273,25 @@ function egui_get_indexrefresh() {
     if (is_file("{$EGUI_PREFIX}index.refresh")) {
         unlink("{$EGUI_PREFIX}index.refresh");
         write_log("extended-gui: autmount refresh");
+        exec("/var/scripts/disk_check.sh");
         $indexrefresh['reason'] = "automount";
         $indexrefresh['message'] = "USB auto-mounted";
     }
     if ($configuration['system_warnings']) {
         if (is_file("{$EGUI_PREFIX}system_error.msg")) {
             $indexrefresh['reason'] = "system_error";
-            $indexrefresh['message'] = str_replace("degreeC", " C ", shell_exec("cat {$EGUI_PREFIX}system_error.msg"));
-            $a_search = array("\n", " C ");
-            $a_replace = array("<br />", "&deg;C");
-            file_put_contents("{$EGUI_PREFIX}system_error.msg.locked", str_replace($a_search, $a_replace, $indexrefresh['message']), FILE_APPEND );
+            $indexrefresh['message'] = shell_exec("cat {$EGUI_PREFIX}system_error.msg");
+            file_put_contents("{$EGUI_PREFIX}system_error.msg.locked", str_replace("\n", "<br />", $indexrefresh['message']), FILE_APPEND );
             unlink("{$EGUI_PREFIX}system_error.msg");
         }
     }
     return $indexrefresh;
+}
+
+function egui_get_servicesinfo() {
+    global $EGUI_PREFIX;
+    $servicesinfo = exec("cat {$EGUI_PREFIX}services_info.log");
+    return $servicesinfo;
 }
 
 function egui_get_userinfo() {
@@ -301,8 +310,15 @@ function egui_get_mount_usage() {
 	global $config, $g, $configuration;
 
 	$result = array();
-	exec("/bin/df -h", $rawdata);
-    exec("df -h | awk '/^\/dev\// && /\/mnt\// {print $6}'| cut -d/ -f3", $sharenames);
+	if(is_sidisksizevalues()):
+		exec("/bin/df -H", $rawdata);
+	    exec("df -H | awk '/^\/dev\// && /\/mnt\// {print $6}'| cut -d/ -f3", $sharenames);
+		$unit_suffix = 'B';
+	else:
+		exec("/bin/df -h", $rawdata);
+	    exec("df -h | awk '/^\/dev\// && /\/mnt\// {print $6}'| cut -d/ -f3", $sharenames);
+		$unit_suffix = 'iB';
+	endif;
     if (isset($configuration['shares'])) foreach($configuration['shares'] as $a_share) $sharenames[] = $a_share; // put file systems and datasets in sharenames
 	foreach ($rawdata as $line) {
 		if (0 == preg_match("/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+%)\s+(.+)/", $line, $aline)) continue;
@@ -324,12 +340,14 @@ function egui_get_mount_usage() {
 				$result[$mountpoint]['filesystem'] = $filesystem;
 				$result[$mountpoint]['capacity'] = $capacity;
                 $result[$mountpoint]['percentage'] = rtrim($capacity, "%");     // derived from get_disk_usage
-				$result[$mountpoint]['size'] = $size;
-				$result[$mountpoint]['used'] = $used;
-				$result[$mountpoint]['avail'] = $avail;
-                $result[$mountpoint]['capofsize'] = sprintf(gettext("%s of %sB"), $result[$mountpoint]['capacity'], $result[$mountpoint]['size']);
-                $result[$mountpoint]['tooltip']['used'] = sprintf(gettext("%sB used of %sB"), $result[$mountpoint]['used'], $result[$mountpoint]['size']);
-                $result[$mountpoint]['tooltip']['avail'] = sprintf(gettext("%sB available of %sB"), $result[$mountpoint]['avail'], $result[$mountpoint]['size']);
+
+				$result[$mountpoint]['avail'] = sprintf('%s%s',$avail,$unit_suffix);
+				$result[$mountpoint]['used'] = sprintf('%s%s',$used,$unit_suffix);
+				$result[$mountpoint]['size'] = sprintf('%s%s',$size,$unit_suffix);
+
+                $result[$mountpoint]['capofsize'] = sprintf(gettext("%s of %s"), $result[$mountpoint]['capacity'], $result[$mountpoint]['size']);
+                $result[$mountpoint]['tooltip']['used'] = sprintf(gettext("%s used of %s"), $result[$mountpoint]['used'], $result[$mountpoint]['size']);
+                $result[$mountpoint]['tooltip']['avail'] = sprintf(gettext("%s available of %s"), $result[$mountpoint]['avail'], $result[$mountpoint]['size']);
 			}
 		}
 	}
@@ -356,6 +374,7 @@ if (is_ajax()) {
 	$sysinfo['upsinfo'] = $upsinfo;
 	$sysinfo['upsinfo2'] = $upsinfo2;
 	$sysinfo['indexrefresh'] = egui_get_indexrefresh();
+	$sysinfo['servicesinfo'] = egui_get_servicesinfo();
 	$sysinfo['userinfo'] = egui_get_userinfo();
 	$sysinfo['hostsinfo'] = egui_get_hostsinfo();
 	$sysinfo['diskusage'] = egui_get_disk_usage();
@@ -465,7 +484,7 @@ if ($_POST['clear_history']) {
     if (is_file("{$EGUI_PREFIX}system_error.msg.locked")) unlink("{$EGUI_PREFIX}system_error.msg.locked");
 }
 
-bindtextdomain("nas4free", "/usr/local/share/locale-egui");
+bindtextdomain($domain, $localeExtDirectory);
 if ($_POST['umount']) {
     $retval = mwexec("/var/scripts/automount_usb.sh umount", true);
     if ($retval <> 0) {
@@ -474,7 +493,7 @@ if ($_POST['umount']) {
     }
 }
 if ($_POST['rmount']) {
-    $retval = mwexec("/var/scripts/automount_usb.sh rmount", true);
+    $retval = mwexec("/var/scripts/automount_usb.sh rmount && /var/scripts/disk_check.sh", true);
     if ($retval > 20) {
         $errormsg .= gettext("Cannot remount USB device(s), look at <b>Diagnose | Log | Notifications</b> for more information!");
 		$errormsg .= "<br />\n";
@@ -487,14 +506,26 @@ if ($configuration['system_warnings'] && is_file("{$EGUI_PREFIX}system_error.msg
 }
 
 if (isset($_GET['standby_drive'])) {
-    $retval = mwexec("camcontrol standby {$_GET['standby_drive']} && /var/scripts/disk_check.sh", true);        
+    $retval = mwexec("camcontrol standby {$_GET['standby_drive']} && /var/scripts/disk_check.sh", true);
     if ($retval <> 0) {
         $errormsg .= sprintf(gettext("Cannot set drive %s to standby!"), $_GET['standby_drive']);
     	$errormsg .= "<br />\n";
     }
 }
-bindtextdomain("nas4free", "/usr/local/share/locale");
 
+if (isset($_GET['unmount_usb'])) {
+    $retval = mwexec("umount /mnt/{$_GET['unmount_usb']} && rmdir /mnt/{$_GET['unmount_usb']} && touch /mnt/{$_GET['unmount_usb']}.unmounted && /var/scripts/disk_check.sh", true);
+    if ($retval <> 0) {
+        $errormsg .= sprintf(gettext("Unmount of mount point %s failed: Device is busy!"), $_GET['unmount_usb']);
+    	$errormsg .= "<br />\n";
+    	mwexec("logger extended-gui: \"Unmount of mount point {$_GET['unmount_usb']} failed: Device is busy!\" && fstat | grep \"/mnt/{$_GET['unmount_usb']}\" | logger", true);
+    }
+    else {
+		unlink_if_exists("{$EGUI_PREFIX}{$_GET['unmount_usb']}.smart");		// remove SMART infos
+    	mwexec("logger extended-gui: Unmount of mount point {$_GET['unmount_usb']} successful", true);
+	}
+}
+bindtextdomain($domain, $localeOSDirectory);
 ?>
 <?php include("fbegin.inc");?>
 <script type="text/javascript">//<![CDATA[
@@ -502,14 +533,19 @@ function set_standby(drive) {
     location.href = "index.php?standby_drive="+drive;
 }
 
+function unmount_usb(drive) {
+    location.href = "index.php?unmount_usb="+drive;
+}
+
 $(document).ready(function(){
 	var gui = new GUI;
 	gui.recall(5000, 5000, 'index.php', null, function(data) {
 		if (data.indexrefresh.reason == 'automount') location.assign("index.php");
 		if (data.indexrefresh.reason == 'system_error') {
-            alert(data.indexrefresh.message);
+//            alert(data.indexrefresh.message);							// commented out to leave page dynamically updating
             location.assign("index.php");
         }
+		if ($('#servicesinfo').length > 0) $('#servicesinfo').html(data.servicesinfo);
 		if ($('#userinfo').length > 0) $('#userinfo').html(data.userinfo);
 		if ($('#hostsinfo').length > 0)$('#hostsinfo').html(data.hostsinfo);
 
@@ -711,9 +747,9 @@ if ($configuration['hide_cpu'] && ($cpus > 1)) { $rowcounter = $rowcounter - 2; 
 if ($configuration['hide_cpu'] && ($cpus == 1)) { --$rowcounter; }
 if ($configuration['hide_cpu_usage']  && ($cpus > 1) && !$configuration['hide_cpu']) { --$rowcounter; }
 if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['user_defined']['buttons_file'])) {
-	bindtextdomain("nas4free", "/usr/local/share/locale-egui");
+	bindtextdomain($domain, $localeExtDirectory);
 	print_error_box(sprintf(gettext("Configuration file %s not found!"), $configuration['user_defined']['buttons_file']));
-	bindtextdomain("nas4free", "/usr/local/share/locale");
+	bindtextdomain($domain, $localeOSDirectory);
 }
  ?>
 <table width="100%" border="0" cellpadding="0" cellspacing="0">
@@ -800,9 +836,9 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 				echo "<tr><td width='25%' class='vncellt'>".gettext("CPU Temperature")."</td>";
 				echo "<td class='listr'>";
 				if (!empty($cpuinfo['temperature'])) {
-					echo "<input style='padding: 0; border: 0;' size='1' id='cputemp' value='".htmlspecialchars($cpuinfo['temperature'])."' />&deg;C";
+					echo "<input style='padding: 0; border: 0;' size='1' id='cputemp' value='".htmlspecialchars($cpuinfo['temperature'])."' />&nbsp;&deg;C";
 				}
-				else echo "<input style='padding: 0; border: 0;' size='1' id='cputemp0' value='".htmlspecialchars($cpuinfo['temperature2'][0])."' />&deg;C";				    
+				else echo "<input style='padding: 0; border: 0;' size='1' id='cputemp0' value='".htmlspecialchars($cpuinfo['temperature2'][0])."' />&nbsp;&deg;C";				    
 				echo "</td></tr>";
 			}
 		?>
@@ -837,7 +873,7 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 					echo "<tr><td width='25%' class='vncellt'>".gettext('CPU Core Usage')."</td><td width='75%' class='listr'>";
 					for ($idx = 0; $idx < $cpus; $idx++) {
 						$percentage = 0;
-						echo "<span style='white-space:nowrap; display:inline-block; width:300px'>";
+						echo "<span style='white-space:nowrap; display:inline-block; width:310px'>";
 						echo "<img src='{$image_path}bar_left.gif' class='progbarl' alt='' />";
 						echo "<img src='{$image_path}bar_blue.gif' name='cpuusageu${idx}' id='cpuusageu${idx}' width='" . $percentage . "' class='progbarcf' alt='' />";
 						echo "<img src='{$image_path}bar_gray.gif' name='cpuusagef${idx}' id='cpuusagef${idx}' width='" . (100 - $percentage) . "' class='progbarc' alt='' />";
@@ -846,7 +882,7 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 						echo "<input style='padding: 0; border: 0;' size='3' name='cpuusage${idx}' id='cpuusage${idx}' value='???' />";
                         if (!empty($cpuinfo['temperature2'][$idx])) {
 							echo "{$gt_temp}: ";
-							echo "<input style='padding: 0; border: 0; text-align:right' size='1' id='cputemp${idx}' value='???' />&deg;C";
+							echo "<input style='text-align: center; width:28px; padding-right:1px; border:0; text-align:right' size='3' id='cputemp${idx}' value='???' />&deg;C";
 						}
 						echo "</span>";
 						if ($configuration['multicore_type'] == "1") echo "<br />";								// one-column type or
@@ -950,9 +986,9 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
     					echo "&nbsp;&nbsp;</td><td nowrap align='left'><span name='diskusage_{$ctrlid}_capofsize' id='diskusage_{$ctrlid}_capofsize' class='capofsize'>{$diskusagev['capofsize']}</span>";
     					echo "</td><td nowrap> || ";
     					echo sprintf(gettext("Total: %s | Used: %s | Free: %s"),
-    						"<span name='diskusage_{$ctrlid}_size' id='diskusage_{$ctrlid}_size' class='size' style='display:inline-block; width:35px; text-align:right; font-weight:bold'>{$diskusagev['size']}</span>",
-    						"<span name='diskusage_{$ctrlid}_used' id='diskusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$diskusagev['used']}</span>",
-    						"<span name='diskusage_{$ctrlid}_avail' id='diskusage_{$ctrlid}_avail' class='avail' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$diskusagev['avail']}</span>");
+    						"<span name='diskusage_{$ctrlid}_size' id='diskusage_{$ctrlid}_size' class='size' style='display:inline-block; width:55px; text-align:right; font-weight:bold'>{$diskusagev['size']}</span>",
+    						"<span name='diskusage_{$ctrlid}_used' id='diskusage_{$ctrlid}_used' class='used' style='display:inline-block; width:55px; text-align:right; font-weight:bold; color:blue'>{$diskusagev['used']}</span>",
+    						"<span name='diskusage_{$ctrlid}_avail' id='diskusage_{$ctrlid}_avail' class='avail' style='display:inline-block; width:55px; text-align:right; font-weight:bold; color:green'>{$diskusagev['avail']}</span>");
     					echo " ||";
                         echo "</td><td><table style='width:230px'>";
                         foreach($diskusagev['devs'] as $idx => $devs) {
@@ -969,7 +1005,7 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 
 				$zfspools = get_pool_usage();
 				if (!empty($zfspools)) {
-					if (!empty($a_diskusage)) {echo "<tr><td colspan='7'><hr size='1' /></td></tr>";}
+					if (!empty($a_diskusage)) {echo "<tr><td colspan='7'><hr size='1' /></td></tr>";}			
 					array_sort_key($zfspools, "name");
 					$index = 0;
 					foreach ($zfspools as $poolk => $poolv) {
@@ -997,9 +1033,9 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 						echo "&nbsp;&nbsp;</td><td nowrap align='left'><span name='poolusage_{$ctrlid}_capofsize' id='poolusage_{$ctrlid}_capofsize' class='capofsize'>{$poolv['capofsize']}</span>";
 						echo "</td><td nowrap> || ";
     					echo sprintf(gettext("Total: %s | Used: %s | Free: %s"),
-							"<span name='poolusage_{$ctrlid}_size' id='poolusage_{$ctrlid}_size' class='size' style='display:inline-block; width:35px; text-align:right; font-weight:bold'>{$poolv['size']}</span>",
-							"<span name='poolusage_{$ctrlid}_used' id='poolusage_{$ctrlid}_used' class='used' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:blue'>{$poolv['used']}</span>",
-							"<span name='poolusage_{$ctrlid}_avail' id='poolusage_{$ctrlid}_avail' class='avail' style='display:inline-block; width:35px; text-align:right; font-weight:bold; color:green'>{$poolv['avail']}</span>");
+							"<span name='poolusage_{$ctrlid}_size' id='poolusage_{$ctrlid}_size' class='size' style='display:inline-block; width:55px; text-align:right; font-weight:bold'>{$poolv['size']}</span>",
+							"<span name='poolusage_{$ctrlid}_used' id='poolusage_{$ctrlid}_used' class='used' style='display:inline-block; width:55px; text-align:right; font-weight:bold; color:blue'>{$poolv['used']}</span>",
+							"<span name='poolusage_{$ctrlid}_avail' id='poolusage_{$ctrlid}_avail' class='avail' style='display:inline-block; width:55px; text-align:right; font-weight:bold; color:green'>{$poolv['avail']}</span>");
 						echo " ||";
                         echo "</td><td><table style='width:230px'>";
                         foreach($poolv['devs'] as $idx => $devs) {
@@ -1011,11 +1047,10 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
                         }
                         echo "</table>";
 						echo "</td><td style='white-space:nowrap; width:60px;'><span name='poolusage_{$ctrlid}_space' id='poolusage_{$ctrlid}_space'>{$poolv['space']}</span>";
-						echo "</td><td style='white-space:nowrap; width:50%;'>&nbsp;&nbsp;<a href='disks_zfs_zpool_info.php?pool={$poolv['name']}'><span name='poolusage_{$ctrlid}_state' id='poolusage_{$ctrlid}_state' class='state'>{$poolv['health']}</span></a>";
-						echo "</td></tr>";
+						echo "&nbsp;&nbsp;<a href='disks_zfs_zpool_info.php?pool={$poolv['name']}'><span name='poolusage_{$ctrlid}_state' id='poolusage_{$ctrlid}_state' class='state'>{$poolv['health']}</span></a>";
+    					echo "</td><td style='white-space:nowrap; width:50%;'>&nbsp;&nbsp;</td></tr>";
 
-						if (++$index < count($zfspools))
-							echo "<tr><td colspan='7'><hr size='1' /></td></tr>";
+						if (++$index < count($zfspools)) echo "<tr><td colspan='7'><hr size='1' /></td></tr>";
 					}
 				}
 
@@ -1276,10 +1311,7 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 <?php if ($configuration['services']) { ?>
 			  <tr>
 			    <td width="25%" valign="top" class="vncellt"><?=gettext("Services");?></td>
-			    <td class="listr" colspan="2">
-                <?php echo exec("/var/scripts/autoshutdown.sh"); ?>
-
-                </td>
+			    <td class="listr" colspan="2"><span name="servicesinfo" id="servicesinfo"><?php echo egui_get_servicesinfo(); ?></span></td>
 			  </tr>
 <?php } ?>
 				<?php endif;?>
@@ -1291,13 +1323,13 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 <center>
 	<form action="index.php" method="post" name="iform" id="iform" onsubmit="spinner()">
 		<br>
-<?php bindtextdomain("nas4free", "/usr/local/share/locale-egui"); ?>
+<?php bindtextdomain($domain, $localeExtDirectory); ?>
 <?php if ($configuration['automount']) { ?>
     <input name="umount" type="submit" class="formbtn" title="<?=gettext("Unmount all USB-Drives!");?>" value="<?=gettext("Unmount USB Drives");?>">
     <input name="rmount" type="submit" class="formbtn" title="<?=gettext("Remount all USB-Drives!");?>" value="<?=gettext("Mount USB Drives");?>">
 <?php } ?>
 <?php if ($configuration['beep']) { ?>
-    <input name="clear_alarms" type="submit" class="formbtn" title="<?=gettext("Clear all CPU and ZFS audible alarms!");?>" value="<?=gettext("Clear Alarms");?>">
+    <input name="clear_alarms" type="submit" class="formbtn" title="<?=gettext("Mute all audible alarms!");?>" value="<?=gettext("Mute Alarms");?>">
 <?php } ?>
 <?php if ($configuration['system_warnings']) { ?>
     <input name="clear_history" type="submit" class="formbtn" title="<?=gettext("Clear alarm history!");?>" value="<?=gettext("Clear History");?>">
@@ -1312,7 +1344,7 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 		include_once($configuration['user_defined']['buttons_file']);
 	}
 ?>
-<?php bindtextdomain("nas4free", "/usr/local/share/locale"); ?>
+<?php bindtextdomain($domain, $localeOSDirectory); ?>
  		<?php include("formend.inc"); ?>
 	</form>
 	</td>

@@ -2,7 +2,7 @@
 /*
     extended-gui_update_extension.php
     
-    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
+    Copyright (c) 2014 - 2018 Andreas Schmidhuber
     All rights reserved.
 
 	Portions of NAS4Free (http://www.nas4free.org).
@@ -28,10 +28,6 @@
     ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-    The views and conclusions contained in the software and documentation are those
-    of the authors and should not be interpreted as representing official policies,
-    either expressed or implied, of the FreeBSD Project.
  */
 require("auth.inc");
 require("guiconfig.inc");
@@ -45,14 +41,18 @@ else {
     $configuration = ext_load_config($config_file);
 }
 
-bindtextdomain("nas4free", "/usr/local/share/locale-egui");
+$domain = strtolower(get_product_name());
+$localeOSDirectory = "/usr/local/share/locale";
+$localeExtDirectory = "/usr/local/share/locale-egui";
+bindtextdomain($domain, $localeExtDirectory);
+
 $pgtitle = array(gettext("Extensions"), "Extended GUI ".$configuration['version'], gettext("Extension Maintenance"));
 
-if (is_file("{$configuration['rootfolder']}log/oneload")) { require_once("{$configuration['rootfolder']}log/oneload"); }
+if (is_file("{$configuration['rootfolder']}oneload")) { require_once("{$configuration['rootfolder']}oneload"); }
 
-$return_val = mwexec("fetch -o {$configuration['rootfolder']}log/version.txt https://raw.github.com/crestAT/nas4free-extended-gui/master/extended-gui/version.txt", false);
+$return_val = mwexec("fetch -o {$configuration['rootfolder']}version_server.txt https://raw.github.com/crestAT/nas4free-extended-gui/master/extended-gui/version.txt", false);
 if ($return_val == 0) { 
-    $server_version = exec("cat {$configuration['rootfolder']}log/version.txt"); 
+    $server_version = exec("cat {$configuration['rootfolder']}version_server.txt"); 
     if ($server_version != $configuration['version']) { $savemsg = sprintf(gettext("New extension version %s available, push '%s' button to install the new version!"), $server_version, gettext("Update Extension")); }
     mwexec("fetch -o {$configuration['rootfolder']}release_notes.txt https://raw.github.com/crestAT/nas4free-extended-gui/master/extended-gui/release_notes.txt", false);
 }
@@ -129,14 +129,15 @@ if (isset($_POST['ext_update']) && $_POST['ext_update']) {
 // download installer & install
     $return_val = mwexec("fetch -vo {$configuration['rootfolder']}extended-gui-install.php 'https://raw.github.com/crestAT/nas4free-extended-gui/master/extended-gui/extended-gui-install.php'", false);
     if ($return_val == 0) {
+		require_once("{$configuration['rootfolder']}extended-gui-stop.php");
         require_once("{$configuration['rootfolder']}extended-gui-install.php"); 
         header("Refresh:8");;
     }
     else { $input_errors[] = sprintf(gettext("Installation file %s not found, installation aborted!"), "{$configuration['rootfolder']}extended-gui-install.php"); }
 }
-bindtextdomain("nas4free", "/usr/local/share/locale");
+bindtextdomain($domain, $localeOSDirectory);
 include("fbegin.inc");
-bindtextdomain("nas4free", "/usr/local/share/locale-egui");
+bindtextdomain($domain, $localeExtDirectory);
 ?>
 <form action="extended-gui_update_extension.php" method="post" name="iform" id="iform" onsubmit="spinner()">
 <table width="100%" border="0" cellpadding="0" cellspacing="0">
@@ -144,7 +145,7 @@ bindtextdomain("nas4free", "/usr/local/share/locale-egui");
 		<ul id="tabnav">
 			<li class="tabinact"><a href="extended-gui.php"><span><?=gettext("Configuration");?></span></a></li>
 			<li class="tabinact"><a href="extended-gui_tools.php"><span><?=gettext("Tools");?></span></a></li>
-            <li class="tabact"><a href="extended-gui_update_extension.php"><span><?=gettext("Extension Maintenance");?></span></a></li>
+            <li class="tabact"><a href="extended-gui_update_extension.php"><span><?=gettext("Maintenance");?></span></a></li>
 		</ul>
 	</td></tr>
 	<tr><td class="tabcont">
@@ -157,7 +158,7 @@ bindtextdomain("nas4free", "/usr/local/share/locale-egui");
 			<?php html_separator();?>
         </table>
         <div id="update_remarks">
-            <?php html_remark("note_remove", gettext("Note"), gettext("Removing Extended GUI integration from NAS4Free will leave the installation folder untouched - remove the files using Windows Explorer, FTP or some other tool of your choice. <br /><b>Please note: this page will no longer be available.</b> You'll have to re-run Extended GUI extension installation to get it back on your NAS4Free."));?>
+            <?php html_remark("note_remove", gettext("Note"), gettext("Removing this extension from the server will leave the installation folder untouched - remove the files using Windows Explorer, FTP or some other tool of your choice. <br /><b>Please note: this page will no longer be available.</b> You'll have to re-run extension installation to get it back on your server."));?>
             <br />
             <input id="ext_update" name="ext_update" type="submit" class="formbtn" value="<?=gettext("Update Extension");?>" onclick="return confirm('<?=gettext("The selected operation will be completed. Please do not click any other buttons!");?>')" />
             <input id="ext_remove" name="ext_remove" type="submit" class="formbtn" value="<?=gettext("Remove Extension");?>" onclick="return confirm('<?=gettext("Do you really want to remove the extension from the system?");?>')" />

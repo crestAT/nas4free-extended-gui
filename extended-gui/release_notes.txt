@@ -1,4 +1,38 @@
 ﻿Version Date        Description
+0.7     2018.08.25  C: index.php: Page base: r5962
+                    N: add Telegram support for system notifications as well as for CLI & scripting use
+                    N: add curl binary as prerquesite for Telegram (curl can be used also for CLI & scripting use)
+                    N: STATUS | SYSTEM: additional button for auto-mounted USB devices for selective unmount of single devices
+                    N: STATUS | SYSTEM: services display row (each 'enabled' service will be monitored) for built-in services and extensions
+                    N: Extended GUI | CONFIGURATION: add hosts check type, can be 'parallel' ping, 'sequentiell' ping or 'ARP' (experimental)
+                    N: Extended GUI | CONFIGURATION: Telegram configuration section for warning notifications
+                    N: Extended GUI | CONFIGURATION: services monitoring/warning notifications
+                    N: Extended GUI | CONFIGURATION: user authentication error monitoring/notifications
+                    N: System notifications: ZFS scrub/resilvering monitoring/notifications
+                    N: System notifications: monitoring/notifications for missing HDDs and mountpoints
+                    N: Czech translation
+                    N: Kurdish translation
+                    N: Turkish translation
+                    C: updated English translation
+                    C: updated German translation
+                    C: updated Greek translation
+                    C: updated Italian translation
+                    C: updated Russian translation
+                    C: updated Swedish translation
+                    C: updated Ukrainian translation
+                    C: USB Automount: improvements for recognition of the first USB device driver
+                    C: STATUS | SYSTEM: improvements for temperature display and services display, user defined action buttons appear now in one row
+                    C: remove patched diag_log.php since search is now included in 11.x series of N4F
+                    C: update patched diag_log.inc to 11.x series format
+                    C: logs.inc: user defined sample log file updated to 11.x format, includes UPS, ProFTP file transfer and Webserver examples
+                    C: user, disks, hosts, services checks upgrades for Telgram notifications
+                    F: GUI translations not working due to name change to XigmaNAS
+                    F: STATUS | SYSTEM: correct CPU temperatur display in Safari browser => https://www.xigmanas.com/forums/viewtopic.php?f=71&t=6405&p=77353#p77300
+                    F: STATUS | SYSTEM: display of ZFS space
+                    F: DIAGNOSE | LOG: table column display
+                    F: System notifications: beep on 'CPU temperature error' only working if email notification is enabled
+                    F: System notifications: message output of degraded ZFS pool
+                    
 0.6.2   2017.03.13  C: index.php: Page base: 4040
                     N: Extended GUI: CPU Multicore Usage Bars View Type - selectable as dynamic, one-column or two-column view type
                     N: STATUS | SYSTEM: CPU Core Usage bars according to CPU Multicore Usage Bars View Type

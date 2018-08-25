@@ -2,7 +2,7 @@
 /*
 	extension-lib.inc
 
-    Copyright (c) 2016 - 2017 Andreas Schmidhuber <info@a3s.at>
+    Copyright (c) 2016 - 2018 Andreas Schmidhuber
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -24,15 +24,12 @@
     ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-    The views and conclusions contained in the software and documentation are those
-    of the authors and should not be interpreted as representing official policies,
-    either expressed or implied, of the FreeBSD Project.
 */
 
-$extension_lib_version = "1.1";
+$extension_lib_version = "1.2";
 /* Version history:
- * 1.1	2017.02.28	save config in ext_remove_rc_commands and ext_create_rc_commands 
+ * 1.2	2018.08.13	function ext_check_version: append line break to the output message 
+ * 1.1	2017.02.28	save config in ext_remove_rc_commands and ext_create_rc_commands
  * 1.0	2017.02.27	includes changes for PHP 7.1
 */
 
@@ -166,7 +163,7 @@ if (!function_exists('ext_check_version'))   {
 			$return_val = mwexec("fetch -o {$test_filename} https://raw.github.com/crestAT/nas4free-{$extension_name}/master/{$extension_name}/version.txt", false);
 			if ($return_val == 0) {
 			    $server_version = exec("cat {$test_filename}");
-			    if ($server_version != $current_version) return sprintf(gettext("New extension version %s available, push '%s' button to install the new version!"), $server_version, $button_name);
+			    if ($server_version != $current_version) return sprintf(gettext("New extension version %s available, push '%s' button to install the new version!"), $server_version, $button_name)."<br />";
 			}
 			else return false;
 		}

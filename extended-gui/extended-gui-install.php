@@ -2,12 +2,8 @@
 /* 
     extended-gui-install.php
     
-    Copyright (c) 2014 - 2017 Andreas Schmidhuber <info@a3s.at>
+    Copyright (c) 2014 - 2018 Andreas Schmidhuber
     All rights reserved.
-
-	Portions of NAS4Free (http://www.nas4free.org).
-	Copyright (c) 2012-2017 The NAS4Free Project <info@nas4free.org>.
-	All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions are met:
@@ -28,12 +24,8 @@
     ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-    The views and conclusions contained in the software and documentation are those
-    of the authors and should not be interpreted as representing official policies,
-    either expressed or implied, of the FreeBSD Project.
 */
-$version = "v0.6.2";              // extension version
+$version = "v0.7";		// extension version
 $appname = "Extended-GUI";
 $min_release = 10.3032853;  // minimal OS release
 
@@ -41,7 +33,6 @@ require_once("config.inc");
 
 $install_dir = dirname(__FILE__)."/";                           // get directory where the installer script resides
 if (!is_dir("{$install_dir}backup")) { mkdir("{$install_dir}backup", 0775, true); }
-if (!is_dir("{$install_dir}log")) { mkdir("{$install_dir}log", 0775, true); }
 $config_name = strtolower($appname);
 $version_striped = str_replace(".", "", $version);
 
@@ -64,10 +55,17 @@ else $verify_hostname = "";
 $product_version = explode(".", get_product_version());                 // p.version = 10.3.0.3, p.revision = 2853
 $current_release = $product_version[0].".".$product_version[1].$product_version[2].$product_version[3].get_product_revision();
 if ($current_release < floatval($min_release)) {                        // release not supported
-    $input_errors[] = sprintf(gettext("This version of %s needs NAS4Free release %s or higher, installation aborted!"), $appname, $min_release);
+    $input_errors[] = sprintf(gettext("This version of %s needs XigmaNAS release %s or higher, installation aborted!"), $appname, $min_release);
     return;
 }
 
+// stop running eGUI instance if already installed
+if (is_file("{$install_dir}{$config_name}-stop.php")) {
+	require_once("{$install_dir}{$config_name}-stop.php");
+	exec("logger extended-gui: old stop procedure executed");	
+	mwexec("rm -Rf {$install_dir}log", false);
+}
+    
 // fetch release archive
 $return_val = mwexec("fetch {$verify_hostname} -vo {$install_dir}master.zip 'https://github.com/crestAT/nas4free-extended-gui/releases/download/{$version}/extended-gui-{$version_striped}.zip'", false);
 if ($return_val == 0) {
@@ -79,6 +77,7 @@ if ($return_val == 0) {
         $config_file = "{$install_dir}ext/{$config_name}.conf";
         if (is_file("{$install_dir}version.txt")) { $file_version = exec("cat {$install_dir}version.txt"); }
         else { $file_version = "n/a"; }
+        $savemsg = sprintf(gettext("Update to version %s completed!"), $file_version);
     }
     else { 
         $input_errors[] = sprintf(gettext("Archive file %s not found, installation aborted!"), "master.zip corrupt /"); 
@@ -90,7 +89,7 @@ else {
     return;
 }
 
-// install / update application on NAS4Free
+// install / update application
 if (($configuration = ext_load_config($config_file)) === false) {
     $configuration = array();             // new installation or first time with json config
     $new_installation = true;
@@ -101,6 +100,7 @@ else $new_installation = false;
 if (isset($config['extended-gui']) && is_array($config['extended-gui'])) {
     $configuration = $config['extended-gui'];                           // load config
     unset($config['extended-gui']);                                     // remove old config
+	write_config();
 }
 
 $configuration['appname'] = $appname;
@@ -114,13 +114,10 @@ ext_remove_rc_commands($config_name);
 $configuration['rc_uuid_start'] = $configuration['postinit'];
 $configuration['rc_uuid_stop'] = $configuration['shutdown'];
 ext_create_rc_commands($appname, $configuration['rc_uuid_start'], $configuration['rc_uuid_stop']);
-write_config();
 ext_save_config($config_file, $configuration);
 
 if ($new_installation) echo "\nInstallation completed, use WebGUI | Extensions | ".$appname." to configure the application!\n";
-else {
-    $savemsg = sprintf(gettext("Update to version %s completed!"), $file_version);
-    require_once("{$install_dir}{$config_name}-stop.php");
-}
+else $savemsg = sprintf(gettext("Update to version %s completed!"), $file_version);
+require_once("{$install_dir}{$config_name}-stop.php");
 require_once("{$install_dir}{$config_name}-start.php");
 ?>
