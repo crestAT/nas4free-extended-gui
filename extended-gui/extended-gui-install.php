@@ -25,7 +25,7 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-$version = "v0.7";		// extension version
+$version = "v0.7.0.1";		// extension version
 $appname = "Extended-GUI";
 $min_release = 11.1044517;  // minimal OS release => 11.1.0.4 - Atomics (Revision 4517)
 

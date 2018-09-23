@@ -1,4 +1,9 @@
 ﻿Version Date        Description
+0.7.0.1 2018.09.23  C: improved checks for firmware upgrade
+                    C: updated Greek translation
+                    C: updated Swedish translation
+                    C: updated Ukrainian translation
+    
 0.7     2018.08.25  C: index.php: Page base: r5962
                     N: add Telegram support for system notifications as well as for CLI & scripting use
                     N: add curl binary as prerquesite for Telegram (curl can be used also for CLI & scripting use)

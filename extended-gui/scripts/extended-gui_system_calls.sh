@@ -28,6 +28,7 @@
 # purpose:		executes several scripts every n seconds
 # usage:		extended-gui_system_calls.sh (... w/o parameters)
 # version:	date:		description:
+#	4.3		2018.09.23	C: improved checks for firmware upgrade
 #	4.2		2017.06.27	N: run services check
 #	4.1		2017.03.13	N: check for firmware upgrade
 #	4.0		2015.11.22	N: CPU temperature monitoring and reporting (cpu_check)
@@ -45,13 +46,17 @@ change_config=`/usr/local/bin/xml sel -t -v "//lastchange" ${XML_CONFIG_FILE}`
 
 while true
 do
-#NOTIFY "INFO system_calls start"
     if [ "$LOOP_DELAY" == "" ]; then LOOP_DELAY=60; fi
-    if [ -e "$FIRMWARELOCK_PATH" ]; then logger "extended-gui: firmware upgrade in progress, no further checks will be performed"
+    if [ -f "/var/run/firmware.lock" ] || [ -d "/tmp/sysbackup" ] || [ -d "/tmp/configbak" ]; then 
+        if [ -d "/tmp/sysbackup" ]; then logger "extended-gui: /tmp/sysbackup directory found ... "; fi
+        if [ -d "/tmp/configbak" ]; then logger "extended-gui: /tmp/configbak directory found ... "; fi
+        if [ -f "/var/run/firmware.lock" ]; then logger "extended-gui: /var/run/firmware.lock file found ... "; fi
+        logger "extended-gui: firmware upgrade in progress, no further checks will be performed - extended-gui HALTED!";
+        NOTIFY "INFO extended-gui: firmware upgrade in progress, no further checks will be performed - extended-gui HALTED!";
+        exit 99;
     else
         lastchange_config=`/usr/local/bin/xml sel -t -v "//lastchange" ${XML_CONFIG_FILE}`
         if [ "$change_config" != "$lastchange_config" ]; then
-#NOTIFY "INFO2 system_calls start ALT: $change_config NEU: $lastchange_config"
             su root -c "/usr/local/www/ext/extended-gui/extended-gui_create_config2.php"
         fi
 
@@ -66,7 +71,6 @@ do
             $SYSTEM_SCRIPT_DIR/hosts_check.sh &
         fi
         if [ $RUN_AUTOMOUNT -gt 0 ]; then $SYSTEM_SCRIPT_DIR/automount_usb.sh; fi
-#NOTIFY "INFO system_calls end"
     fi
 	sleep $LOOP_DELAY
 done
