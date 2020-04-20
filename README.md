@@ -1,7 +1,6 @@
 Extended GUI
 ------------
 
-[b]STATUS | SYSTEM (index.php) page:[/b]
 - compact display with LIVE view for all information - "dashboard" like - without refreshing needed.
 - compact disks view (S.M.A.R.T. must be enabled to get temperature and activity) with drive status/temperature and disk/pool capacity warning indicator (optional information via email)
 [color=#FF0000]- System warning / error notifications (audible / visual /email / Telegram ) and alarm history for mount point/disk errors/space/temperature, ZFS, CPU and UPS[/color]
